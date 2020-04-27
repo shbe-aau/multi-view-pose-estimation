@@ -11,6 +11,8 @@ import json
 import argparse
 import glob
 
+import copy
+
 from utils.utils import *
 from utils.tools import *
 
@@ -102,6 +104,13 @@ def evalEpoch(mean, std, br, data, model,
     prepareDir(test_dir_pos)
     prepareDir(test_dir_neg)
 
+
+    rgb_render = BatchRender(obj_path=br.obj_path,
+                             device=br.device,
+                             batch_size=br.batch_size,
+                             render_method="hard-phong",
+                             image_size=br.image_size)
+
     fig = None
     for i,curr_batch in enumerate(batch(data_indeces, batch_size)):
 
@@ -117,14 +126,17 @@ def evalEpoch(mean, std, br, data, model,
         Rs = []
         ts = []
         for b in curr_batch:
-            #Rs.append(np.transpose(data["Rs"][b]))
-            Rs.append(data["Rs"][b])
+            Rs.append(np.transpose(data["Rs"][b]))
+            #Rs.append(data["Rs"][b])
             ts.append(T.copy())
 
         # Render depth images
         Rs_predicted = compute_rotation_matrix_from_ortho6d(predicted_poses)
         predicted_images = br.renderBatch(Rs_predicted, ts).cpu().detach().numpy()
         gt_images = br.renderBatch(Rs, ts).cpu().detach().numpy()
+
+        predicted_rgbs = rgb_render.renderBatch(Rs_predicted, ts).cpu().detach().numpy()
+        gt_rgbs = rgb_render.renderBatch(Rs, ts).cpu().detach().numpy()
         
         # Calculate VSD
         thau = 200 / 1000 #20 mm in meters
@@ -151,27 +163,35 @@ def evalEpoch(mean, std, br, data, model,
 
             if(visualize):
                 if(fig is None):
-                    fig = plt.figure(figsize=(16,5))
+                    fig = plt.figure(figsize=(16,14))
                 fig.suptitle("Sample {0} - VSD: {1}".format(curr_batch[obj_k],vsd))
 
-                plt.subplot(1, 4, 1)
+                plt.subplot(2, 3, 1)
                 plt.imshow(data["images"][curr_batch[obj_k]])
-                plt.title("GT")
+                plt.title("GT dataset")
 
-                plt.subplot(1, 4, 2)
-                plt.imshow(curr_gt)
+                plt.subplot(2, 3, 2)
+                plt.imshow(gt_rgbs[obj_k])
+                plt.title("GT rendered")
+
+                plt.subplot(2, 3, 3)
+                plt.imshow(predicted_rgbs[obj_k])
+                plt.title("Predicted rendered")
+
+                plt.subplot(2, 3, 4)
+                plt.imshow(curr_gt, vmin=14, vmax=16)
                 plt.title("GT rendered")
                 
-                plt.subplot(1, 4, 3)
-                plt.imshow(curr_prediction)
+                plt.subplot(2, 3, 5)
+                plt.imshow(curr_prediction, vmin=14, vmax=16)
                 plt.title("Predicted")
 
-                plt.subplot(1, 4, 4)
+                plt.subplot(2, 3, 6)
                 plt1 = plt.imshow(diff, vmin=0, vmax=thau, cmap=plt.get_cmap('jet'))
-                fig.colorbar(plt1, fraction=0.05, pad=0.04)
+                #fig.colorbar(plt1, fraction=0.05, pad=0.04)
                 plt.title("Difference")
 
-                fig.tight_layout()
+                #fig.tight_layout()
 
                 if(vsd > 0.3):
                     output_dir = test_dir_neg
