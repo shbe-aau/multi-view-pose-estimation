@@ -92,8 +92,6 @@ def main():
     
 def evalEpoch(mean, std, br, data, model,
               device, output_path, t, visualize=False):
-    
-    losses = []
     batch_size = br.batch_size
     num_samples = len(data["codes"])
     data_indeces = np.arange(num_samples)
@@ -142,6 +140,7 @@ def evalEpoch(mean, std, br, data, model,
         thau = 200 / 1000 #20 mm in meters
         sigma = 0.3
 
+        losses = []
         for obj_k in np.arange(len(curr_batch)):
             curr_prediction = predicted_images[obj_k]
             curr_gt = gt_images[obj_k]
@@ -158,6 +157,8 @@ def evalEpoch(mean, std, br, data, model,
             outliers = diff[diff > thau]
             total = diff[diff != 0]
             vsd = len(outliers)/(len(total)+1)
+
+            losses.append(vsd)
             
             print("Sample: {0}/{1} - VSD: {2}".format(curr_batch[obj_k],num_samples,vsd))
 
@@ -198,29 +199,9 @@ def evalEpoch(mean, std, br, data, model,
                 else:
                     output_dir = test_dir_pos
                 fig.savefig(os.path.join(output_dir, "sample{0}.png".format(curr_batch[obj_k])), dpi=fig.dpi,quality=50)
-                #plt.close()
                 plt.clf()
-                
-            
-
-        # if(visualize):
-        #     batch_img_dir = os.path.join(output_path, "images/epoch{0}".format(epoch))
-        #     prepareDir(batch_img_dir)
-        #     gt_img = (gt_images[0]).detach().cpu().numpy()
-        #     predicted_img = (predicted_images[0]).detach().cpu().numpy()
-            
-        #     vmin = min(np.min(gt_img), np.min(predicted_img))
-        #     vmax = max(np.max(gt_img), np.max(predicted_img))
-
-            
-        #     fig = plt.figure(figsize=(5+len(views)*2, 9))
-        #     for viewNum in np.arange(len(views)):
-        #         plotView(viewNum, len(views), vmin, vmax, gt_images, predicted_images,
-        #                  predicted_poses, batch_loss, batch_size)            
-        #     fig.tight_layout()
-            
-        #     fig.savefig(os.path.join(batch_img_dir, "epoch{0}-batch{1}.png".format(epoch,i)), dpi=fig.dpi)
-        #     plt.close()
+        # Save VSD scores to CSV file
+        append2file(losses, os.path.join(test_dir, "vsd.csv"))
 
 if __name__ == '__main__':
     main()
