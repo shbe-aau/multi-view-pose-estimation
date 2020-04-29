@@ -37,7 +37,7 @@ aug = iaa.Sequential([
     #iaa.Sometimes(0.5, iaa.PerspectiveTransform(0.05)),
     #iaa.Sometimes(0.5, iaa.CropAndPad(percent=(-0.05, 0.1))),
     #iaa.Sometimes(0.5, iaa.Affine(scale=(1.0, 1.2))),
-    iaa.Sometimes(0.5, iaa.CoarseDropout( p=0.15, size_percent=0.01) ),
+    iaa.Sometimes(0.5, iaa.CoarseDropout( p=0.05, size_percent=0.01) ),
     iaa.Sometimes(0.5, iaa.GaussianBlur(1.2*np.random.rand())),
     iaa.Sometimes(0.5, iaa.Add((-0.1, 0.1), per_channel=0.3)),
     iaa.Sometimes(0.3, iaa.Invert(0.2, per_channel=True)),
