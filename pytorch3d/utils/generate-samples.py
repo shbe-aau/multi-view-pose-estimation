@@ -186,7 +186,6 @@ for i in np.arange(loops):
 print("Elapsed: {0}".format(time.time()-start))
 
 data={"images":images,
-      "org_images":org_images,
       "Rs":Rs,
       "ts":ts,
       "elevs":elevs,
