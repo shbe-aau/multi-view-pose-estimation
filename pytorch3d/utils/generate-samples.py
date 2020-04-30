@@ -110,16 +110,22 @@ phong_renderer = MeshRenderer(
     shader=HardPhongShader(device=device, lights=lights)
 )
 
-Rs = []
-ts = []
-elevs = []
-azims = []
-images = []
-org_images = []
-lights = []
+if(output_path == ""):
+    output_path = "./training-images.p"
+
+# Create clean output file
+pickle.dump([], open(output_path, "wb"), protocol=2)
 
 start = time.time()
 for i in np.arange(loops):
+
+    Rs = []
+    ts = []
+    elevs = []
+    azims = []
+    images = []
+    org_images = []
+    lights = [] 
 
     curr_Rs = []
     curr_ts = []
@@ -183,17 +189,15 @@ for i in np.arange(loops):
             plt.imshow(cropped)
             plt.title("Augmented image")
             plt.show()
+
+    # Append to pickle
+    data={"images":images,
+          "org_images":org_images,
+          "Rs":Rs,
+          "ts":ts,
+          "elevs":elevs,
+          "azims":azims,
+          "dist":dist,
+          "light_dir":lights}
+    pickle.dump(data, open(output_path, "ab"), protocol=2)
 print("Elapsed: {0}".format(time.time()-start))
-
-data={"images":images,
-      "org_images":org_images,
-      "Rs":Rs,
-      "ts":ts,
-      "elevs":elevs,
-      "azims":azims,
-      "dist":dist,
-      "light_dir":lights}
-
-if(output_path == ""):
-    output_path = "./training-images.p"
-pickle.dump(data, open(output_path, "wb"), protocol=2)
