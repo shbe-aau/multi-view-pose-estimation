@@ -107,8 +107,7 @@ class BatchRender:
             raster_settings = RasterizationSettings(
                 image_size=image_size, 
                 blur_radius=np.log(1. / 1e-7 - 1.) * blend_params.sigma, 
-                faces_per_pixel=self.faces_per_pixel, 
-                bin_size=0
+                faces_per_pixel=self.faces_per_pixel
             )
             
             renderer = MeshRenderer(
@@ -124,8 +123,7 @@ class BatchRender:
             raster_settings = RasterizationSettings(
                 image_size=image_size, 
                 blur_radius=np.log(1. / 1e-7 - 1.) * blend_params.sigma, 
-                faces_per_pixel=1, 
-                bin_size=0
+                faces_per_pixel=1
             )
             
             renderer = MeshRenderer(
@@ -187,8 +185,7 @@ class BatchRender:
             raster_settings = RasterizationSettings(
                 image_size=image_size,
                 blur_radius= np.log(1. / 1e-9 - 1.) * blend_params.sigma, 
-                faces_per_pixel=self.faces_per_pixel, 
-                bin_size=0
+                faces_per_pixel=self.faces_per_pixel
             )
 
             lights = DirectionalLights(device=self.device,
@@ -213,8 +210,7 @@ class BatchRender:
             raster_settings = RasterizationSettings(
                 image_size=image_size,
                 blur_radius=0.0, 
-                faces_per_pixel=1, 
-                bin_size=0
+                faces_per_pixel=1
             )
 
             lights = DirectionalLights(device=self.device,
