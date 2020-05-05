@@ -2,32 +2,34 @@ import csv
 import numpy as np
 import matplotlib.pyplot as plt
 
-def readCsv(csv_path, threshold):
+def readCsv(csv_path):
     x = []
     with open(csv_path, 'r') as f:
         reader = csv.reader(f, delimiter='\n')
         for line in reader:
             curr_x = float(line[0])
-            if(curr_x > threshold):
-              x.append(curr_x)
+            x.append(curr_x)
     return x
 
-def plotDataset(dataset, title=None, save_to=None, threshold=0.0):
+def plotDataset(dataset, title=None, save_to=None, threshold=-1):
     fig = plt.figure()
     plt.grid(True)
 
     data = []
     labels = []
     for d in dataset:
-        x = readCsv(d[1], threshold)
-        num_samples = len(readCsv(d[1], 0.0))
-        percentage = (float(len(x))/float(num_samples))*100.0
+        x = readCsv(d[1])
+        percentage = sum(i > threshold for i in x)/len(x) *100.0
         data.append(x)
         labels.append(d[0] + " - total: {0} ({1}%)".format(len(x), round(percentage,2)))
 
-    plt.hist(data, bins=30, label=labels, alpha=1.0)
+    n, bins, patches = plt.hist(data, bins=30, label=labels, alpha=1.0, density=True)
+    plt.xlim(max(threshold, 0), bins[-1])
+    first_bin = next(i for i,v in enumerate(bins) if v > threshold)
+    max_y = max([max(i[first_bin:]) for i in n])
+    plt.ylim(0, max_y)
     plt.xlabel('VSD')
-    plt.ylabel('Occurences')
+    plt.ylabel('% of cases')
     plt.legend(loc='upper right')
     axes = plt.gca()
     if(title is not None):
