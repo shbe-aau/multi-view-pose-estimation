@@ -226,6 +226,8 @@ class Dataset(object):
         clip_far = float(kw['clip_far'])
         pad_factor = float(kw['pad_factor'])
         max_rel_offset = float(kw['max_rel_offset'])
+        max_rel_scale = float(kw['max_rel_scale'])
+        min_rel_scale = float(kw['min_rel_scale'])
         t = np.array([0, 0, float(kw['radius'])])
 
         widgets = ['Training: ', progressbar.Percentage(),
@@ -276,35 +278,42 @@ class Dataset(object):
                 print('Object in Rendering not visible. Have you scaled the vertices to mm?')
                 break
 
-            # # Augment with random scaling
-            # random_scale = np.random.uniform(0.5, 1.5)
-            # obj_bb = np.array([obj_bb[0]-(random_scale*obj_bb[2]-obj_bb[2])*0.5,
-            #                    obj_bb[1]-(random_scale*obj_bb[3]-obj_bb[3])*0.5,
-            #                    obj_bb[2]*random_scale,
-            #                    obj_bb[3]*random_scale])
-            
+            # Augment training bounding box
             x, y, w, h = obj_bb
+            obj_bb_off = obj_bb
 
+            # Augment with random translation
             rand_trans_x = np.random.uniform(-max_rel_offset, max_rel_offset) * w
             rand_trans_y = np.random.uniform(-max_rel_offset, max_rel_offset) * h
+            obj_bb_off = obj_bb_off + np.array([rand_trans_x,rand_trans_y,0,0])
 
-            obj_bb_off = obj_bb + np.array([rand_trans_x,rand_trans_y,0,0])
+            # Augment with random scale
+            rand_scale_w = np.random.uniform(-min_rel_scale, max_rel_scale) * w * 0.5
+            rand_scale_h = np.random.uniform(-min_rel_scale, max_rel_scale) * h * 0.5
+            obj_bb_off = obj_bb_off + np.array([-rand_scale_w,-rand_scale_h, 
+                                                rand_scale_w,rand_scale_h])
 
             bgr_x = self.extract_square_patch(bgr_x, obj_bb_off, pad_factor,resize=(W,H),interpolation = cv2.INTER_NEAREST)
             depth_x = self.extract_square_patch(depth_x, obj_bb_off, pad_factor,resize=(W,H),interpolation = cv2.INTER_NEAREST)
             mask_x = depth_x == 0.
 
-
             ys, xs = np.nonzero(depth_y > 0)
             obj_bb = view_sampler.calc_2d_bbox(xs, ys, render_dims)
+            
+            # Augment groundtruth bounding box
+            x, y, w, h = obj_bb
+            obj_bb_off = obj_bb
 
-            # # Augment with random scaling
-            # obj_bb = np.array([obj_bb[0]-(random_scale*obj_bb[2]-obj_bb[2])*0.5,
-            #                    obj_bb[1]-(random_scale*obj_bb[3]-obj_bb[3])*0.5,
-            #                    obj_bb[2]*random_scale,
-            #                    obj_bb[3]*random_scale])
+            # Augment with random translation
+            if(eval(self._kw['offset_gt'])):
+                obj_bb_off = obj_bb_off + np.array([rand_trans_x,rand_trans_y,0,0])
 
-            bgr_y = self.extract_square_patch(bgr_y, obj_bb, pad_factor,resize=(W,H),interpolation = cv2.INTER_NEAREST)
+            # Augment with random scale
+            if(eval(self._kw['scale_gt'])):
+                obj_bb_off = obj_bb_off + np.array([-rand_scale_w,-rand_scale_h, 
+                                                    rand_scale_w,rand_scale_h])
+
+            bgr_y = self.extract_square_patch(bgr_y, obj_bb_off, pad_factor,resize=(W,H),interpolation = cv2.INTER_NEAREST)
 
             if self.shape[2] == 1:
                 bgr_x = cv2.cvtColor(np.uint8(bgr_x), cv2.COLOR_BGR2GRAY)[:,:,np.newaxis]
