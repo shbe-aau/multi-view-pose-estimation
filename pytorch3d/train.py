@@ -148,6 +148,15 @@ def main():
         #model, _, epoch, _ = loadCheckpoint(model_path)
         model.to(device)
 
+    early_stopping = args.getboolean('Training', 'EARLY_STOPPING', fallback=False)
+    if early_stopping:
+        window = args.getint('Training', 'STOPPING_WINDOW', fallback=10)
+        time_limit = args.getint('Training', 'STOPPING_TIME_LIMIT', fallback=10)
+        window_means = []
+        lowest_mean = np.inf
+        lowest_x = 0
+        timer = 0
+
     np.random.seed(seed=args.getint('Training', 'RANDOM_SEED'))
     while(epoch < args.getint('Training', 'NUM_ITER')):
         loss = trainEpoch(mean, std, br, data, model, device, output_path,
@@ -160,12 +169,29 @@ def main():
                           t=json.loads(args.get('Rendering', 'T')),
                           visualize=args.getboolean('Training', 'SAVE_IMAGES'))
         append2file([val_loss], os.path.join(output_path, "validation-loss.csv"))
-        plotLoss(os.path.join(output_path, "train-loss.csv"),
+        val_losses = plotLoss(os.path.join(output_path, "train-loss.csv"),
                  os.path.join(output_path, "train-loss.png"),
                  validation_csv=os.path.join(output_path, "validation-loss.csv"))
         print("-"*20)
         print("Epoch: {0} - train loss: {1} - validation loss: {2}".format(epoch,loss,val_loss))
         print("-"*20)
+        if early_stopping and epoch >= window:
+            timer += 1
+            if timer > time_limit:
+                # print stuff here
+                print()
+                print("-"*60)
+                print("Validation loss seems to have plateaued, stopping early.")
+                print("Best mean loss value over an epoch window of size {} was found at epoch {} ({:.8f} mean loss)".format(window, lowest_x, lowest_mean))
+                print("-"*60)
+                break
+            w_mean = np.mean(val_losses[epoch-window:epoch])
+            window_means.append(w_mean)
+            if w_mean < lowest_mean:
+                lowest_mean = w_mean
+                lowest_x = epoch
+                timer = 0
+
         epoch = epoch+1
 
 def testEpoch(mean, std, br, val_data, model,

@@ -56,6 +56,7 @@ def plotLoss(csv_name, file_name, validation_csv=None):
     fig.tight_layout()
     fig.savefig(file_name, dpi=fig.dpi)
     plt.close()
+    return val_loss # used in other stuff, don't want to load twice
 
 def calcMeanVar(br, data, device, t):
     num_samples = len(data["codes"])
@@ -97,9 +98,9 @@ def plotView(currView, numViews, vmin, vmax, groundtruth, predicted, predicted_p
     # gt_img = (groundtruth[currView*batch_size]).detach().cpu().numpy()
     # predicted_img = (predicted[currView*batch_size]).detach().cpu().numpy()
     # diff = np.abs(gt_img - predicted_img)
-    # diff[diff > 0.5] = 0.5        
+    # diff[diff > 0.5] = 0.5
     # loss_contrib = diff
-        
+
     loss_contrib = np.abs((groundtruth[currView*batch_size]).detach().cpu().numpy() - (predicted[currView*batch_size]).detach().cpu().numpy())
     plt.subplot(3, numViews, currView+(1+2*numViews))
     plt.imshow(loss_contrib) #, vmin=vmin, vmax=vmax)
