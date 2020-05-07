@@ -7,6 +7,9 @@ import torch.nn.functional as F
 import matplotlib.pyplot as plt
 from skimage import img_as_ubyte
 import argparse
+import glob
+import hashlib
+import cv2 as cv
 
 import time
 import pickle
@@ -27,10 +30,44 @@ from pytorch3d.transforms import Rotate, Translate
 
 # rendering components
 from pytorch3d.renderer import (
-    OpenGLPerspectiveCameras, look_at_view_transform, look_at_rotation, 
+    OpenGLPerspectiveCameras, look_at_view_transform, look_at_rotation,
     RasterizationSettings, MeshRenderer, MeshRasterizer, BlendParams,
     HardPhongShader, PointLights, DirectionalLights
 )
+
+def load_bg_images(output_path, background_path, num_bg_images, h, w, c):
+    bg_img_paths = glob.glob(background_path + "*.jpg")
+    noof_bg_imgs = min(num_bg_images, len(bg_img_paths))
+    shape = (h, w, c)
+    bg_imgs = np.empty( (noof_bg_imgs,) + shape, dtype=np.uint8 )
+
+    current_config_hash = hashlib.md5((str(shape) + str(noof_bg_imgs) + str(background_path)).encode('utf-8')).hexdigest()
+    current_file_name = os.path.join(output_path, current_config_hash +'.npy')
+    if os.path.exists(current_file_name):
+        bg_imgs = np.load(current_file_name)
+    else:
+        file_list = bg_img_paths[:noof_bg_imgs]
+        print(len(file_list))
+        from random import shuffle
+        shuffle(file_list)
+
+
+        for j,fname in enumerate(file_list):
+            print('loading bg img %s/%s' % (j,noof_bg_imgs))
+            bgr = cv2.imread(fname)
+            H,W = bgr.shape[:2]
+            y_anchor = int(np.random.rand() * (H-shape[0]))
+            x_anchor = int(np.random.rand() * (W-shape[1]))
+            # bgr = cv2.resize(bgr, shape[:2])
+            bgr = bgr[y_anchor:y_anchor+shape[0],x_anchor:x_anchor+shape[1],:]
+            if bgr.shape[0]!=shape[0] or bgr.shape[1]!=shape[1]:
+                continue
+            if shape[2] == 1:
+                bgr = cv2.cvtColor(np.uint8(bgr), cv2.COLOR_BGR2GRAY)[:,:,np.newaxis]
+            bg_imgs[j] = bgr
+        np.save(current_file_name,bg_imgs)
+        print('loaded %s bg images' % noof_bg_imgs)
+    return bg_imgs
 
 # Augmentation
 aug = iaa.Sequential([
@@ -54,6 +91,7 @@ parser.add_argument("-d", help="distance to the object", type=float, default=20.
 parser.add_argument("-n", help="number of data points to create", type=int, default=100)
 parser.add_argument("-v", help="visualize the data", type=bool, default=False)
 parser.add_argument("-o", help="output path", default="")
+parser.add_argument("-bg", help="background images path", default="")
 arguments = parser.parse_args()
 
 batch_size = arguments.b
@@ -62,8 +100,9 @@ loops = arguments.n
 obj_path = arguments.obj_path
 visualize = arguments.v
 output_path = arguments.o
+background_path = arguments.bg
 
-# Set the cuda device 
+# Set the cuda device
 device = torch.device("cuda:0")
 torch.cuda.set_device(device)
 
@@ -73,7 +112,7 @@ faces = faces_idx.verts_idx
 
 verts_rgb = torch.ones_like(verts)
 batch_verts_rgb = list_to_padded([verts_rgb for k in np.arange(batch_size)])  # B, Vmax, 3
-        
+
 batch_textures = Textures(verts_rgb=batch_verts_rgb.to(device))
 batch_mesh = Meshes(
     verts=[verts.to(device) for k in np.arange(batch_size)],
@@ -88,12 +127,12 @@ cameras = OpenGLPerspectiveCameras(
 
 # We will also create a phong renderer. This is simpler and only needs to render one face per pixel.
 raster_settings = RasterizationSettings(
-    image_size=320, 
-    blur_radius=0.0, 
-    faces_per_pixel=1, 
+    image_size=320,
+    blur_radius=0.0,
+    faces_per_pixel=1,
     bin_size=0
 )
-# We can add a point light in front of the object. 
+# We can add a point light in front of the object.
 #lights = PointLights(device=device, location=((-1.0, -1.0, -2.0),))
 #"ambient_color", "diffuse_color", "specular_color"
 # 'ambient':0.4,'diffuse':0.8, 'specular':0.3
@@ -104,7 +143,7 @@ lights = DirectionalLights(device=device,
                      direction=[[-1.0, -1.0, 1.0]])
 phong_renderer = MeshRenderer(
     rasterizer=MeshRasterizer(
-        cameras=cameras, 
+        cameras=cameras,
         raster_settings=raster_settings
     ),
     shader=HardPhongShader(device=device, lights=lights)
@@ -118,6 +157,13 @@ images = []
 org_images = []
 lights = []
 
+h = 320
+w = 320
+c = 3
+num_bg_images = loops*batch_size
+bg_imgs = load_bg_images(output_path, background_path, num_bg_images, h, w, c)
+#plt.imshow(bg_imgs[0])
+
 start = time.time()
 for i in np.arange(loops):
 
@@ -130,31 +176,43 @@ for i in np.arange(loops):
         #R, t = look_at_view_transform(dist, elev=45, azim=0)
         elevs.append(pose[0])
         azims.append(pose[1])
-        
+
         curr_Rs.append(R.squeeze())
         curr_ts.append(t.squeeze())
         np_t = t.cpu().numpy().squeeze()
         np_R = R.cpu().numpy().squeeze()
         cam_pose = np.dot(np_R,np_t)
         cam_pose = -cam_pose
-        
+
     batch_R = torch.tensor(np.stack(curr_Rs), device=device, dtype=torch.float32)
     batch_T = torch.tensor(np.stack(curr_ts), device=device, dtype=torch.float32)
 
-    
+
     random_light = [random.uniform(-1.0,1.0) for i in np.arange(3)]
     phong_renderer.shader.lights.direction = [random_light]
     lights.append(random_light)
-    
+
     image_renders = phong_renderer(meshes_world=batch_mesh, R=batch_R, T=batch_T)
 
     # Augment data
     image_renders = image_renders.cpu().numpy()
     images_aug = aug(images=image_renders)
 
+    bg_im_isd = np.random.choice(len(bg_imgs), batch_size, replace=False)
     for k in np.arange(batch_size):
+        image_base = image_renders[k]
         image_ref = images_aug[k]
-        image_ref = image_ref[:,:,:3]
+        img_back = bg_imgs[bg_im_isd[k]]
+        img_back = cv.cvtColor(img_back, cv.COLOR_BGR2RGBA).astype(float)
+
+        alpha = image_base[:, :, 0:3].astype(float)
+        for x in range(image_base.shape[0]):
+            for y in range(image_base.shape[1]):
+                pix = image_base[x, y, 0:3]
+                val = 1 if pix[0] > 0 or pix[1] > 0 or pix[2] > 0 else 0
+                alpha[x, y, 0:3] = val
+
+        image_ref[:, :, 0:3] = image_ref[:, :, 0:3] * alpha + img_back[:, :, 0:3]/255 * (1 - alpha)
         image_ref = np.clip(image_ref, 0.0, 1.0)
 
         Rs.append(curr_Rs[k].cpu().numpy().squeeze())
@@ -164,7 +222,7 @@ for i in np.arange(loops):
         ys, xs = np.nonzero(org_img[:,:,0] > 0)
         obj_bb = calc_2d_bbox(xs,ys,[640,640])
         cropped = extract_square_patch(image_ref, obj_bb)
-        cropped_org = extract_square_patch(org_img, obj_bb)   
+        cropped_org = extract_square_patch(org_img, obj_bb)
         images.append(cropped)
         org_images.append(cropped_org)
         print("Loop: {0} Batch: {1}".format(i,k))
@@ -178,7 +236,7 @@ for i in np.arange(loops):
             plt.subplot(1, 3, 2)
             plt.imshow(cropped_org)
             plt.title("Cropped image")
-            
+
             plt.subplot(1, 3, 3)
             plt.imshow(cropped)
             plt.title("Augmented image")
