@@ -124,8 +124,7 @@ def evalEpoch(mean, std, br, data, model,
         Rs = []
         ts = []
         for b in curr_batch:
-            Rs.append(np.transpose(data["Rs"][b]))
-            #Rs.append(data["Rs"][b])
+            Rs.append(data["Rs"][b])
             ts.append(T.copy())
 
         # Render depth images

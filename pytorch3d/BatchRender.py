@@ -39,7 +39,7 @@ class BatchRender:
 
     def renderBatch(self, Rs, ts):
         if(type(Rs) is list):
-            batch_R = torch.tensor(np.stack(Rs), device=self.device, dtype=torch.float32).permute(0,2,1) # Bx3x3
+            batch_R = torch.tensor(np.stack(Rs), device=self.device, dtype=torch.float32)
         else:
             batch_R = Rs
         if(type(ts) is list):
