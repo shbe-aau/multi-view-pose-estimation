@@ -206,11 +206,8 @@ for i in np.arange(loops):
         img_back = cv.cvtColor(img_back, cv.COLOR_BGR2RGBA).astype(float)
 
         alpha = image_base[:, :, 0:3].astype(float)
-        for x in range(image_base.shape[0]):
-            for y in range(image_base.shape[1]):
-                pix = image_base[x, y, 0:3]
-                val = 1 if pix[0] > 0 or pix[1] > 0 or pix[2] > 0 else 0
-                alpha[x, y, 0:3] = val
+        sum_img = np.sum(image_base[:,:,:3], axis=2)
+        alpha[sum_img > 0] = 1
 
         image_ref[:, :, 0:3] = image_ref[:, :, 0:3] * alpha + img_back[:, :, 0:3]/255 * (1 - alpha)
         image_ref = np.clip(image_ref, 0.0, 1.0)
