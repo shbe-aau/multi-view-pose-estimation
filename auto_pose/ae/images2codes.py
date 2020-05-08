@@ -73,13 +73,16 @@ def main():
 
         factory.restore_checkpoint(sess, saver, ckpt_dir, at_step=at_step)
 
+        images_without_alpha = []
         for i,img in enumerate(data["images"]):
-            code = sess.run(encoder.z, feed_dict={encoder.x: [img]})
+            curr_img = img[:,:,:3]
+            images_without_alpha.append(curr_img)
+            code = sess.run(encoder.z, feed_dict={encoder.x: [curr_img]})
             codes.append(np.array(code[0]))
             print(i)
 
         #coded_data = {"images": data["images"], "Rs": data["Rs"], "ts": data["ts"], "codes": codes, "quats": data["quats"]}
-        coded_data = {"images":data["images"],
+        coded_data = {"images":images_without_alpha,
                       "Rs":data["Rs"],
                       "ts":data["ts"],
                       "elevs":data["elevs"],

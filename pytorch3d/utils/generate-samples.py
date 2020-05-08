@@ -42,7 +42,7 @@ def load_bg_images(output_path, background_path, num_bg_images, h, w, c):
     bg_imgs = np.empty( (noof_bg_imgs,) + shape, dtype=np.uint8 )
 
     current_config_hash = hashlib.md5((str(shape) + str(noof_bg_imgs) + str(background_path)).encode('utf-8')).hexdigest()
-    current_file_name = os.path.join(output_path, current_config_hash +'.npy')
+    current_file_name = os.path.join(output_path + '-' + current_config_hash +'.npy')
     if os.path.exists(current_file_name):
         bg_imgs = np.load(current_file_name)
     else:
