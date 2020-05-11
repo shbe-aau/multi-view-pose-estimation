@@ -188,9 +188,13 @@ for i in np.arange(loops):
     batch_T = torch.tensor(np.stack(curr_ts), device=device, dtype=torch.float32)
 
 
-    random_light = [random.uniform(-1.0,1.0) for i in np.arange(3)]
-    phong_renderer.shader.lights.direction = [random_light]
-    lights.append(random_light)
+    random_lights = []
+    for l in np.arange(batch_size):
+        random_light = [random.uniform(-1.0,1.0) for i in np.arange(3)]
+        random_lights.append(random_light)
+    batch_light = torch.tensor(np.stack(random_lights), device=device, dtype=torch.float32)
+    phong_renderer.shader.lights.direction = batch_light
+    lights.append(random_lights)
 
     image_renders = phong_renderer(meshes_world=batch_mesh, R=batch_R, T=batch_T)
 
@@ -220,7 +224,7 @@ for i in np.arange(loops):
         obj_bb = calc_2d_bbox(xs,ys,[640,640])
         cropped = extract_square_patch(image_ref, obj_bb)
         cropped_org = extract_square_patch(org_img, obj_bb)
-        images.append(cropped)
+        images.append(cropped[:,:,:3])
         org_images.append(cropped_org)
         print("Loop: {0} Batch: {1}".format(i,k))
 
