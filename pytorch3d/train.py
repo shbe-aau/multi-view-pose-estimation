@@ -141,13 +141,6 @@ def main():
 
     #gt_imgs = renderGroundtruths(data["Rs"], br, t=json.loads(args.get('Rendering', 'T')))
 
-    # Load checkpoint for last epoch if it exists
-    model_path = latestCheckpoint(os.path.join(output_path, "models/"))
-    if(model_path is not None):
-        model, optimizer, epoch, learning_rate = loadCheckpoint(model_path)
-        #model, _, epoch, _ = loadCheckpoint(model_path)
-        model.to(device)
-
     early_stopping = args.getboolean('Training', 'EARLY_STOPPING', fallback=False)
     if early_stopping:
         window = args.getint('Training', 'STOPPING_WINDOW', fallback=10)
@@ -156,6 +149,30 @@ def main():
         lowest_mean = np.inf
         lowest_x = 0
         timer = 0
+
+    # Load checkpoint for last epoch if it exists
+    model_path = latestCheckpoint(os.path.join(output_path, "models/"))
+    if(model_path is not None):
+        model, optimizer, epoch, learning_rate = loadCheckpoint(model_path)
+        #model, _, epoch, _ = loadCheckpoint(model_path)
+        model.to(device)
+
+    if early_stopping:
+        validation_csv=os.path.join(output_path, "validation-loss.csv")
+        if os.path.exists(validation_csv):
+            with open(validation_csv) as f:
+                val_reader = csv.reader(f, delimiter='\n')
+                val_loss = list(val_reader)
+            val_losses = np.array(val_loss, dtype=np.float32).flatten()
+            for epoch in range(window,len(val_loss)):
+                timer += 1
+                w_mean = np.mean(val_losses[epoch-window:epoch])
+                window_means.append(w_mean)
+                if w_mean < lowest_mean:
+                    lowest_mean = w_mean
+                    lowest_x = epoch
+                    timer = 0
+
 
     np.random.seed(seed=args.getint('Training', 'RANDOM_SEED'))
     while(epoch < args.getint('Training', 'NUM_ITER')):
