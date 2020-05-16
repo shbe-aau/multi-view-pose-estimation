@@ -7,7 +7,9 @@ import signal
 import progressbar
 import tensorflow as tf
 import pickle
-import cv2
+import matplotlib as mpl
+mpl.use('Agg')
+import matplotlib.pyplot as plt
 
 from . import ae_factory as factory
 from . import utils as u
@@ -73,14 +75,32 @@ def main():
 
         factory.restore_checkpoint(sess, saver, ckpt_dir, at_step=None)
 
-        for i in np.arange(20):           
-            code = data["codes"][i]
-            img = sess.run(ae.reconstruction, feed_dict={ae.z: [code]})
-            img = np.array(img[0])
-            cv2.imshow("input", data["images"][i])
-            cv2.imshow("reconst", img)
-            if cv2.waitKey(0) == ord('q'):
-                continue
+        num_codes = len(data["codes"])
+        num_samples = 20
+        samples_indices = np.random.uniform(0,num_codes-1,num_samples).astype(np.int)
+        
+        for k,index in enumerate(samples_indices):            
+            code = data["codes"][index]
+            img_rec = sess.run(ae.reconstruction, feed_dict={ae.z: [code]})
+            img_rec = np.array(img_rec[0])
+
+            fig = plt.figure(figsize=(8,6))
+            fig.suptitle("Sample {0}".format(index))
+
+            plt.subplot(1, 2, 1)
+            plt.imshow(data["images"][index])
+            plt.title("original image")
+
+            plt.subplot(1, 2, 2)
+            plt.imshow(img_rec)
+            plt.title("reconstruction")
+
+            fig.tight_layout()
+
+            file_name = "codes2images{0}.png".format(k)
+            fig.savefig(file_name, dpi=fig.dpi,quality=50)
+            plt.clf()
+            print("Wrote file: {0}".format(file_name))
             
 if __name__ == '__main__':
     main()
