@@ -57,8 +57,17 @@ for k in dataset.keys():
     cropped_img = extract_square_patch(curr_img, obj_bb)
     images.append(cropped_img)
 
-    # Format pose data
+    # Format pose data (OpenCV/TLESS format --> pytorch3d format)
     curr_R = np.array(dataset[k][0]["cam_R_m2c"]).reshape(3,3)
+
+    # Rotate 180 degrees around z
+    curr_R = np.vstack([-curr_R[0,:],
+                   -curr_R[1,:],
+                   curr_R[2,:]])
+
+    # Inverse rot matrix
+    curr_R = np.linalg.inv(curr_R)
+    
     Rs.append(curr_R)
     curr_t = np.array(dataset[k][0]["cam_t_m2c"]).reshape(3,1)
     ts.append(curr_t)
@@ -72,10 +81,6 @@ for k in dataset.keys():
         plt.subplot(1, 3, 2)
         plt.imshow(cropped_img)
         plt.title("Cropped image")
-
-        #plt.subplot(1, 3, 3)
-        #plt.imshow(cropped)
-        #plt.title("Augmented image")
         plt.show()
 
 data={"images":images,
