@@ -36,6 +36,9 @@ from pytorch3d.renderer import (
 )
 
 def load_bg_images(output_path, background_path, num_bg_images, h, w, c):
+    if(background_path == ""):
+        return []
+    
     bg_img_paths = glob.glob(background_path + "*.jpg")
     noof_bg_imgs = min(num_bg_images, len(bg_img_paths))
     shape = (h, w, c)
@@ -202,19 +205,23 @@ for i in np.arange(loops):
     image_renders = image_renders.cpu().numpy()
     images_aug = aug(images=image_renders)
 
-    bg_im_isd = np.random.choice(len(bg_imgs), batch_size, replace=False)
+    if(len(bg_imgs) > 0):
+        bg_im_isd = np.random.choice(len(bg_imgs), batch_size, replace=False)
     for k in np.arange(batch_size):
         image_base = image_renders[k]
         image_ref = images_aug[k]
-        img_back = bg_imgs[bg_im_isd[k]]
-        img_back = cv.cvtColor(img_back, cv.COLOR_BGR2RGBA).astype(float)
 
-        alpha = image_base[:, :, 0:3].astype(float)
-        sum_img = np.sum(image_base[:,:,:3], axis=2)
-        alpha[sum_img > 0] = 1
-
-        image_ref[:, :, 0:3] = image_ref[:, :, 0:3] * alpha + img_back[:, :, 0:3]/255 * (1 - alpha)
-        image_ref = np.clip(image_ref, 0.0, 1.0)
+        if(len(bg_imgs) > 0):
+            img_back = bg_imgs[bg_im_isd[k]]
+            img_back = cv.cvtColor(img_back, cv.COLOR_BGR2RGBA).astype(float)
+            alpha = image_base[:, :, 0:3].astype(float)
+            sum_img = np.sum(image_base[:,:,:3], axis=2)
+            alpha[sum_img > 0] = 1
+            image_ref[:, :, 0:3] = image_ref[:, :, 0:3] * alpha + img_back[:, :, 0:3]/255 * (1 - alpha)
+        else:
+            image_ref = image_ref[:, :, 0:3]
+                
+        image_ref = np.clip(image_ref, 0.0, 1.0) #[:, :, 0:3]
 
         Rs.append(curr_Rs[k].cpu().numpy().squeeze())
         ts.append(curr_ts[k].cpu().numpy().squeeze())
