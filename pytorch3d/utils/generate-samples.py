@@ -89,9 +89,9 @@ aug = iaa.Sequential([
 # Parse parameters
 parser = argparse.ArgumentParser()
 parser.add_argument("obj_path", help="path to the .obj file")
-parser.add_argument("-b", help="batch size", type=int, default=1)
-parser.add_argument("-d", help="distance to the object", type=float, default=20.0)
-parser.add_argument("-n", help="number of data points to create", type=int, default=100)
+parser.add_argument("-b", help="batch size, each batch will have the same pose but different augmentations", type=int, default=10)
+parser.add_argument("-d", help="distance to the object", type=float, default=2000.0)
+parser.add_argument("-l", help="number loops", type=int, default=10)
 parser.add_argument("-v", help="visualize the data", type=bool, default=False)
 parser.add_argument("-o", help="output path", default="")
 parser.add_argument("-bg", help="background images path", default="")
@@ -99,7 +99,7 @@ arguments = parser.parse_args()
 
 batch_size = arguments.b
 dist = arguments.d
-loops = arguments.n
+loops = arguments.l
 obj_path = arguments.obj_path
 visualize = arguments.v
 output_path = arguments.o
@@ -173,10 +173,14 @@ for i in np.arange(loops):
     curr_Rs = []
     curr_ts = []
     cam_pose = None
+
+    # Generate random pose for the batch
+    # All images in the batch will share pose but different augmentations
+    pose = np.random.uniform(low=0.0, high=360.0, size=2)
+    R, t = look_at_view_transform(dist, elev=pose[0], azim=pose[1])
+    #R, t = look_at_view_transform(dist, elev=45, azim=0)
+    
     for k in np.arange(batch_size):
-        pose = np.random.uniform(low=0.0, high=360.0, size=2)
-        R, t = look_at_view_transform(dist, elev=pose[0], azim=pose[1])
-        #R, t = look_at_view_transform(dist, elev=45, azim=0)
         elevs.append(pose[0])
         azims.append(pose[1])
 
