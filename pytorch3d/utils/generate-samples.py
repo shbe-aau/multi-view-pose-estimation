@@ -186,7 +186,7 @@ for i in np.arange(loops):
     R = torch.matmul(R, rot_mat)
 
     # Sample elevation and apply transformation
-    elev = np.random.uniform(low=-90.0, high=0.0, size=1)
+    elev = np.random.uniform(low=-180.0, high=0.0, size=1)
     rot = scipyR.from_euler('x', elev, degrees=True)    
     rot_mat = torch.tensor(rot.as_matrix(), dtype=torch.float32)
     R = torch.matmul(R, rot_mat)
