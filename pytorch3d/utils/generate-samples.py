@@ -167,6 +167,7 @@ num_bg_images = loops*batch_size
 bg_imgs = load_bg_images(output_path, background_path, num_bg_images, h, w, c)
 #plt.imshow(bg_imgs[0])
 
+from scipy.spatial.transform import Rotation as scipyR
 start = time.time()
 for i in np.arange(loops):
 
@@ -176,24 +177,29 @@ for i in np.arange(loops):
 
     # Generate random pose for the batch
     # All images in the batch will share pose but different augmentations
-    pose = np.random.uniform(low=0.0, high=360.0, size=2)
-    R, t = look_at_view_transform(dist, elev=pose[0], azim=pose[1])
-    #R, t = look_at_view_transform(dist, elev=45, azim=0)
+    R, t = look_at_view_transform(dist, elev=0, azim=0)
+    
+    # Sample azimuth and apply transformation
+    azim = np.random.uniform(low=0.0, high=360.0, size=1)
+    rot = scipyR.from_euler('z', azim, degrees=True)    
+    rot_mat = torch.tensor(rot.as_matrix(), dtype=torch.float32)
+    R = torch.matmul(R, rot_mat)
+
+    # Sample elevation and apply transformation
+    elev = np.random.uniform(low=-90.0, high=0.0, size=1)
+    rot = scipyR.from_euler('x', elev, degrees=True)    
+    rot_mat = torch.tensor(rot.as_matrix(), dtype=torch.float32)
+    R = torch.matmul(R, rot_mat)
     
     for k in np.arange(batch_size):
-        elevs.append(pose[0])
-        azims.append(pose[1])
+        elevs.append(elev)
+        azims.append(azim)
 
         curr_Rs.append(R.squeeze())
         curr_ts.append(t.squeeze())
-        np_t = t.cpu().numpy().squeeze()
-        np_R = R.cpu().numpy().squeeze()
-        cam_pose = np.dot(np_R,np_t)
-        cam_pose = -cam_pose
 
     batch_R = torch.tensor(np.stack(curr_Rs), device=device, dtype=torch.float32)
     batch_T = torch.tensor(np.stack(curr_ts), device=device, dtype=torch.float32)
-
 
     random_lights = []
     for l in np.arange(batch_size):
