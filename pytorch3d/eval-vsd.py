@@ -136,7 +136,7 @@ def evalEpoch(mean, std, br, data, model,
         gt_rgbs = rgb_render.renderBatch(Rs, ts).cpu().detach().numpy()
         
         # Calculate VSD
-        thau = 200 / 1000 #20 mm in meters
+        thau = 20 # 20 mm
         sigma = 0.3
 
         losses = []
