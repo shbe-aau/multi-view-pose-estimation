@@ -19,7 +19,7 @@ def plotDataset(dataset, title=None, save_to=None, threshold=-1):
     labels = []
     for d in dataset:
         x = readCsv(d[1])
-        percentage = sum(i > threshold for i in x)/len(x) *100.0
+        percentage = sum(i > threshold for i in x)/float(len(x)) *100.0
         data.append(x)
         labels.append(d[0] + " - total: {0} ({1}%)".format(len(x), round(percentage,2)))
 
