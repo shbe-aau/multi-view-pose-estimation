@@ -161,19 +161,22 @@ class DatasetGenerator():
         #R, t = look_at_view_transform(self.dist, elev=pos[0], azim=pos[1])
         # return R,t
 
-        R, t = look_at_view_transform(self.dist, elev=0, azim=0)
-        # Sample azimuth and apply transformation
-        azim = np.random.uniform(low=0.0, high=360.0, size=1)
-        rot = scipyR.from_euler('z', azim, degrees=True)    
-        rot_mat = torch.tensor(rot.as_matrix(), dtype=torch.float32)
-        R = torch.matmul(R, rot_mat)
+        # R, t = look_at_view_transform(self.dist, elev=0, azim=0)
+        # # Sample azimuth and apply transformation
+        # azim = np.random.uniform(low=0.0, high=360.0, size=1)
+        # rot = scipyR.from_euler('z', azim, degrees=True)    
+        # rot_mat = torch.tensor(rot.as_matrix(), dtype=torch.float32)
+        # R = torch.matmul(R, rot_mat)
 
-        # Sample elevation and apply transformation
-        #elev = np.random.uniform(low=-180.0, high=0.0, size=1)
-        elev = np.random.uniform(low=0.0, high=360.0, size=1)
-        rot = scipyR.from_euler('x', elev, degrees=True)    
-        rot_mat = torch.tensor(rot.as_matrix(), dtype=torch.float32)
-        R = torch.matmul(R, rot_mat)
+        # # Sample elevation and apply transformation
+        # #elev = np.random.uniform(low=-180.0, high=0.0, size=1)
+        # elev = np.random.uniform(low=0.0, high=360.0, size=1)
+        # rot = scipyR.from_euler('x', elev, degrees=True)    
+        # rot_mat = torch.tensor(rot.as_matrix(), dtype=torch.float32)
+        # R = torch.matmul(R, rot_mat)
+
+        t = torch.tensor([0.0, 0.0, self.dist])
+        R = torch.tensor(random_rotation_matrix()[:3,:3]) # Just like Sundermeyer        
         return R,t
     
     def generate_image_batch(self):
