@@ -175,8 +175,25 @@ class DatasetGenerator():
         # rot_mat = torch.tensor(rot.as_matrix(), dtype=torch.float32)
         # R = torch.matmul(R, rot_mat)
 
+        R = random_rotation_matrix()[:3,:3] # Just like Sundermeyer        
+
+        # Transform R like in 'eval-vsd-pickle.py'
+        # Inverse rotation matrix
+        R = np.transpose(R)
+
+        # Invert z axis
+        # See auto_pose/meshrenderer/gl_utils/camera.py - line 90
+        z_flip = np.eye(3, dtype=np.float)
+        z_flip[2,2] = -1.0
+        R = R.dot(z_flip)
+
+        # Rotate 180 around z axis
+        R = np.vstack([-R[0,:],
+                          -R[1,:],
+                          R[2,:]])
+
         t = torch.tensor([0.0, 0.0, self.dist])
-        R = torch.tensor(random_rotation_matrix()[:3,:3]) # Just like Sundermeyer        
+        R = torch.tensor(R)
         return R,t
     
     def generate_image_batch(self):
