@@ -21,6 +21,7 @@ import imgaug as ia
 import imgaug.augmenters as iaa
 
 from scipy.spatial.transform import Rotation as scipyR
+from plot_loss_landscape import eqv_dist_points
 
 # io utils
 from pytorch3d.io import load_obj
@@ -51,6 +52,7 @@ class DatasetGenerator():
         self.backgrounds = self.load_bg_images("backgrounds", background_path, 17000,
                                                self.img_size, self.img_size)
         self.encoder = self.load_encoder(encoder_weights)
+        #self.view_points = eqv_dist_points(100000)
 
 
     def load_encoder(self, weights_path):
@@ -169,31 +171,63 @@ class DatasetGenerator():
         # R = torch.matmul(R, rot_mat)
 
         # # Sample elevation and apply transformation
-        # #elev = np.random.uniform(low=-180.0, high=0.0, size=1)
-        # elev = np.random.uniform(low=0.0, high=360.0, size=1)
+        # elev = np.random.uniform(low=-180.0, high=180.0, size=1)
         # rot = scipyR.from_euler('x', elev, degrees=True)    
         # rot_mat = torch.tensor(rot.as_matrix(), dtype=torch.float32)
         # R = torch.matmul(R, rot_mat)
 
-        R = random_rotation_matrix()[:3,:3] # Just like Sundermeyer        
+        #R = random_rotation_matrix()[:3,:3] # Just like Sundermeyer        
 
         # Transform R like in 'eval-vsd-pickle.py'
         # Inverse rotation matrix
-        R = np.transpose(R)
+        #R = np.transpose(R)
 
         # Invert z axis
         # See auto_pose/meshrenderer/gl_utils/camera.py - line 90
-        z_flip = np.eye(3, dtype=np.float)
-        z_flip[2,2] = -1.0
-        R = R.dot(z_flip)
+        #z_flip = np.eye(3, dtype=np.float)
+        #z_flip[2,2] = -1.0
+        #R = R.dot(z_flip)
 
         # Rotate 180 around z axis
-        R = np.vstack([-R[0,:],
-                          -R[1,:],
-                          R[2,:]])
+        #R = np.vstack([-R[0,:],
+        #                  -R[1,:],
+        #                  R[2,:]])
 
+        #point = self.view_points[np.random.randint(0,len(self.view_points))]
+
+        # random.shuffle(self.view_points)
+        # point = self.view_points.pop()
+
+        # if(len(self.view_points) < 2):
+        #     self.view_points = eqv_dist_points(100000)
+        
+        # R = scipyR.from_euler('yz', point['spherical']).as_matrix()
+
+        # # Inverse rotation matrix
+        # R = np.transpose(R)
+
+        # # Invert z axis
+        # # See auto_pose/meshrenderer/gl_utils/camera.py - line 90
+        # z_flip = np.eye(3, dtype=np.float)
+        # z_flip[2,2] = -1.0
+        # R = R.dot(z_flip)
+
+        # # Rotate 180 around z axis
+        # R = np.vstack([-R[0,:],
+        #                -R[1,:],
+        #                R[2,:]])
+        
+        # R = torch.tensor(R)
+
+        z_sample = np.random.uniform(low=-self.dist, high=self.dist, size=1)[0]
+        theta_sample = np.random.uniform(low=0.0, high=2.0*np.pi, size=1)[0]
+        x = np.sqrt((self.dist**2 - z_sample**2))*np.cos(theta_sample)
+        y = np.sqrt((self.dist**2 - z_sample**2))*np.sin(theta_sample)
+        z = self.dist
+
+        cam_position = torch.tensor([x, y, z]).unsqueeze(0)
+        R = look_at_rotation(cam_position, up=((0, 0, 1),)).squeeze()
         t = torch.tensor([0.0, 0.0, self.dist])
-        R = torch.tensor(R)
         return R,t
     
     def generate_image_batch(self):
