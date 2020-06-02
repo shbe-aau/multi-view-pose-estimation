@@ -270,7 +270,7 @@ def trainEpoch(mean, std, br, data, model,
     dbg("Before train memory: {}".format(torch.cuda.memory_summary(device=device, abbreviated=False)), dbg_memory)
 
     # Generate training data
-    data = dataset_gen.generate_samples(1000)
+    data = dataset_gen.generate_samples(10000)
     print(len(data["Rs"]))
     print(len(data["images"]))
     
