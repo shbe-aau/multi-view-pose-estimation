@@ -219,8 +219,8 @@ class DatasetGenerator():
         
         # R = torch.tensor(R)
 
-        z_sample = self.dist*0.5 #np.random.uniform(low=-self.dist, high=self.dist, size=1)[0]
-        theta_sample = np.pi*0.3 #np.random.uniform(low=0.0, high=2.0*np.pi, size=1)[0]
+        z_sample = np.random.uniform(low=-self.dist, high=self.dist, size=1)[0]
+        theta_sample = np.random.uniform(low=0.0, high=2.0*np.pi, size=1)[0]
         x = np.sqrt((self.dist**2 - z_sample**2))*np.cos(theta_sample)
         y = np.sqrt((self.dist**2 - z_sample**2))*np.sin(theta_sample)
         z = np.sqrt(self.dist**2 - x**2 - y**2)
