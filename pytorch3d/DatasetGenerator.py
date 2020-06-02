@@ -157,85 +157,55 @@ class DatasetGenerator():
                              random_order=False)
         return aug
 
-
+    # Sampling based on the T-LESS dataset
     def generate_random_pose(self):
-        #pos = np.random.uniform(low=0.0, high=360.0, size=2)
-        #R, t = look_at_view_transform(self.dist, elev=pos[0], azim=pos[1])
-        # return R,t
-
-        # R, t = look_at_view_transform(self.dist, elev=0, azim=0)
-        # # Sample azimuth and apply transformation
-        # azim = np.random.uniform(low=0.0, high=360.0, size=1)
-        # rot = scipyR.from_euler('z', azim, degrees=True)    
-        # rot_mat = torch.tensor(rot.as_matrix(), dtype=torch.float32)
-        # R = torch.matmul(R, rot_mat)
-
-        # # Sample elevation and apply transformation
-        # elev = np.random.uniform(low=-180.0, high=180.0, size=1)
-        # rot = scipyR.from_euler('x', elev, degrees=True)    
-        # rot_mat = torch.tensor(rot.as_matrix(), dtype=torch.float32)
-        # R = torch.matmul(R, rot_mat)
-
-        #R = random_rotation_matrix()[:3,:3] # Just like Sundermeyer        
-
-        # Transform R like in 'eval-vsd-pickle.py'
-        # Inverse rotation matrix
-        #R = np.transpose(R)
-
-        # Invert z axis
-        # See auto_pose/meshrenderer/gl_utils/camera.py - line 90
-        #z_flip = np.eye(3, dtype=np.float)
-        #z_flip[2,2] = -1.0
-        #R = R.dot(z_flip)
-
-        # Rotate 180 around z axis
-        #R = np.vstack([-R[0,:],
-        #                  -R[1,:],
-        #                  R[2,:]])
-
-        #point = self.view_points[np.random.randint(0,len(self.view_points))]
-
-        # random.shuffle(self.view_points)
-        # point = self.view_points.pop()
-
-        # if(len(self.view_points) < 2):
-        #     self.view_points = eqv_dist_points(100000)
-        
-        # R = scipyR.from_euler('yz', point['spherical']).as_matrix()
-
-        # # Inverse rotation matrix
-        # R = np.transpose(R)
-
-        # # Invert z axis
-        # # See auto_pose/meshrenderer/gl_utils/camera.py - line 90
-        # z_flip = np.eye(3, dtype=np.float)
-        # z_flip[2,2] = -1.0
-        # R = R.dot(z_flip)
-
-        # # Rotate 180 around z axis
-        # R = np.vstack([-R[0,:],
-        #                -R[1,:],
-        #                R[2,:]])
-        
-        # R = torch.tensor(R)
-
-        z_sample = np.random.uniform(low=-self.dist, high=self.dist, size=1)[0]
-        theta_sample = np.random.uniform(low=0.0, high=2.0*np.pi, size=1)[0]
-        x = np.sqrt((self.dist**2 - z_sample**2))*np.cos(theta_sample)
-        y = np.sqrt((self.dist**2 - z_sample**2))*np.sin(theta_sample)
-        z = np.sqrt(self.dist**2 - x**2 - y**2)
-
-        cam_position = torch.tensor([x, y, z]).unsqueeze(0)
-        R = look_at_rotation(cam_position, up=((0, 0, 1),)).squeeze()
-
-        # Rotate in-plane
-        rot_degrees = np.random.uniform(low=0.0, high=360.0, size=1)
-        rot = scipyR.from_euler('z', rot_degrees, degrees=True)    
+        # Generate random pose for the batch
+        # All images in the batch will share pose but different augmentations
+        R, t = look_at_view_transform(self.dist, elev=0, azim=0, up=((0, 1, 0),))
+    
+        # Sample azimuth and apply transformation
+        azim = np.random.uniform(low=0.0, high=360.0, size=1)
+        rot = scipyR.from_euler('z', azim, degrees=True)    
         rot_mat = torch.tensor(rot.as_matrix(), dtype=torch.float32)
         R = torch.matmul(R, rot_mat)
         
+        # Sample elevation and apply transformation
+        elev = np.random.uniform(low=-180, high=0.0, size=1)
+        rot = scipyR.from_euler('x', elev, degrees=True)    
+        rot_mat = torch.tensor(rot.as_matrix(), dtype=torch.float32)
+        R = torch.matmul(R, rot_mat)
+
+        # Sample cam plane rotation and apply
+        in_plane = np.random.uniform(low=0.0, high=360.0, size=1)
+        rot = scipyR.from_euler('y', in_plane, degrees=True)    
+        rot_mat = torch.tensor(rot.as_matrix(), dtype=torch.float32)
+        R = torch.inverse(R)
+        R = torch.matmul(R, rot_mat)
+        R = torch.inverse(R)
+        
         t = torch.tensor([0.0, 0.0, self.dist])
         return R,t
+
+    # # Truely random
+    # # Based on: https://www.cmu.edu/biolphys/deserno/pdf/sphere_equi.pdf
+    # def generate_random_pose(self):
+    #     z_sample = np.random.uniform(low=-self.dist, high=self.dist, size=1)[0]
+    #     theta_sample = np.random.uniform(low=0.0, high=2.0*np.pi, size=1)[0]
+    #     x = np.sqrt((self.dist**2 - z_sample**2))*np.cos(theta_sample)
+    #     y = np.sqrt((self.dist**2 - z_sample**2))*np.sin(theta_sample)
+    #     z = np.sqrt(self.dist**2 - x**2 - y**2)
+
+    #     cam_position = torch.tensor([x, y, z]).unsqueeze(0)
+    #     R = look_at_rotation(cam_position, up=((0, 0, 1),)).squeeze()
+
+    #     # Rotate in-plane
+    #     rot_degrees = np.random.uniform(low=0.0, high=360.0, size=1)
+    #     rot = scipyR.from_euler('z', rot_degrees, degrees=True)    
+    #     rot_mat = torch.tensor(rot.as_matrix(), dtype=torch.float32)
+    #     R = torch.matmul(R, rot_mat)
+        
+    #     t = torch.tensor([0.0, 0.0, self.dist])
+    #     return R,t
     
     def generate_image_batch(self):
         # Generate random poses
