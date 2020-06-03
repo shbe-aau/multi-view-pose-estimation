@@ -146,6 +146,50 @@ def Loss(predicted_poses, gt_poses, renderer, ts, mean, std, loss_method="diff",
         loss = torch.mean(diff)
         #print(predicted_imgs.shape)
         return loss, torch.mean(diff, dim=1), gt_imgs, predicted_imgs
+
+    elif(loss_method=="vsd"):
+        gt_imgs = []
+        predicted_imgs = []
+        Rs_gt = torch.tensor(np.stack(gt_poses), device=renderer.device,
+                                dtype=torch.float32)
+        Rs_predicted = compute_rotation_matrix_from_ortho6d(predicted_poses)
+        for v in views:
+            # Render ground truth images
+            Rs_new = torch.matmul(Rs_gt, v.to(renderer.device))
+            gt_images = renderer.renderBatch(Rs_new, ts)
+            gt_images = (gt_images-mean)/std
+            gt_imgs.append(gt_images)
+
+            # Render images based on predicted pose
+            Rs_new = torch.matmul(Rs_predicted, v.to(renderer.device))
+            predicted_images = renderer.renderBatch(Rs_new, ts)
+            predicted_images = (predicted_images-mean)/std
+            predicted_imgs.append(predicted_images)
+
+        gt_imgs = torch.cat(gt_imgs)
+        predicted_imgs = torch.cat(predicted_imgs)
+        diff = torch.abs(gt_imgs - predicted_imgs).flatten(start_dim=1)
+
+        # Apply visibility masks
+        #mask_prediction = curr_prediction == -1
+        #mask_gt = curr_gt == -1
+        #diff[mask_gt] == 0
+        #diff[mask_prediction] == 0
+
+        thau = 20 # 20 mm
+        ones_1 = torch.ones(diff.shape, requires_grad=True).to(renderer.device)
+        zeros_1 = torch.zeros(diff.shape, requires_grad=True).to(renderer.device)
+        #outliers = diff[diff > thau]
+        outliers = torch.where(diff > thau, ones_1, zeros_1)
+        #total = diff[diff != 0]
+
+        ones_2 = torch.ones(diff.shape, requires_grad=True).to(renderer.device)
+        zeros_2 = torch.zeros(diff.shape, requires_grad=True).to(renderer.device)
+        total = torch.where(diff != 0, ones_2, zeros_2)
+        #vsd = len(outliers)/(len(total)+1)
+        vsd_batch = torch.sum(outliers, dim=1)/torch.sum(total, dim=1)
+        vsd_all = torch.sum(outliers)/torch.sum(total)
+        return vsd_all, vsd_batch, gt_imgs, predicted_imgs
     
     elif(loss_method=="multiview"):
         gt_imgs = []
