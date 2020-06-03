@@ -162,6 +162,7 @@ def main():
         loss = trainEpoch(mean, std, br, data, model, device, output_path,
                           loss_method=args.get('Training', 'LOSS'),
                           t=json.loads(args.get('Rendering', 'T')),
+                          num_samples=args.getint('Training', 'NUM_SAMPLES'),
                           visualize=args.getboolean('Training', 'SAVE_IMAGES'))
         append2file([loss], os.path.join(output_path, "train-loss.csv"))
         val_loss = testEpoch(mean, std, br, val_data, model, device, output_path,
@@ -265,19 +266,17 @@ def testEpoch(mean, std, br, val_data, model,
 
 def trainEpoch(mean, std, br, data, model,
                device, output_path, loss_method, t,
-               visualize=False):
+               num_samples, visualize=False):
     global learning_rate, optimizer
     dbg("Before train memory: {}".format(torch.cuda.memory_summary(device=device, abbreviated=False)), dbg_memory)
 
     # Generate training data
-    data = dataset_gen.generate_samples(10000)
-    print(len(data["Rs"]))
-    print(len(data["images"]))
+    data = dataset_gen.generate_samples(num_samples)
+    print("Generated {0} samples!".format(len(data["codes"])))
     
     model.train()
     losses = []
     batch_size = br.batch_size
-    num_samples = len(data["codes"])
     data_indeces = np.arange(num_samples)
 
     if(epoch % 2 == 1):
