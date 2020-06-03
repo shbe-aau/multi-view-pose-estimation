@@ -6,6 +6,35 @@ import torch.nn as nn
 
 from pytorch3d.renderer import look_at_view_transform
 
+# Required to backpropagate when thresholding (torch.where)
+# See: https://discuss.pytorch.org/t/how-do-i-pass-grad-through-torch-where/74671
+# And: https://discuss.pytorch.org/t/torch-where-function-blocks-gradient/72570/6
+class ThauThreshold(torch.autograd.Function):
+    @staticmethod
+    def forward(ctx, x):
+        thau = 20
+        ones = torch.ones(x.shape).cuda()
+        zeros = torch.zeros(x.shape).cuda()
+        return torch.where(x > thau, ones, zeros)
+
+    @staticmethod
+    def backward(ctx, g):
+        return g
+    
+# Required to backpropagate when thresholding (torch.where)
+# See: https://discuss.pytorch.org/t/how-do-i-pass-grad-through-torch-where/74671
+# And: https://discuss.pytorch.org/t/torch-where-function-blocks-gradient/72570/6
+class NonZero(torch.autograd.Function):
+    @staticmethod
+    def forward(ctx, x):
+        ones = torch.ones(x.shape).cuda()
+        zeros = torch.zeros(x.shape).cuda()
+        return torch.where(x != 0, ones, zeros)
+
+    @staticmethod
+    def backward(ctx, g):
+        return g
+
 def Loss(predicted_poses, gt_poses, renderer, ts, mean, std, loss_method="diff", views=None):
     if(loss_method=="diff"):
         Rs_pred = quat2mat(predicted_poses)
@@ -170,23 +199,12 @@ def Loss(predicted_poses, gt_poses, renderer, ts, mean, std, loss_method="diff",
         predicted_imgs = torch.cat(predicted_imgs)
         diff = torch.abs(gt_imgs - predicted_imgs).flatten(start_dim=1)
 
-        # Apply visibility masks
-        #mask_prediction = curr_prediction == -1
-        #mask_gt = curr_gt == -1
-        #diff[mask_gt] == 0
-        #diff[mask_prediction] == 0
+        outliers = torch.randn(diff.shape, device=renderer.device, requires_grad=True)
+        outliers = ThauThreshold.apply(diff)
 
-        thau = 20 # 20 mm
-        ones_1 = torch.ones(diff.shape, requires_grad=True).to(renderer.device)
-        zeros_1 = torch.zeros(diff.shape, requires_grad=True).to(renderer.device)
-        #outliers = diff[diff > thau]
-        outliers = torch.where(diff > thau, ones_1, zeros_1)
-        #total = diff[diff != 0]
-
-        ones_2 = torch.ones(diff.shape, requires_grad=True).to(renderer.device)
-        zeros_2 = torch.zeros(diff.shape, requires_grad=True).to(renderer.device)
-        total = torch.where(diff != 0, ones_2, zeros_2)
-        #vsd = len(outliers)/(len(total)+1)
+        total = torch.randn(diff.shape, device=renderer.device, requires_grad=True)
+        total = NonZero.apply(diff)
+        
         vsd_batch = torch.sum(outliers, dim=1)/torch.sum(total, dim=1)
         vsd_all = torch.sum(outliers)/torch.sum(total)
         return vsd_all, vsd_batch, gt_imgs, predicted_imgs
