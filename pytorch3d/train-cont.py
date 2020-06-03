@@ -154,7 +154,8 @@ def main():
                                    json.loads(args.get('Rendering', 'T'))[-1],
                                    args.getint('Training', 'BATCH_SIZE'),
                                    args.get('Dataset', 'ENCODER_WEIGHTS'),
-                                   device)
+                                   device,
+                                   args.get('Training', 'VIEW_SAMPLING'))
 
 
     np.random.seed(seed=args.getint('Training', 'RANDOM_SEED'))

@@ -41,7 +41,8 @@ from pytorch3d.renderer import (
 
 class DatasetGenerator():
 
-    def __init__(self, background_path, obj_path, obj_distance, batch_size, encoder_weights, device):
+    def __init__(self, background_path, obj_path, obj_distance, batch_size,
+                 encoder_weights, device, sampling_method="sphere"):
         self.device = device
         self.obj_path = obj_path
         self.batch_size = batch_size
@@ -54,6 +55,12 @@ class DatasetGenerator():
         self.encoder = self.load_encoder(encoder_weights)
         #self.view_points = eqv_dist_points(100000)
 
+        if(sampling_method == "tless"):
+            self.pose_sampling = self.tless_sampling
+        elif(sampling_method == "sphere"):
+            self.pose_sampling = self.sphere_sampling
+        else:
+            print("ERROR! Invalid view sampling method: {0}".format(sampling_method))
 
     def load_encoder(self, weights_path):
         model = Encoder(weights_path).to(self.device)
@@ -158,7 +165,7 @@ class DatasetGenerator():
         return aug
 
     # Sampling based on the T-LESS dataset
-    def generate_random_pose(self):
+    def tless_sampling(self):
         # Generate random pose for the batch
         # All images in the batch will share pose but different augmentations
         R, t = look_at_view_transform(self.dist, elev=0, azim=0, up=((0, 1, 0),))
@@ -186,33 +193,33 @@ class DatasetGenerator():
         t = torch.tensor([0.0, 0.0, self.dist])
         return R,t
 
-    # # Truely random
-    # # Based on: https://www.cmu.edu/biolphys/deserno/pdf/sphere_equi.pdf
-    # def generate_random_pose(self):
-    #     z_sample = np.random.uniform(low=-self.dist, high=self.dist, size=1)[0]
-    #     theta_sample = np.random.uniform(low=0.0, high=2.0*np.pi, size=1)[0]
-    #     x = np.sqrt((self.dist**2 - z_sample**2))*np.cos(theta_sample)
-    #     y = np.sqrt((self.dist**2 - z_sample**2))*np.sin(theta_sample)
-    #     z = np.sqrt(self.dist**2 - x**2 - y**2)
+    # Truely random
+    # Based on: https://www.cmu.edu/biolphys/deserno/pdf/sphere_equi.pdf
+    def sphere_sampling(self):
+        z_sample = np.random.uniform(low=-self.dist, high=self.dist, size=1)[0]
+        theta_sample = np.random.uniform(low=0.0, high=2.0*np.pi, size=1)[0]
+        x = np.sqrt((self.dist**2 - z_sample**2))*np.cos(theta_sample)
+        y = np.sqrt((self.dist**2 - z_sample**2))*np.sin(theta_sample)
+        z = np.sqrt(self.dist**2 - x**2 - y**2)
 
-    #     cam_position = torch.tensor([x, y, z]).unsqueeze(0)
-    #     R = look_at_rotation(cam_position, up=((0, 0, 1),)).squeeze()
+        cam_position = torch.tensor([x, y, z]).unsqueeze(0)
+        R = look_at_rotation(cam_position, up=((0, 0, 1),)).squeeze()
 
-    #     # Rotate in-plane
-    #     rot_degrees = np.random.uniform(low=0.0, high=360.0, size=1)
-    #     rot = scipyR.from_euler('z', rot_degrees, degrees=True)    
-    #     rot_mat = torch.tensor(rot.as_matrix(), dtype=torch.float32)
-    #     R = torch.matmul(R, rot_mat)
+        # Rotate in-plane
+        rot_degrees = np.random.uniform(low=0.0, high=360.0, size=1)
+        rot = scipyR.from_euler('z', rot_degrees, degrees=True)    
+        rot_mat = torch.tensor(rot.as_matrix(), dtype=torch.float32)
+        R = torch.matmul(R, rot_mat)
         
-    #     t = torch.tensor([0.0, 0.0, self.dist])
-    #     return R,t
+        t = torch.tensor([0.0, 0.0, self.dist])
+        return R,t
     
     def generate_image_batch(self):
         # Generate random poses
         curr_Rs = []
         curr_ts = []
         for k in np.arange(self.batch_size):
-            R, t = self.generate_random_pose()
+            R, t = self.pose_sampling()
             curr_Rs.append(R.squeeze())
             curr_ts.append(t.squeeze())
 
