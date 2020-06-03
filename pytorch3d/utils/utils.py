@@ -95,15 +95,9 @@ def plotView(currView, numViews, vmin, vmax, groundtruth, predicted, predicted_p
     else:
         plt.title("Predicted")
 
-    # gt_img = (groundtruth[currView*batch_size]).detach().cpu().numpy()
-    # predicted_img = (predicted[currView*batch_size]).detach().cpu().numpy()
-    # diff = np.abs(gt_img - predicted_img)
-    # diff[diff > 0.5] = 0.5
-    # loss_contrib = diff
-
     loss_contrib = np.abs((groundtruth[currView*batch_size]).detach().cpu().numpy() - (predicted[currView*batch_size]).detach().cpu().numpy())
     plt.subplot(3, numViews, currView+(1+2*numViews))
-    plt.imshow(loss_contrib) #, vmin=vmin, vmax=vmax)
+    plt.imshow(loss_contrib, vmin=0.0, vmax=20.0)
     plt.title("Loss: {:02f}".format((loss[currView*batch_size]).detach().cpu().numpy()))
 
 # Convert quaternion to rotation matrix

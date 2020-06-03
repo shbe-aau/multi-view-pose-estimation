@@ -242,7 +242,7 @@ def testEpoch(mean, std, br, val_data, model,
                 gt_img = (gt_images[0]).detach().cpu().numpy()
                 predicted_img = (predicted_images[0]).detach().cpu().numpy()
 
-                vmin = min(np.min(gt_img), np.min(predicted_img))
+                vmin = np.linalg.norm(T)*0.9
                 vmax = max(np.max(gt_img), np.max(predicted_img))
 
 
@@ -322,7 +322,7 @@ def trainEpoch(mean, std, br, data, model,
             gt_img = (gt_images[0]).detach().cpu().numpy()
             predicted_img = (predicted_images[0]).detach().cpu().numpy()
 
-            vmin = min(np.min(gt_img), np.min(predicted_img))
+            vmin = np.linalg.norm(T)*0.9
             vmax = max(np.max(gt_img), np.max(predicted_img))
 
 
