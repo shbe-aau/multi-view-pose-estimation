@@ -97,6 +97,8 @@ def main():
 
     # Create an optimizer. Here we are using Adam and we pass in the parameters of the model
     learning_rate=args.getfloat('Training', 'LEARNING_RATE')
+    optimizer = torch.optim.Adam(model.parameters(),lr=learning_rate)
+    
 
     # Load the dataset
     #data = loadDataset(json.loads(args.get('Dataset', 'TRAIN_DATA_PATH')))
