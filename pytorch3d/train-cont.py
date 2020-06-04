@@ -284,7 +284,9 @@ def trainEpoch(mean, std, br, data, model,
         learning_rate = learning_rate * 0.9
         print("Current learning rate: {0}".format(learning_rate))
 
-    optimizer = torch.optim.Adam(model.parameters(),lr=learning_rate)
+    # Disabled adaptive learning rate for now...
+    # I dont think it is the right way to just init the optimizer over and over :/
+    #optimizer = torch.optim.Adam(model.parameters(),lr=learning_rate)
     np.random.shuffle(data_indeces)
     for i,curr_batch in enumerate(batch(data_indeces, batch_size)):
         optimizer.zero_grad()
