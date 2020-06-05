@@ -55,10 +55,19 @@ class DatasetGenerator():
         self.encoder = self.load_encoder(encoder_weights)
         #self.view_points = eqv_dist_points(100000)
 
+        self.simple_pose_sampling = False
         if(sampling_method == "tless"):
             self.pose_sampling = self.tless_sampling
+            self.simple_pose_sampling = False
         elif(sampling_method == "sphere"):
             self.pose_sampling = self.sphere_sampling
+            self.simple_pose_sampling = False
+        elif(sampling_method == "tless-simple"):
+            self.pose_sampling = self.tless_sampling
+            self.simple_pose_sampling = True
+        elif(sampling_method == "sphere-simple"):
+            self.pose_sampling = self.sphere_sampling
+            self.simple_pose_sampling = True
         else:
             print("ERROR! Invalid view sampling method: {0}".format(sampling_method))
 
@@ -183,12 +192,13 @@ class DatasetGenerator():
         R = torch.matmul(R, rot_mat)
 
         # Sample cam plane rotation and apply
-        in_plane = np.random.uniform(low=0.0, high=360.0, size=1)
-        rot = scipyR.from_euler('y', in_plane, degrees=True)    
-        rot_mat = torch.tensor(rot.as_matrix(), dtype=torch.float32)
-        R = torch.inverse(R)
-        R = torch.matmul(R, rot_mat)
-        R = torch.inverse(R)
+        if(not self.simple_pose_sampling):
+            in_plane = np.random.uniform(low=0.0, high=360.0, size=1)
+            rot = scipyR.from_euler('y', in_plane, degrees=True)    
+            rot_mat = torch.tensor(rot.as_matrix(), dtype=torch.float32)
+            R = torch.inverse(R)
+            R = torch.matmul(R, rot_mat)
+            R = torch.inverse(R)
         
         t = torch.tensor([0.0, 0.0, self.dist])
         return R,t
@@ -206,10 +216,11 @@ class DatasetGenerator():
         R = look_at_rotation(cam_position, up=((0, 0, 1),)).squeeze()
 
         # Rotate in-plane
-        rot_degrees = np.random.uniform(low=0.0, high=360.0, size=1)
-        rot = scipyR.from_euler('z', rot_degrees, degrees=True)    
-        rot_mat = torch.tensor(rot.as_matrix(), dtype=torch.float32)
-        R = torch.matmul(R, rot_mat)
+        if(not self.simple_pose_sampling):
+            rot_degrees = np.random.uniform(low=0.0, high=360.0, size=1)
+            rot = scipyR.from_euler('z', rot_degrees, degrees=True)    
+            rot_mat = torch.tensor(rot.as_matrix(), dtype=torch.float32)
+            R = torch.matmul(R, rot_mat)
         
         t = torch.tensor([0.0, 0.0, self.dist])
         return R,t

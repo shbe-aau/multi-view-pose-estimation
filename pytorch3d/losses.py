@@ -171,7 +171,7 @@ def Loss(predicted_poses, gt_poses, renderer, ts, mean, std, loss_method="diff",
         gt_imgs = torch.cat(gt_imgs)
         predicted_imgs = torch.cat(predicted_imgs)
         diff = torch.abs(gt_imgs - predicted_imgs).flatten(start_dim=1)
-        diff = torch.clamp(diff, 0.0, 20.0)
+        diff = torch.clamp(diff, 0.0, 50.0)
         loss = torch.mean(diff)
         #print(predicted_imgs.shape)
         return loss, torch.mean(diff, dim=1), gt_imgs, predicted_imgs
@@ -198,7 +198,7 @@ def Loss(predicted_poses, gt_poses, renderer, ts, mean, std, loss_method="diff",
         gt_imgs = torch.cat(gt_imgs)
         predicted_imgs = torch.cat(predicted_imgs)
         diff = torch.abs(gt_imgs - predicted_imgs).flatten(start_dim=1)
-        diff = torch.abs(torch.nn.functional.threshold(-diff, -20.0, 20.0))
+        diff = torch.abs(torch.nn.functional.threshold(-diff, -50.0, 50.0))
         loss = torch.mean(diff)
         #print(predicted_imgs.shape)
         return loss, torch.mean(diff, dim=1), gt_imgs, predicted_imgs

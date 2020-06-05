@@ -18,8 +18,8 @@ from BatchRender import BatchRender
 from losses import Loss
 from DatasetGenerator import DatasetGenerator
 
-learning_rate = -1
 optimizer = None
+lr_reducer = None
 views = []
 epoch = 0
 dataset_gen = None
@@ -41,17 +41,20 @@ def loadCheckpoint(model_path):
     # Load checkpoint and parameters
     checkpoint = torch.load(model_path)
     epoch = checkpoint['epoch'] + 1
-    learning_rate = checkpoint['learning_rate']
 
     # Load model
-    model = Model(output_size=6)
+    model = Model(output_size=6).cuda()
     model.load_state_dict(checkpoint['model'])
 
     # Load optimizer
-    optimizer = torch.optim.Adam(model.parameters(),lr=learning_rate)
+    optimizer = torch.optim.Adam(model.parameters())
     optimizer.load_state_dict(checkpoint['optimizer'])
+
+    lr_reducer = torch.optim.lr_scheduler.StepLR(optimizer, step_size=2, gamma=0.9)
+    lr_reducer.load_state_dict(checkpoint['lr_reducer'])
+    
     print("Loaded the checkpoint: \n" + model_path)
-    return model, optimizer, epoch, learning_rate
+    return model, optimizer, epoch, lr_reducer
 
 def loadDataset(file_list):
     data = {"codes":[],"Rs":[]}
@@ -64,7 +67,7 @@ def loadDataset(file_list):
     return data
 
 def main():
-    global learning_rate, optimizer, views, epoch, dataset_gen
+    global optimizer, lr_reducer, views, epoch, dataset_gen
     # Read configuration file
     parser = argparse.ArgumentParser()
     parser.add_argument("experiment_name")
@@ -98,7 +101,7 @@ def main():
     # Create an optimizer. Here we are using Adam and we pass in the parameters of the model
     learning_rate=args.getfloat('Training', 'LEARNING_RATE')
     optimizer = torch.optim.Adam(model.parameters(),lr=learning_rate)
-    
+    lr_reducer = torch.optim.lr_scheduler.StepLR(optimizer, step_size=2, gamma=0.9)
 
     # Load the dataset
     #data = loadDataset(json.loads(args.get('Dataset', 'TRAIN_DATA_PATH')))
@@ -128,9 +131,7 @@ def main():
     # Load checkpoint for last epoch if it exists
     model_path = latestCheckpoint(os.path.join(output_path, "models/"))
     if(model_path is not None):
-        model, optimizer, epoch, learning_rate = loadCheckpoint(model_path)
-        #model, _, epoch, _ = loadCheckpoint(model_path)
-        model.to(device)
+        model, optimizer, epoch, lr_reducer = loadCheckpoint(model_path)
 
     if early_stopping:
         validation_csv=os.path.join(output_path, "validation-loss.csv")
@@ -195,13 +196,12 @@ def main():
                 lowest_mean = w_mean
                 lowest_x = epoch
                 timer = 0
-
         epoch = epoch+1
 
 def testEpoch(mean, std, br, val_data, model,
                device, output_path, loss_method, t,
                visualize=False):
-    global learning_rate, optimizer
+    global optimizer
     with torch.no_grad():
         dbg("Before test memory: {}".format(torch.cuda.memory_summary(device=device, abbreviated=False)), dbg_memory)
 
@@ -237,7 +237,7 @@ def testEpoch(mean, std, br, val_data, model,
             predicted_images.detach().cpu().numpy()
 
             print("Test batch: {0}/{1} (size: {2}) - loss: {3}".format(i+1,round(num_samples/batch_size), len(Rs),loss.data))
-            losses.append(loss.data.detach().cpu().numpy())
+            losses = losses + batch_loss.data.detach().cpu().numpy().tolist()
 
             if(visualize):
                 batch_img_dir = os.path.join(output_path, "val-images/epoch{0}".format(epoch))
@@ -270,7 +270,7 @@ def testEpoch(mean, std, br, val_data, model,
 def trainEpoch(mean, std, br, data, model,
                device, output_path, loss_method, t,
                num_samples, visualize=False):
-    global learning_rate, optimizer
+    global optimizer, lr_reducer
     dbg("Before train memory: {}".format(torch.cuda.memory_summary(device=device, abbreviated=False)), dbg_memory)
 
     # Generate training data
@@ -282,13 +282,8 @@ def trainEpoch(mean, std, br, data, model,
     batch_size = br.batch_size
     data_indeces = np.arange(num_samples)
 
-    if(epoch % 2 == 1):
-        learning_rate = learning_rate * 0.9
-        print("Current learning rate: {0}".format(learning_rate))
+    print("Epoch: {0} - current learning rate: {1}".format(epoch, lr_reducer.get_last_lr()))
 
-    # Disabled adaptive learning rate for now...
-    # I dont think it is the right way to just init the optimizer over and over :/
-    #optimizer = torch.optim.Adam(model.parameters(),lr=learning_rate)
     np.random.shuffle(data_indeces)
     for i,curr_batch in enumerate(batch(data_indeces, batch_size)):
         optimizer.zero_grad()
@@ -319,7 +314,7 @@ def trainEpoch(mean, std, br, data, model,
         predicted_images.detach().cpu().numpy()
 
         print("Batch: {0}/{1} (size: {2}) - loss: {3}".format(i+1,round(num_samples/batch_size), len(Rs),loss.data))
-        losses.append(loss.data.detach().cpu().numpy())
+        losses = losses + batch_loss.data.detach().cpu().numpy().tolist()
 
         if(visualize):
             batch_img_dir = os.path.join(output_path, "images/epoch{0}".format(epoch))
@@ -350,10 +345,11 @@ def trainEpoch(mean, std, br, data, model,
     prepareDir(model_dir)
     state = {'model': model.state_dict(),
              'optimizer': optimizer.state_dict(),
-             'learning_rate': learning_rate,
+             'lr_reducer': lr_reducer.state_dict(),
              'epoch': epoch}
     torch.save(state, os.path.join(model_dir,"model-epoch{0}.pt".format(epoch)))
     dbg("After train memory: {}".format(torch.cuda.memory_summary(device=device, abbreviated=False)), dbg_memory)
+    lr_reducer.step()
     return np.mean(losses)
 
 if __name__ == '__main__':
