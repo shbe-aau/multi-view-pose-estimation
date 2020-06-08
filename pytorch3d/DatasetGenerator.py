@@ -219,7 +219,7 @@ class DatasetGenerator():
         if(not self.simple_pose_sampling):
             #rot_degrees = np.random.uniform(low=0.0, high=360.0, size=1)
             rot_degrees = np.arange(0, 360, 10)
-            rot_degrees = rot_degrees[int(np.random.uniform(low=0,high=rot_degrees.shape[0]+1))]
+            rot_degrees = rot_degrees[int(np.random.uniform(low=0,high=rot_degrees.shape[0]))]
             rot = scipyR.from_euler('z', rot_degrees, degrees=True)    
             rot_mat = torch.tensor(rot.as_matrix(), dtype=torch.float32)
             R = torch.matmul(R, rot_mat)
