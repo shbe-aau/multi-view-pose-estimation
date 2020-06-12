@@ -99,7 +99,7 @@ class BatchRender:
 
 
     def initRender(self, method, image_size):      
-        cameras = OpenGLPerspectiveCameras(device=self.device, fov=5)
+        cameras = OpenGLPerspectiveCameras(device=self.device, fov=15)
 
         if(method=="soft-silhouette"):
             blend_params = BlendParams(sigma=1e-7, gamma=1e-7)

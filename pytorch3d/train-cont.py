@@ -16,7 +16,7 @@ from utils.utils import *
 from Model import Model
 from BatchRender import BatchRender
 from losses import Loss
-from DatasetGenerator import DatasetGenerator
+from DatasetGeneratorOpenGL import DatasetGenerator
 
 optimizer = None
 lr_reducer = None
@@ -170,7 +170,7 @@ def main():
                           visualize=args.getboolean('Training', 'SAVE_IMAGES'))
         append2file([loss], os.path.join(output_path, "train-loss.csv"))
         val_loss = testEpoch(mean, std, br, val_data, model, device, output_path,
-                             loss_method="vsd", #args.get('Training', 'LOSS'),
+                             loss_method=args.get('Training', 'LOSS'),
                           t=json.loads(args.get('Rendering', 'T')),
                           visualize=args.getboolean('Training', 'SAVE_IMAGES'))
         append2file([val_loss], os.path.join(output_path, "validation-loss.csv"))

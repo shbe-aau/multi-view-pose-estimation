@@ -14,7 +14,7 @@ from pytorch3d.renderer import (
     HardPhongShader, PointLights, DirectionalLights
 )
 
-model_path = "./t-less_v2/models_cad/obj_19.obj"
+model_path = "/media/shbe/data/share-to-docker/autoencoder_ws/data/T-LESS/models_cad/obj_19.ply"
 
 # Get intrinsic camera parameters and object pose
 K = np.array([1075.65091572, 0.0, 396.06888344, 0.0, 1073.90347929, 235.72159802, 0.0, 0.0, 1.0]).reshape(3,3)

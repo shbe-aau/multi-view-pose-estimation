@@ -181,12 +181,14 @@ for i in np.arange(loops):
     
     # Sample azimuth and apply transformation
     azim = np.random.uniform(low=0.0, high=360.0, size=1)
+    azim = 45.0
     rot = scipyR.from_euler('z', azim, degrees=True)    
     rot_mat = torch.tensor(rot.as_matrix(), dtype=torch.float32)
     R = torch.matmul(R, rot_mat)
 
     # Sample elevation and apply transformation
     elev = np.random.uniform(low=-180.0, high=0.0, size=1)
+    elev = 25.0
     rot = scipyR.from_euler('x', elev, degrees=True)    
     rot_mat = torch.tensor(rot.as_matrix(), dtype=torch.float32)
     R = torch.matmul(R, rot_mat)

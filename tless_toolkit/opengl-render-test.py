@@ -11,7 +11,9 @@ import os
 import numpy as np
 import imageio
 
-model_path = "/media/shbe/data/share-to-docker/autoencoder_ws/data/T-LESS/models_cad/obj_19.ply"
+#model_path = "/media/shbe/data/share-to-docker/autoencoder_ws/data/T-LESS/models_cad/obj_19.ply"
+
+model_path = "/shared-folder/AugmentedAutoencoder/pytorch3d/data/t-less-obj06/cad/obj_06.ply"
 
 # Get intrinsic camera parameters and object pose
 K = np.array([1075.65091572, 0.0, 396.06888344, 0.0, 1073.90347929, 235.72159802, 0.0, 0.0, 1.0]).reshape(3,3)
