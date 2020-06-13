@@ -240,7 +240,7 @@ def testEpoch(mean, std, br, val_data, model,
             gt_images.detach().cpu().numpy()
             predicted_images.detach().cpu().numpy()
 
-            print("Test batch: {0}/{1} (size: {2}) - loss: {3}".format(i+1,round(num_samples/batch_size), len(Rs),loss.data))
+            print("Test batch: {0}/{1} (size: {2}) - loss: {3}".format(i+1,round(num_samples/batch_size), len(Rs),loss.data/batch_size))
             losses = losses + batch_loss.data.detach().cpu().numpy().tolist()
 
             if(visualize):
@@ -319,7 +319,7 @@ def trainEpoch(mean, std, br, data, model,
         gt_images.detach().cpu().numpy()
         predicted_images.detach().cpu().numpy()
 
-        print("Batch: {0}/{1} (size: {2}) - loss: {3}".format(i+1,round(num_samples/batch_size), len(Rs),loss.data))
+        print("Batch: {0}/{1} (size: {2}) - loss: {3}".format(i+1,round(num_samples/batch_size), len(Rs),loss.data/batch_size))
         losses = losses + batch_loss.data.detach().cpu().numpy().tolist()
 
         if(visualize):

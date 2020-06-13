@@ -148,8 +148,8 @@ def Loss(predicted_poses, gt_poses, renderer, ts, mean, std, loss_method="diff",
 
         mseLoss = nn.MSELoss(reduction='none')
         l2loss = mseLoss(Rs_predicted, Rs_gt)
-        loss = torch.mean(l2loss)
-        batch_loss = torch.mean(l2loss, dim=(1,2))
+        loss = torch.sum(l2loss)
+        batch_loss = torch.sum(l2loss, dim=(1,2))
         return loss, batch_loss, gt_imgs, predicted_imgs
     elif(loss_method=="l1-clamped"):
         gt_imgs = []
