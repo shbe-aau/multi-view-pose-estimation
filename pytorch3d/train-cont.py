@@ -10,6 +10,7 @@ import configparser
 import json
 import argparse
 import glob
+import gc
 
 from utils.utils import *
 
@@ -57,13 +58,14 @@ def loadCheckpoint(model_path):
     return model, optimizer, epoch, lr_reducer
 
 def loadDataset(file_list):
-    data = {"codes":[],"Rs":[]}
+    data = {"codes":[],"Rs":[],"images":[]}
     for f in file_list:
         print("Loading dataset: {0}".format(f))
         with open(f, "rb") as f:
             curr_data = pickle.load(f, encoding="latin1")
             data["codes"] = data["codes"] + curr_data["codes"].copy()
             data["Rs"] = data["Rs"] + curr_data["Rs"].copy()
+            data["images"] = data["images"] + curr_data["images"].copy()
     return data
 
 def main():
@@ -213,8 +215,10 @@ def testEpoch(mean, std, br, val_data, model,
 
         for i,curr_batch in enumerate(batch(data_indeces, batch_size)):
             codes = []
+            input_images = []
             for b in curr_batch:
                 codes.append(val_data["codes"][b])
+                input_images.append(val_data["images"][b])
             batch_codes = torch.tensor(np.stack(codes), device=device, dtype=torch.float32) # Bx128
 
             predicted_poses = model(batch_codes)
@@ -249,9 +253,9 @@ def testEpoch(mean, std, br, val_data, model,
                 vmax = max(np.max(gt_img), np.max(predicted_img))
 
 
-                fig = plt.figure(figsize=(5+len(views)*2, 9))
+                fig = plt.figure(figsize=(12,3+len(views)*2))
                 for viewNum in np.arange(len(views)):
-                    plotView(viewNum, len(views), vmin, vmax, gt_images, predicted_images,
+                    plotView(viewNum, len(views), vmin, vmax, input_images, gt_images, predicted_images,
                              predicted_poses, batch_loss, batch_size)
                 fig.tight_layout()
 
@@ -288,8 +292,10 @@ def trainEpoch(mean, std, br, data, model,
     for i,curr_batch in enumerate(batch(data_indeces, batch_size)):
         optimizer.zero_grad()
         codes = []
+        input_images = []
         for b in curr_batch:
             codes.append(data["codes"][b])
+            input_images.append(data["images"][b])
         batch_codes = torch.tensor(np.stack(codes), device=device, dtype=torch.float32) # Bx128
 
         predicted_poses = model(batch_codes)
@@ -321,14 +327,15 @@ def trainEpoch(mean, std, br, data, model,
             prepareDir(batch_img_dir)
             gt_img = (gt_images[0]).detach().cpu().numpy()
             predicted_img = (predicted_images[0]).detach().cpu().numpy()
+            input_img = input_images[0]*255
 
             vmin = np.linalg.norm(T)*0.9
             vmax = max(np.max(gt_img), np.max(predicted_img))
 
 
-            fig = plt.figure(figsize=(5+len(views)*2, 9))
+            fig = plt.figure(figsize=(12,3+len(views)*2))
             for viewNum in np.arange(len(views)):
-                plotView(viewNum, len(views), vmin, vmax, gt_images, predicted_images,
+                plotView(viewNum, len(views), vmin, vmax, input_images, gt_images, predicted_images,
                          predicted_poses, batch_loss, batch_size)
             fig.tight_layout()
 
@@ -350,6 +357,7 @@ def trainEpoch(mean, std, br, data, model,
     torch.save(state, os.path.join(model_dir,"model-epoch{0}.pt".format(epoch)))
     dbg("After train memory: {}".format(torch.cuda.memory_summary(device=device, abbreviated=False)), dbg_memory)
     lr_reducer.step()
+    gc.collect()
     return np.mean(losses)
 
 if __name__ == '__main__':

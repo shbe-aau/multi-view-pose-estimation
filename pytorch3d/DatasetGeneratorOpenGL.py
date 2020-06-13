@@ -39,7 +39,10 @@ from pytorch3d.renderer import (
     HardPhongShader, PointLights, DirectionalLights
 )
 
-from utils.pytless import inout, renderer, misc
+from utils.pytless import inout, misc
+from vispy import app, gloo
+from utils.pytless.renderer import Renderer
+
 
 class DatasetGenerator():
 
@@ -59,6 +62,9 @@ class DatasetGenerator():
                                                self.img_size, self.img_size)
         self.encoder = self.load_encoder(encoder_weights)
         #self.view_points = eqv_dist_points(100000)
+
+        self.renderer = Renderer(self.model, (self.img_size,self.img_size),
+                                 self.K, surf_color=(1, 1, 1), mode='rgb')
 
         self.simple_pose_sampling = False
         if(sampling_method == "tless"):
@@ -196,20 +202,22 @@ class DatasetGenerator():
             R = R.detach().cpu().numpy()[0]
             t = t.detach().cpu().numpy()
 
-            curr_Rs.append(R)
-            curr_ts.append(t)
-
             # Convert R matrix from pytorch to opengl format
             # for rendering only!
             xy_flip = np.eye(3, dtype=np.float)
             xy_flip[0,0] = -1.0
             xy_flip[1,1] = -1.0
             R_opengl = np.dot(R,xy_flip)
-            R_opgegl = np.transpose(R_opengl)
+            R_opengl = np.transpose(R_opengl)
         
             # Render images
-            ren_rgb = renderer.render(self.model, (self.img_size,self.img_size),
-                                      self.K, R_opengl, t, surf_color=(1, 1, 1), mode='rgb')
+            #ren_rgb = renderer.render(self.model, (self.img_size,self.img_size),
+            #                          self.K, R_opengl, t, surf_color=(1, 1, 1), mode='rgb')
+
+            ren_rgb = self.renderer.render(R_opengl, t)
+            
+            curr_Rs.append(R)
+            curr_ts.append(t)
             
             image_renders.append(ren_rgb)
 
@@ -231,10 +239,10 @@ class DatasetGenerator():
                 alpha = image_base[:, :, 0:3].astype(float)
                 sum_img = np.sum(image_base[:,:,:3], axis=2)
                 alpha[sum_img > 0] = 1
-                image_ref[:, :, 0:3] = image_ref[:, :, 0:3] * alpha + img_back[:, :, 0:3]/255 * (1 - alpha)
+                
+                image_ref[:, :, 0:3] = image_ref[:, :, 0:3] * alpha + img_back[:, :, 0:3] * (1 - alpha)
             else:
                 image_ref = image_ref[:, :, 0:3]
-                
 
             image_ref = image_ref.astype(np.float)/255.0
             image_ref = np.clip(image_ref, 0.0, 1.0)

@@ -146,9 +146,11 @@ def Loss(predicted_poses, gt_poses, renderer, ts, mean, std, loss_method="diff",
         predicted_imgs = torch.cat(predicted_imgs)
         diff = torch.abs(gt_imgs - predicted_imgs).flatten(start_dim=1)
 
-        loss = nn.MSELoss()
-        loss = loss(Rs_predicted, Rs_gt)
-        return loss, torch.mean(diff, dim=1), gt_imgs, predicted_imgs
+        mseLoss = nn.MSELoss(reduction='none')
+        l2loss = mseLoss(Rs_predicted, Rs_gt)
+        loss = torch.mean(l2loss)
+        batch_loss = torch.mean(l2loss, dim=(1,2))
+        return loss, batch_loss, gt_imgs, predicted_imgs
     elif(loss_method=="l1-clamped"):
         gt_imgs = []
         predicted_imgs = []

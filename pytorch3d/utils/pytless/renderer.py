@@ -6,7 +6,8 @@ from vispy import app, gloo
 import OpenGL.GL as gl
 
 # WARNING: doesn't work with Qt4 (update() does not call on_draw()??)
-app.use_app('PyGlet') # Set backend
+# Set backend
+app.use_app('egl')
 
 # Color vertex shader
 #-------------------------------------------------------------------------------
@@ -151,9 +152,9 @@ def _compute_calib_proj(K, x0, y0, w, h, nc, fc, window_coords='y_down'):
 
 #-------------------------------------------------------------------------------
 class _Canvas(app.Canvas):
-    def __init__(self, vertices, faces, size, K, R, t, clip_near, clip_far,
+    def __init__(self, vertices, faces, size, K, clip_near, clip_far,
                  bg_color=(0.0, 0.0, 0.0, 0.0), ambient_weight=0.1,
-                 render_rgb=True, render_depth=True):
+                 render_rgb=True, render_depth=True) :
         """
         mode is from ['rgb', 'depth', 'rgb+depth']
         """
@@ -167,10 +168,20 @@ class _Canvas(app.Canvas):
         self.ambient_weight = ambient_weight
         self.render_rgb = render_rgb
         self.render_depth = render_depth
+        self.K = K
+        self.size = size
+        self.clip_near = clip_near
+        self.clip_far = clip_far
 
         self.rgb = np.array([])
         self.depth = np.array([])
 
+        # Create buffers
+        self.vertex_buffer = gloo.VertexBuffer(vertices)
+        self.index_buffer = gloo.IndexBuffer(faces.flatten().astype(np.uint32))
+
+
+    def render(self, R, t):
         # Model matrix
         self.mat_model = np.eye(4, dtype=np.float32) # From object space to world space
 
@@ -184,12 +195,8 @@ class _Canvas(app.Canvas):
         self.mat_view = self.mat_view.T # OpenGL expects column-wise matrix format
 
         # Projection matrix
-        self.mat_proj = _compute_calib_proj(K, 0, 0, size[0], size[1], clip_near, clip_far)
-
-        # Create buffers
-        self.vertex_buffer = gloo.VertexBuffer(vertices)
-        self.index_buffer = gloo.IndexBuffer(faces.flatten().astype(np.uint32))
-
+        self.mat_proj = _compute_calib_proj(self.K, 0, 0, self.size[0],
+                                            self.size[1], self.clip_near, self.clip_far)
         # We manually draw the hidden canvas
         self.update()
 
@@ -198,7 +205,7 @@ class _Canvas(app.Canvas):
             self.draw_color() # Render color image
         if self.render_depth:
             self.draw_depth() # Render depth image
-        app.quit() # Immediately exit the application after the first drawing
+        #app.quit() # Immediately exit the application after the first drawing
 
     def draw_color(self):
         program = gloo.Program(_color_vertex_code, _color_fragment_code)
@@ -226,6 +233,9 @@ class _Canvas(app.Canvas):
             # Retrieve the contents of the FBO texture
             self.rgb = gloo.read_pixels((0, 0, self.size[0], self.size[1]))[:, :, :3]
             self.rgb = np.copy(self.rgb)
+        fbo.delete()
+        render_tex.delete()
+        program.delete()
 
     def draw_depth(self):
         program = gloo.Program(_depth_vertex_code, _depth_fragment_code)
@@ -251,6 +261,9 @@ class _Canvas(app.Canvas):
             # Retrieve the contents of the FBO texture
             self.depth = self.read_fbo_color_rgba32f(fbo)
             self.depth = self.depth[:, :, 0] # Depth is saved in the first channel
+        fbo.delete()
+        render_tex.delete()
+        program.delete()
 
     @staticmethod
     def read_fbo_color_rgba32f(fbo):
@@ -267,52 +280,71 @@ class _Canvas(app.Canvas):
 
         return im
 
-#-------------------------------------------------------------------------------
-# Ref: https://github.com/vispy/vispy/blob/master/examples/demo/gloo/offscreen.py
-def render(model, im_size, K, R, t, clip_near=100, clip_far=2000,
+class Renderer:
+    def __init__(self, model, im_size, K, clip_near=100, clip_far=2000,
            surf_color=None, bg_color=(0.0, 0.0, 0.0, 0.0),
            ambient_weight=0.1, mode='rgb+depth'):
+        
+        self.model = model
+        self.im_size = im_size
+        self.K = K
+        self.clip_near = clip_near
+        self.clip_far = clip_far
+        self.surf_color = surf_color
+        self.bg_color = bg_color
+        self.ambient_weight = ambient_weight
+        self.mode = mode
 
-    # Process input data
-    #---------------------------------------------------------------------------
-    # Make sure vertices and faces are provided in the model
-    assert({'pts', 'faces'}.issubset(set(model.keys())))
+        self.colors = None
+        self.vertices = None
 
-    # Set color of vertices
-    if not surf_color:
-        if 'colors' in model.keys():
-            assert(model['pts'].shape[0] == model['colors'].shape[0])
-            colors = model['colors']
-            if colors.max() > 1.0:
-                colors /= 255.0 # Color values are expected to be in range [0, 1]
+        # Process input data
+        #---------------------------------------------------------------------------
+        # Make sure vertices and faces are provided in the model
+        assert({'pts', 'faces'}.issubset(set(self.model.keys())))
+
+        # Set color of vertices
+        if not self.surf_color:
+            if 'colors' in self.model.keys():
+                assert(self.model['pts'].shape[0] == self.model['colors'].shape[0])
+                self.colors = self.model['colors']
+                if self.colors.max() > 1.0:
+                    self.colors /= 255.0 # Color values are expected to be in range [0, 1]
+            else:
+                self.colors = np.ones((model['pts'].shape[0], 4), np.float32) * 0.5
         else:
-            colors = np.ones((model['pts'].shape[0], 4), np.float32) * 0.5
-    else:
-        colors = np.tile(list(surf_color) + [1.0], [model['pts'].shape[0], 1])
-    vertices_type = [('a_position', np.float32, 3),
-                     #('a_normal', np.float32, 3),
-                     ('a_color', np.float32, colors.shape[1])]
-    vertices = np.array(list(zip(model['pts'], colors)), vertices_type)
+            self.colors = np.tile(list(self.surf_color) + [1.0], [self.model['pts'].shape[0], 1])
+        vertices_type = [('a_position', np.float32, 3),
+                         #('a_normal', np.float32, 3),
+                         ('a_color', np.float32, self.colors.shape[1])]
+        self.vertices = np.array(list(zip(self.model['pts'], self.colors)), vertices_type)
 
-    # Rendering
-    #---------------------------------------------------------------------------
-    render_rgb = mode in ['rgb', 'rgb+depth']
-    render_depth = mode in ['depth', 'rgb+depth']
-    c = _Canvas(vertices, model['faces'], im_size, K, R, t, clip_near, clip_far,
-                bg_color, ambient_weight, render_rgb, render_depth)
-    app.run()
+        # Prepare canvas
+        render_rgb = self.mode in ['rgb', 'rgb+depth']
+        render_depth = self.mode in ['depth', 'rgb+depth']
+        self.c = _Canvas(self.vertices, self.model['faces'], self.im_size,
+                         self.K, self.clip_near, self.clip_far,
+                         self.bg_color, self.ambient_weight, render_rgb, render_depth)
 
-    #---------------------------------------------------------------------------
-    if mode == 'rgb':
-        out = c.rgb
-    elif mode == 'depth':
-        out = c.depth
-    elif mode == 'rgb+depth':
-        out = c.rgb, c.depth
-    else:
-        out = None
-        print('Error: Unknown rendering mode.')
-        exit(-1)
+        
+    def render(self, R, t, ):
+        # Rendering
+        #---------------------------------------------------------------------------
 
-    c.close()
-    return out
+        self.c.render(R,t)
+        
+        #app.run()
+        app.process_events()
+    
+        #---------------------------------------------------------------------------
+        if self.mode == 'rgb':
+            out = self.c.rgb
+        elif self.mode == 'depth':
+            out = self.c.depth
+        elif self.mode == 'rgb+depth':
+            out = self.c.rgb, self.c.depth
+        else:
+            out = None
+            print('Error: Unknown rendering mode.')
+            exit(-1)
+        return out

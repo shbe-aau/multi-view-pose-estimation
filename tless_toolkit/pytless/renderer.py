@@ -6,7 +6,7 @@ from vispy import app, gloo
 import OpenGL.GL as gl
 
 # WARNING: doesn't work with Qt4 (update() does not call on_draw()??)
-app.use_app('PyGlet') # Set backend
+app.use_app('egl') # Set backend
 
 # Color vertex shader
 #-------------------------------------------------------------------------------

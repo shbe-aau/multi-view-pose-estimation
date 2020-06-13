@@ -41,4 +41,5 @@ surf_color = (1, 1, 1)
 ren_rgb = renderer.render(model, im_size, K, R, t,
                           surf_color=surf_color, mode='rgb')
 
+print(ren_rgb.shape)
 imageio.imwrite("opengl-render.png", ren_rgb.astype(np.uint8))
