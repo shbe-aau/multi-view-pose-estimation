@@ -20,6 +20,7 @@ from Encoder import Encoder
 import imgaug as ia
 import imgaug.augmenters as iaa
 
+from scipy.stats import special_ortho_group
 from scipy.spatial.transform import Rotation as scipyR
 from plot_loss_landscape import eqv_dist_points
 
@@ -58,7 +59,7 @@ class DatasetGenerator():
                            0, 0, 1]).reshape(3,3)
         self.aug = self.setup_augmentation()
         self.model = inout.load_ply(obj_path.replace(".obj",".ply"))
-        self.backgrounds = self.load_bg_images("backgrounds", background_path, 170,
+        self.backgrounds = self.load_bg_images("backgrounds", background_path, 170000,
                                                self.img_size, self.img_size)
         self.encoder = self.load_encoder(encoder_weights)
         #self.view_points = eqv_dist_points(100000)
@@ -79,6 +80,9 @@ class DatasetGenerator():
         elif(sampling_method == "sphere-simple"):
             self.pose_sampling = self.sphere_sampling
             self.simple_pose_sampling = True
+        elif(sampling_method == "haar"):
+            self.pose_sampling = self.haar_sampling
+            self.simple_pose_sampling = False
         else:
             print("ERROR! Invalid view sampling method: {0}".format(sampling_method))
 
@@ -139,6 +143,12 @@ class DatasetGenerator():
                              random_order=False)
         return aug
 
+    # From: https://docs.scipy.org/doc/scipy/reference/generated/scipy.stats.special_ortho_group.html
+    def haar_sampling(self):        
+        R = torch.tensor(special_ortho_group.rvs(3), dtype=torch.float32).unsqueeze(0)
+        t = torch.tensor([0.0, 0.0, self.dist])
+        return R,t
+    
     # Sampling based on the T-LESS dataset
     def tless_sampling(self):
         # Generate random pose for the batch
