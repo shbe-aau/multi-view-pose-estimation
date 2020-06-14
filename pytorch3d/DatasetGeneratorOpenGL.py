@@ -48,7 +48,7 @@ from utils.pytless.renderer import Renderer
 class DatasetGenerator():
 
     def __init__(self, background_path, obj_path, obj_distance, batch_size,
-                 encoder_weights, device, sampling_method="sphere"):
+                 encoder_weights, device, sampling_method="sphere", random_light=True):
         self.device = device
         self.obj_path = obj_path
         self.batch_size = batch_size
@@ -59,13 +59,16 @@ class DatasetGenerator():
                            0, 0, 1]).reshape(3,3)
         self.aug = self.setup_augmentation()
         self.model = inout.load_ply(obj_path.replace(".obj",".ply"))
-        self.backgrounds = self.load_bg_images("backgrounds", background_path, 170000,
+        self.backgrounds = self.load_bg_images("backgrounds", background_path, 10,
                                                self.img_size, self.img_size)
-        self.encoder = self.load_encoder(encoder_weights)
-        #self.view_points = eqv_dist_points(100000)
+        if(encoder_weights is not None):
+            self.encoder = self.load_encoder(encoder_weights)
+        else:
+            self.encoder
 
         self.renderer = Renderer(self.model, (self.img_size,self.img_size),
-                                 self.K, surf_color=(1, 1, 1), mode='rgb')
+                                 self.K, surf_color=(1, 1, 1), mode='rgb',
+                                 random_light=random_light)
 
         self.simple_pose_sampling = False
         if(sampling_method == "tless"):
@@ -82,6 +85,9 @@ class DatasetGenerator():
             self.simple_pose_sampling = True
         elif(sampling_method == "haar"):
             self.pose_sampling = self.haar_sampling
+            self.simple_pose_sampling = False
+        elif(sampling_method == "fixed"): # Mainly for debugging purposes
+            self.pose_sampling = self.fixed_sampling
             self.simple_pose_sampling = False
         else:
             print("ERROR! Invalid view sampling method: {0}".format(sampling_method))
@@ -146,6 +152,27 @@ class DatasetGenerator():
     # From: https://docs.scipy.org/doc/scipy/reference/generated/scipy.stats.special_ortho_group.html
     def haar_sampling(self):        
         R = torch.tensor(special_ortho_group.rvs(3), dtype=torch.float32).unsqueeze(0)
+        t = torch.tensor([0.0, 0.0, self.dist])
+        return R,t
+
+    # Fixed pose - mainly for debugging purposes
+    def fixed_sampling(self):
+        # Generate random pose for the batch
+        # All images in the batch will share pose but different augmentations
+        R, t = look_at_view_transform(self.dist, elev=0, azim=0, up=((0, 1, 0),))
+    
+        # Sample azimuth and apply transformation
+        azim = 35.0
+        rot = scipyR.from_euler('z', azim, degrees=True)    
+        rot_mat = torch.tensor(rot.as_matrix(), dtype=torch.float32)
+        R = torch.matmul(R, rot_mat)
+        
+        # Sample elevation and apply transformation
+        elev = 25.
+        rot = scipyR.from_euler('x', elev, degrees=True)    
+        rot_mat = torch.tensor(rot.as_matrix(), dtype=torch.float32)
+        R = torch.matmul(R, rot_mat)
+        
         t = torch.tensor([0.0, 0.0, self.dist])
         return R,t
     
@@ -283,11 +310,72 @@ class DatasetGenerator():
     def generate_samples(self, num_samples):
         data = self.generate_images(num_samples)
 
-        codes = []
-        for img in data["images"]:
-            img = torch.from_numpy(img).unsqueeze(0).permute(0,3,1,2).to(self.device)
-            code = self.encoder(img.float())
-            code = code.detach().cpu().numpy()
-            codes.append(code[0])
-        data["codes"] = codes
+        if(self.encoder is not None):
+            codes = []
+            for img in data["images"]:
+                img = torch.from_numpy(img).unsqueeze(0).permute(0,3,1,2).to(self.device)
+                code = self.encoder(img.float())
+                code = code.detach().cpu().numpy()
+                codes.append(code[0])
+            data["codes"] = codes
         return data
+
+def str2bool(v):
+    if isinstance(v, bool):
+       return v
+    if v.lower() in ('yes', 'true', 't', 'y', '1'):
+        return True
+    elif v.lower() in ('no', 'false', 'f', 'n', '0'):
+        return False
+    else:
+        raise argparse.ArgumentTypeError('Boolean value expected.')
+
+if __name__ == "__main__":
+    # Parse parameters
+    parser = argparse.ArgumentParser()
+    parser.add_argument("obj_path", help="path to the .obj file")
+    parser.add_argument("-b", help="batch size, each batch will have the same pose but different augmentations", type=int, default=8)
+    parser.add_argument("-d", help="distance to the object", type=float, default=2000.0)
+    parser.add_argument("-n", help="number of total samples", type=int, default=1000)
+    parser.add_argument("-v", help="visualize the data", default=False)
+    parser.add_argument("-o", help="output path", default="")
+    parser.add_argument("-bg", help="background images path", default="")
+    parser.add_argument("-s", help="pose sampling method", default="tless-simple")
+    parser.add_argument("-e", help="path to .npy encoder weights", default=None)
+    parser.add_argument("-rl", help="enable random light", default=True)
+    arguments = parser.parse_args()
+
+    # Create dataset generator
+    device = torch.device("cuda:0")
+    torch.cuda.set_device(device)
+    dg = DatasetGenerator(background_path=arguments.bg,
+                          obj_path=arguments.obj_path,
+                          obj_distance=arguments.d,
+                          batch_size=arguments.b,
+                          sampling_method=arguments.s,
+                          encoder_weights=arguments.e,
+                          random_light=str2bool(arguments.rl),
+                          device=device)
+
+    # Generate data
+    data = dg.generate_samples(num_samples=arguments.n)
+
+    # Visualize it (optional)
+    if(str2bool(arguments.v)):
+        for i,img in enumerate(data["images"]):
+            window_name = "Sample {0}/{1}".format(i,arguments.n)
+            cv2.namedWindow(window_name)
+            cv2.moveWindow(window_name,42,42)
+            cv2.imshow(window_name, img) 
+            key = cv2.waitKey(0)            
+            cv2.destroyWindow(window_name)
+            if(key == ord("q")):
+                break
+
+    # Save generated data
+    output_path = arguments.o
+    if(output_path == ""):
+        output_path = "./training-images.p"
+    pickle.dump(data, open(output_path, "wb"), protocol=2)
+    print("Saved dataset to: ", output_path)
+    
