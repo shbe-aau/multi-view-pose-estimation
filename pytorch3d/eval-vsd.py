@@ -4,7 +4,7 @@ import torch
 import numpy as np
 import pickle
 import matplotlib as mpl
-#mpl.use('Agg')
+mpl.use('Agg')
 import matplotlib.pyplot as plt
 import configparser
 import json
@@ -31,17 +31,20 @@ def loadCheckpoint(model_path):
     # Load checkpoint and parameters
     checkpoint = torch.load(model_path)
     epoch = checkpoint['epoch'] + 1
-    learning_rate = checkpoint['learning_rate']
 
     # Load model
-    model = Model(output_size=6)
+    model = Model(output_size=6).cuda()
     model.load_state_dict(checkpoint['model'])
 
     # Load optimizer
-    optimizer = torch.optim.Adam(model.parameters(),lr=learning_rate)
+    optimizer = torch.optim.Adam(model.parameters())
     optimizer.load_state_dict(checkpoint['optimizer'])
+
+    lr_reducer = torch.optim.lr_scheduler.StepLR(optimizer, step_size=2, gamma=0.9)
+    lr_reducer.load_state_dict(checkpoint['lr_reducer'])
+    
     print("Loaded the checkpoint: \n" + model_path)
-    return model, optimizer, epoch, learning_rate
+    return model, optimizer, epoch, lr_reducer
 
 def main():
     # Read configuration file
