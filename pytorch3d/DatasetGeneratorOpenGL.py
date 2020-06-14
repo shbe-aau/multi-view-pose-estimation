@@ -59,7 +59,7 @@ class DatasetGenerator():
                            0, 0, 1]).reshape(3,3)
         self.aug = self.setup_augmentation()
         self.model = inout.load_ply(obj_path.replace(".obj",".ply"))
-        self.backgrounds = self.load_bg_images("backgrounds", background_path, 10,
+        self.backgrounds = self.load_bg_images("backgrounds", background_path, 17000,
                                                self.img_size, self.img_size)
         if(encoder_weights is not None):
             self.encoder = self.load_encoder(encoder_weights)
