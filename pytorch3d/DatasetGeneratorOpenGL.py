@@ -60,7 +60,7 @@ class DatasetGenerator():
                            0, 0, 1]).reshape(3,3)
         self.aug = self.setup_augmentation()
         self.model = inout.load_ply(obj_path.replace(".obj",".ply"))
-        self.backgrounds = self.load_bg_images("backgrounds", background_path, 17000,
+        self.backgrounds = self.load_bg_images("backgrounds", background_path, 170,
                                                self.img_size, self.img_size)
         if(encoder_weights is not None):
             self.encoder = self.load_encoder(encoder_weights)
@@ -136,14 +136,22 @@ class DatasetGenerator():
 
     def setup_augmentation(self):
         # Augmentation
+        # aug = iaa.Sequential([
+        #     #iaa.Sometimes(0.5, iaa.PerspectiveTransform(0.05)),
+        #     #iaa.Sometimes(0.5, iaa.CropAndPad(percent=(-0.05, 0.1))),
+        #     #iaa.Sometimes(0.5, iaa.Affine(scale=(1.0, 1.2))),
+        #     iaa.Sometimes(0.5, iaa.CoarseDropout( p=0.05, size_percent=0.01) ),
+        #     iaa.Sometimes(0.5, iaa.GaussianBlur(1.2*np.random.rand())),
+        #     iaa.Sometimes(0.5, iaa.Add((-0.1, 0.1), per_channel=0.3)),
+        #     iaa.Sometimes(0.3, iaa.Invert(0.2, per_channel=True)),
+        #     iaa.Sometimes(0.5, iaa.Multiply((0.6, 1.4), per_channel=0.5)),
+        #     iaa.Sometimes(0.5, iaa.Multiply((0.6, 1.4))),
+        #     iaa.Sometimes(0.5, iaa.ContrastNormalization((0.5, 2.2), per_channel=0.3))],
+        #                      random_order=False)
         aug = iaa.Sequential([
-            #iaa.Sometimes(0.5, iaa.PerspectiveTransform(0.05)),
-            #iaa.Sometimes(0.5, iaa.CropAndPad(percent=(-0.05, 0.1))),
-            #iaa.Sometimes(0.5, iaa.Affine(scale=(1.0, 1.2))),
-            iaa.Sometimes(0.5, iaa.CoarseDropout( p=0.05, size_percent=0.01) ),
+            iaa.Sometimes(0.5, iaa.CoarseDropout( p=0.25, size_percent=0.02) ),
             iaa.Sometimes(0.5, iaa.GaussianBlur(1.2*np.random.rand())),
-            iaa.Sometimes(0.5, iaa.Add((-0.1, 0.1), per_channel=0.3)),
-            iaa.Sometimes(0.3, iaa.Invert(0.2, per_channel=True)),
+            iaa.Sometimes(0.5, iaa.Add((-60, 60), per_channel=0.3)),
             iaa.Sometimes(0.5, iaa.Multiply((0.6, 1.4), per_channel=0.5)),
             iaa.Sometimes(0.5, iaa.Multiply((0.6, 1.4))),
             iaa.Sometimes(0.5, iaa.ContrastNormalization((0.5, 2.2), per_channel=0.3))],
@@ -273,7 +281,7 @@ class DatasetGenerator():
 
         images = []
         for k in np.arange(self.batch_size):
-            image_base = image_renders[k]
+            image_base = image_renders[k].copy()
 
             if(len(self.backgrounds) > 0):
                 img_back = self.backgrounds[bg_im_isd[k]]
