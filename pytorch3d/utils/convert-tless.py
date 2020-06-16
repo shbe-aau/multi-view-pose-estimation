@@ -48,6 +48,7 @@ def latestCheckpoint(model_dir):
 def load_tless_dataset(folder_path):
     img_path = os.path.join(folder_path, "rgb")
     gt_path = os.path.join(folder_path, "gt.yml")
+    cam_path = os.path.join(folder_path, "info.yml")
     img_names= glob.glob(img_path + "*.png")
 
     with open(gt_path, 'r') as fp:
@@ -80,16 +81,18 @@ parser = argparse.ArgumentParser()
 parser.add_argument("dataset_path", help="path to the T-LESS dataset folder containing .yml groundtruth file and 'rgb' directory with images")
 parser.add_argument("-v", help="visualize the data", type=bool, default=False)
 parser.add_argument("-o", help="output path", default="")
+parser.add_argument("-n", help="object number", type=int, default=19)
 arguments = parser.parse_args()
 visualize = arguments.v
 output_path = arguments.o
+obj_num = arguments.n
 
 # Load the T-LESS dataset
-dataset = load_tless_dataset(arguments.dataset_path)
+dataset, camset = load_tless_dataset(arguments.dataset_path)
 
 # Lets use a model to see what we get from it
-model_path = latestCheckpoint(os.path.join('./output/depth/aug-obj19-l1-clamped-depth-aug-bg-dataset-fixed-lr/', "models/"))
-model, _, _, _ = loadCheckpoint(model_path)
+#model_path = latestCheckpoint(os.path.join('./output/depth/aug-obj19-l1-clamped-depth-aug-bg-dataset-fixed-lr/', "models/"))
+#model, _, _, _ = loadCheckpoint(model_path)
 
 # Loop through the T-LESS dataset
 Rs = []
