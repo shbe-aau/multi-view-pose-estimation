@@ -274,7 +274,6 @@ class DatasetGenerator():
         images = []
         for k in np.arange(self.batch_size):
             image_base = image_renders[k]
-            image_ref = images_aug[k]
 
             if(len(self.backgrounds) > 0):
                 img_back = self.backgrounds[bg_im_isd[k]]
@@ -283,12 +282,17 @@ class DatasetGenerator():
                 sum_img = np.sum(image_base[:,:,:3], axis=2)
                 alpha[sum_img > 0] = 1
                 
-                image_ref[:, :, 0:3] = image_ref[:, :, 0:3] * alpha + img_back[:, :, 0:3] * (1 - alpha)
+                image_base[:, :, 0:3] = image_base[:, :, 0:3] * alpha + img_back[:, :, 0:3] * (1 - alpha)
             else:
-                image_ref = image_ref[:, :, 0:3]
+                image_base = image_base[:, :, 0:3]
 
-            image_ref = image_ref.astype(np.float)/255.0
-            image_ref = np.clip(image_ref, 0.0, 1.0)
+            # Augment data
+            image_aug = np.array([image_base])
+            image_aug = self.aug(images=image_aug)
+
+            # Convert to float and clip
+            image_aug = image_aug[0].astype(np.float)/255.0
+            image_ref = np.clip(image_aug, 0.0, 1.0)
 
             org_img = image_renders[k]
             ys, xs = np.nonzero(org_img[:,:,0] > 0)
@@ -379,7 +383,8 @@ if __name__ == "__main__":
             window_name = "Sample {0}/{1}".format(i,arguments.n)
             cv2.namedWindow(window_name)
             cv2.moveWindow(window_name,42,42)
-            cv2.imshow(window_name, img) 
+            # Flip last axis to convert from RGB to BGR before showing using cv2
+            cv2.imshow(window_name, np.flip(img,axis=2)) 
             key = cv2.waitKey(0)            
             cv2.destroyWindow(window_name)
             if(key == ord("q")):
