@@ -54,6 +54,7 @@ class DatasetGenerator():
         self.batch_size = batch_size
         self.dist = obj_distance
         self.img_size = 320
+        self.max_rel_offset = 0.1
         self.K = np.array([1075.65, 0, self.img_size/2,
                            0, 1073.90, self.img_size/2,
                            0, 0, 1]).reshape(3,3)
@@ -64,7 +65,7 @@ class DatasetGenerator():
         if(encoder_weights is not None):
             self.encoder = self.load_encoder(encoder_weights)
         else:
-            self.encoder
+            self.encoder = None
 
         self.renderer = Renderer(self.model, (self.img_size,self.img_size),
                                  self.K, surf_color=(1, 1, 1), mode='rgb',
@@ -287,7 +288,14 @@ class DatasetGenerator():
             org_img = image_renders[k]
             ys, xs = np.nonzero(org_img[:,:,0] > 0)
             obj_bb = calc_2d_bbox(xs,ys,[640,640])
-            cropped = extract_square_patch(image_ref, obj_bb)
+
+            # Add relative offset when cropping - like Sundermeyer
+            x, y, w, h = obj_bb
+            rand_trans_x = np.random.uniform(-self.max_rel_offset, self.max_rel_offset) * w
+            rand_trans_y = np.random.uniform(-self.max_rel_offset, self.max_rel_offset) * h
+            obj_bb_off = obj_bb + np.array([rand_trans_x,rand_trans_y,0,0])
+            
+            cropped = extract_square_patch(image_ref, obj_bb_off)
             cropped_org = extract_square_patch(org_img, obj_bb)
             images.append(cropped[:,:,:3])
 
