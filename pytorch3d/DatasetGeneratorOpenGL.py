@@ -205,26 +205,31 @@ class DatasetGenerator():
             R = torch.inverse(R)
         
         t = torch.tensor([0.0, 0.0, self.dist])
-        return R,t
+        return R.squeeze(),t
 
     # Truely random
     # Based on: https://www.cmu.edu/biolphys/deserno/pdf/sphere_equi.pdf
     def sphere_sampling(self):
-        z_sample = np.random.uniform(low=-self.dist, high=self.dist, size=1)[0]
+        z = np.random.uniform(low=-self.dist, high=self.dist, size=1)[0]
+        #z = -self.dist*0.5
         theta_sample = np.random.uniform(low=0.0, high=2.0*np.pi, size=1)[0]
-        x = np.sqrt((self.dist**2 - z_sample**2))*np.cos(theta_sample)
-        y = np.sqrt((self.dist**2 - z_sample**2))*np.sin(theta_sample)
-        z = np.sqrt(self.dist**2 - x**2 - y**2)
+        #theta_sample = np.pi
+        x = np.sqrt((self.dist**2 - z**2))*np.cos(theta_sample)
+        y = np.sqrt((self.dist**2 - z**2))*np.sin(theta_sample)
 
         cam_position = torch.tensor([x, y, z]).unsqueeze(0)
-        R = look_at_rotation(cam_position, up=((0, 0, 1),)).squeeze()
+        if(z < 0):
+            R = look_at_rotation(cam_position, up=((0, 0, -1),)).squeeze()
+        else:
+            R = look_at_rotation(cam_position, up=((0, 0, 1),)).squeeze()
 
         # Rotate in-plane
         if(not self.simple_pose_sampling):
-            rot_degrees = np.random.uniform(low=0.0, high=360.0, size=1)
+            rot_degrees = np.random.uniform(low=-90.0, high=90.0, size=1)
             rot = scipyR.from_euler('z', rot_degrees, degrees=True)    
             rot_mat = torch.tensor(rot.as_matrix(), dtype=torch.float32)
             R = torch.matmul(R, rot_mat)
+            R = R.squeeze()
         
         t = torch.tensor([0.0, 0.0, self.dist])
         return R,t
@@ -237,7 +242,7 @@ class DatasetGenerator():
         image_renders = []
         for k in np.arange(self.batch_size):
             R, t = self.pose_sampling()
-            R = R.detach().cpu().numpy()[0]
+            R = R.detach().cpu().numpy()
             t = t.detach().cpu().numpy()
 
             # Convert R matrix from pytorch to opengl format
