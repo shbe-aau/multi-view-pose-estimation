@@ -75,7 +75,7 @@ class DatasetGenerator():
         model = Encoder(weights_path).to(self.device)
         model.eval()
         return model
-        
+
     def prepare_renderer(self, obj_path, batch_size):
         # Load the obj and ignore the textures and materials.
         verts, faces_idx, _ = load_obj(obj_path)
@@ -124,7 +124,7 @@ class DatasetGenerator():
     def load_bg_images(self, output_path, background_path, num_bg_images, h, w, c=3):
         if(background_path == ""):
             return []
-    
+
         bg_img_paths = glob.glob(background_path + "*.jpg")
         noof_bg_imgs = min(num_bg_images, len(bg_img_paths))
         shape = (h, w, c)
@@ -139,7 +139,7 @@ class DatasetGenerator():
             print(len(file_list))
             from random import shuffle
             shuffle(file_list)
-            
+
             for j,fname in enumerate(file_list):
                 print('loading bg img %s/%s' % (j,noof_bg_imgs))
                 bgr = cv2.imread(fname)
@@ -178,28 +178,28 @@ class DatasetGenerator():
         # Generate random pose for the batch
         # All images in the batch will share pose but different augmentations
         R, t = look_at_view_transform(self.dist, elev=0, azim=0, up=((0, 1, 0),))
-    
+
         # Sample azimuth and apply transformation
         azim = np.random.uniform(low=0.0, high=360.0, size=1)
-        rot = scipyR.from_euler('z', azim, degrees=True)    
+        rot = scipyR.from_euler('z', azim, degrees=True)
         rot_mat = torch.tensor(rot.as_matrix(), dtype=torch.float32)
         R = torch.matmul(R, rot_mat)
-        
+
         # Sample elevation and apply transformation
         elev = np.random.uniform(low=-180, high=0.0, size=1)
-        rot = scipyR.from_euler('x', elev, degrees=True)    
+        rot = scipyR.from_euler('x', elev, degrees=True)
         rot_mat = torch.tensor(rot.as_matrix(), dtype=torch.float32)
         R = torch.matmul(R, rot_mat)
 
         # Sample cam plane rotation and apply
         if(not self.simple_pose_sampling):
             in_plane = np.random.uniform(low=0.0, high=360.0, size=1)
-            rot = scipyR.from_euler('y', in_plane, degrees=True)    
+            rot = scipyR.from_euler('y', in_plane, degrees=True)
             rot_mat = torch.tensor(rot.as_matrix(), dtype=torch.float32)
             R = torch.inverse(R)
             R = torch.matmul(R, rot_mat)
             R = torch.inverse(R)
-        
+
         t = torch.tensor([0.0, 0.0, self.dist])
         return R,t
 
@@ -218,13 +218,13 @@ class DatasetGenerator():
         # Rotate in-plane
         if(not self.simple_pose_sampling):
             rot_degrees = np.random.uniform(low=0.0, high=360.0, size=1)
-            rot = scipyR.from_euler('z', rot_degrees, degrees=True)    
+            rot = scipyR.from_euler('z', rot_degrees, degrees=True)
             rot_mat = torch.tensor(rot.as_matrix(), dtype=torch.float32)
             R = torch.matmul(R, rot_mat)
-        
+
         t = torch.tensor([0.0, 0.0, self.dist])
         return R,t
-    
+
     def generate_image_batch(self):
         # Generate random poses
         curr_Rs = []
@@ -244,7 +244,7 @@ class DatasetGenerator():
             random_lights.append(random_light)
         batch_light = torch.tensor(np.stack(random_lights), device=self.device, dtype=torch.float32)
         self.renderer.shader.lights.direction = batch_light
-        
+
         # Render images
         image_renders = self.renderer(meshes_world=self.batch_mesh, R=batch_R, T=batch_T)
 
@@ -269,7 +269,7 @@ class DatasetGenerator():
                 image_ref[:, :, 0:3] = image_ref[:, :, 0:3] * alpha + img_back[:, :, 0:3]/255 * (1 - alpha)
             else:
                 image_ref = image_ref[:, :, 0:3]
-                
+
             image_ref = np.clip(image_ref, 0.0, 1.0) #[:, :, 0:3]
 
             org_img = image_renders[k]
@@ -298,6 +298,16 @@ class DatasetGenerator():
     def generate_samples(self, num_samples):
         data = self.generate_images(num_samples)
 
+        codes = []
+        for img in data["images"]:
+            img = torch.from_numpy(img).unsqueeze(0).permute(0,3,1,2).to(self.device)
+            code = self.encoder(img.float())
+            code = code.detach().cpu().numpy()
+            codes.append(code[0])
+        data["codes"] = codes
+        return data
+
+    def generate_codes_from_images(self, data):
         codes = []
         for img in data["images"]:
             img = torch.from_numpy(img).unsqueeze(0).permute(0,3,1,2).to(self.device)

@@ -46,24 +46,31 @@ def loadCheckpoint(model_path):
     model = Model(output_size=6).cuda()
     model.load_state_dict(checkpoint['model'])
 
+    device = torch.device("cuda:0")
+    model.to(device)
+
     # Load optimizer
     optimizer = torch.optim.Adam(model.parameters())
     optimizer.load_state_dict(checkpoint['optimizer'])
 
     lr_reducer = torch.optim.lr_scheduler.StepLR(optimizer, step_size=2, gamma=0.9)
     lr_reducer.load_state_dict(checkpoint['lr_reducer'])
-    
+
     print("Loaded the checkpoint: \n" + model_path)
     return model, optimizer, epoch, lr_reducer
 
-def loadDataset(file_list):
+def loadDataset(file_list, images=False):
     data = {"codes":[],"Rs":[]}
+    if images:
+        data = {"codes":[],"Rs":[], "images":[]}
     for f in file_list:
         print("Loading dataset: {0}".format(f))
         with open(f, "rb") as f:
             curr_data = pickle.load(f, encoding="latin1")
             data["codes"] = data["codes"] + curr_data["codes"].copy()
             data["Rs"] = data["Rs"] + curr_data["Rs"].copy()
+            if images:
+                data["images"] = data["images"] + curr_data["images"].copy()
     return data
 
 def main():
@@ -109,7 +116,7 @@ def main():
     #print("Loaded dataset with {0} samples!".format(len(data["codes"])))
 
     # Load the validationset
-    val_data = loadDataset(json.loads(args.get('Dataset', 'VALID_DATA_PATH')))
+    val_data = loadDataset(json.loads(args.get('Dataset', 'VALID_DATA_PATH')), images=True)
     print("Loaded validation set with {0} samples!".format(len(val_data["codes"])))
 
     output_path = args.get('Training', 'OUTPUT_PATH')
@@ -205,6 +212,8 @@ def testEpoch(mean, std, br, val_data, model,
     with torch.no_grad():
         dbg("Before test memory: {}".format(torch.cuda.memory_summary(device=device, abbreviated=False)), dbg_memory)
 
+        val_data = dataset_gen.generate_codes_from_images(val_data)
+
         model.eval()
         losses = []
         batch_size = br.batch_size
@@ -248,11 +257,10 @@ def testEpoch(mean, std, br, val_data, model,
                 vmin = np.linalg.norm(T)*0.9
                 vmax = max(np.max(gt_img), np.max(predicted_img))
 
-
                 fig = plt.figure(figsize=(5+len(views)*2, 9))
                 for viewNum in np.arange(len(views)):
                     plotView(viewNum, len(views), vmin, vmax, gt_images, predicted_images,
-                             predicted_poses, batch_loss, batch_size)
+                             predicted_poses, batch_loss, batch_size, val_data["images"][curr_batch[0]])
                 fig.tight_layout()
 
                 #plt.hist(gt_img,bins=20)
@@ -276,7 +284,7 @@ def trainEpoch(mean, std, br, data, model,
     # Generate training data
     data = dataset_gen.generate_samples(num_samples)
     print("Generated {0} samples!".format(len(data["codes"])))
-    
+
     model.train()
     losses = []
     batch_size = br.batch_size
@@ -334,6 +342,7 @@ def trainEpoch(mean, std, br, data, model,
 
             #plt.hist(gt_img,bins=20)
             fig.savefig(os.path.join(batch_img_dir, "epoch{0}-batch{1}.png".format(epoch,i)), dpi=fig.dpi)
+            plt.show()
             plt.close()
 
             # fig = plt.figure(figsize=(4,4))
