@@ -11,6 +11,7 @@ from bop_toolkit_lib import dataset_params
 from bop_toolkit_lib import inout
 from bop_toolkit_lib import misc
 
+import pickle
 import cv2
 
 # PARAMETERS.
@@ -34,7 +35,7 @@ p = {
   # Select ID's of scenes, images and GT poses to be processed.
   # Empty list [] means that all ID's will be used.
   'scene_ids': [13],
-  'im_ids': [],
+  'im_ids': [], #1,101,201,301,401,501],
   'gt_ids': [],
   'obj_ids': [19],
   
@@ -43,6 +44,7 @@ p = {
 }
 ################################################################################
 
+visualize = False
 
 # Load dataset parameters.
 dp_split = dataset_params.get_split_params(
@@ -69,6 +71,14 @@ if p['scene_ids']:
   scene_ids_curr = set(scene_ids_curr).intersection(p['scene_ids'])
 
 for scene_id in scene_ids_curr:
+  images = []
+  Rs = []
+  ts = []
+  bbox_obj = []
+  bbox_visib = []
+  visib_fract = []
+  obj_ids = []
+  
   # Load scene info and ground-truth poses.
   #scene_camera = inout.load_scene_camera(
   #  dp_split['scene_camera_tpath'].format(scene_id=scene_id))
@@ -101,20 +111,49 @@ for scene_id in scene_ids_curr:
 
       # Load info
       obj_id = gt['obj_id']
-      R = gt['cam_R_m2c']
-      t = gt['cam_t_m2c']
       bbox = gt_info['bbox_obj']
       #bbox = gt_info['bbox_visib']
       visible = gt_info['visib_fract']
-      print(visible)
 
-      if(obj_id not in p['obj_ids']):
+      if(len(p['obj_ids']) > 0 and obj_id not in p['obj_ids']):
         continue
 
       # Load the color image
       rgb = inout.load_im(dp_split['rgb_tpath'].format(scene_id=scene_id, im_id=im_id))[:, :, :3]
 
-      # Draw bbox and display
-      rgb = cv2.rectangle(rgb, (bbox[0],bbox[1]), (bbox[0]+bbox[2],bbox[1]+bbox[3]), (255,0,0), 2)
-      cv2.imshow("bla", np.flip(rgb,axis=2))
-      cv2.waitKey(0)
+      bb = gt_info['bbox_visib']
+      cropped = rgb[bb[1]:bb[1]+bb[3],bb[0]:bb[0]+bb[2],:]
+      
+      
+      images.append(cropped)
+      Rs.append(gt['cam_R_m2c'])
+      ts.append(gt['cam_t_m2c'])
+      bbox_obj.append(gt_info['bbox_obj']) 
+      bbox_visib.append(gt_info['bbox_visib'])
+      visib_fract.append(gt_info['visib_fract'])
+      obj_ids.append(gt['obj_id'])
+
+      print("Processing image {0}/{1}".format(im_counter+1,len(im_ids)))
+      
+      if(visualize):
+        # Draw bbox and display
+        color = (0,255,0)
+        if(visible < 0.2):
+          color = (255,0,0)
+        vis_rgb = cv2.rectangle(rgb.copy(),
+                                (bbox[0],bbox[1]), (bbox[0]+bbox[2],bbox[1]+bbox[3]), color, 2)
+        cv2.imshow("scene", np.flip(vis_rgb,axis=2))
+        cv2.imshow("object crop", np.flip(cropped,axis=2))
+        cv2.waitKey(0)
+
+  # Save scene data to pickle file
+  data={"images":images,
+      "Rs":Rs,
+      "ts":ts,
+      #"bbox_obj":bbox_obj,
+      #"bbox_visib":bbox_visib,
+      "visib_fract":visib_fract,
+        "obj_ids":obj_ids}
+  output_path = "./tless-scene{0}.p".format(scene_id)
+  pickle.dump(data, open(output_path, "wb"), protocol=2)
+  
