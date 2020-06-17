@@ -43,6 +43,7 @@ from pytorch3d.renderer import (
 from utils.pytless import inout, misc
 from vispy import app, gloo
 from utils.pytless.renderer import Renderer
+from utils.view_sampler import viewsphere_for_embedding
 
 
 class DatasetGenerator():
@@ -51,6 +52,7 @@ class DatasetGenerator():
                  encoder_weights, device, sampling_method="sphere", random_light=True,
                  num_bgs=17000):
         self.device = device
+        self.poses = []
         self.obj_path = obj_path
         self.batch_size = batch_size
         self.dist = obj_distance
@@ -98,15 +100,23 @@ class DatasetGenerator():
             self.simple_pose_sampling = False
         elif(sampling_method == "sundermeyer-random"):
             self.pose_sampling = self.sm_quat_random
-            self.simple_pose_sampling = False            
+            self.simple_pose_sampling = False
+        elif(sampling_method == "sundermeyer-sphere"):
+            views = viewsphere_for_embedding(num_views=2000, num_cyclo=36)            
+            self.poses = []
+            for i in np.arange(views.shape[0]):
+                print("num views: ",views.shape[0])
+                self.poses.append(torch.from_numpy(views[i]))
+            self.pose_sampling = self.reuse_poses            
         else:
             print("ERROR! Invalid view sampling method: {0}".format(sampling_method))
 
-        self.poses = []
-        for i in np.arange(20*1000):
-            R, t = self.pose_sampling()
-            self.poses.append(R)
-        self.pose_sampling = self.reuse_poses
+        if(self.pose_reuse == True):
+            self.poses = []
+            for i in np.arange(20*1000):
+                R, t = self.pose_sampling()
+                self.poses.append(R)
+            self.pose_sampling = self.reuse_poses
 
     def reuse_poses(self):
         random.shuffle(self.poses)
@@ -288,7 +298,6 @@ class DatasetGenerator():
             [                0.0,                 0.0,                 0.0, 1.0]])
 
         R = torch.from_numpy(R[:3,:3])
-        R = torch.inverse(R)
         t = torch.tensor([0.0, 0.0, self.dist])
         return R,t
 
