@@ -46,6 +46,29 @@ p = {
 
 visualize = False
 
+
+def extract_square_patch(scene_img, bb_xywh, pad_factor=1.2,resize=(128,128),
+                         interpolation=cv2.INTER_NEAREST,black_borders=False):
+
+        x, y, w, h = np.array(bb_xywh).astype(np.int32)
+        size = int(np.maximum(h, w) * pad_factor)
+
+        left = int(np.maximum(x+w/2-size/2, 0))
+        right = int(np.minimum(x+w/2+size/2, scene_img.shape[1]))
+        top = int(np.maximum(y+h/2-size/2, 0))
+        bottom = int(np.minimum(y+h/2+size/2, scene_img.shape[0]))
+
+        scene_crop = scene_img[top:bottom, left:right].copy()
+
+        if black_borders:
+            scene_crop[:(y-top),:] = 0
+            scene_crop[(y+h-top):,:] = 0
+            scene_crop[:,:(x-left)] = 0
+            scene_crop[:,(x+w-left):] = 0
+
+        scene_crop = cv2.resize(scene_crop, resize) #, interpolation = interpolation)
+        return scene_crop
+
 # Load dataset parameters.
 dp_split = dataset_params.get_split_params(
   p['datasets_path'], p['dataset'], p['dataset_split'], p['dataset_split_type'])
@@ -122,8 +145,11 @@ for scene_id in scene_ids_curr:
       rgb = inout.load_im(dp_split['rgb_tpath'].format(scene_id=scene_id, im_id=im_id))[:, :, :3]
 
       bb = gt_info['bbox_visib']
-      cropped = rgb[bb[1]:bb[1]+bb[3],bb[0]:bb[0]+bb[2],:]
-      
+
+      if(bb[2] == 0 or bb[3] == 0):
+        continue
+      cropped = extract_square_patch(rgb, bb)
+      #cropped = rgb[bb[1]:bb[1]+bb[3],bb[0]:bb[0]+bb[2],:]
       
       images.append(cropped)
       Rs.append(gt['cam_R_m2c'])
@@ -154,6 +180,13 @@ for scene_id in scene_ids_curr:
       #"bbox_visib":bbox_visib,
       "visib_fract":visib_fract,
         "obj_ids":obj_ids}
-  output_path = "./tless-scene{0}.p".format(scene_id)
+
+  if(len(images) == 0):
+    continue
+  
+  if(p["dataset_split"] == "train"):
+    output_path = "./tless-train-obj{0}.p".format(scene_id)
+  else:
+    output_path = "./tless-test-scene{0}.p".format(scene_id)
   pickle.dump(data, open(output_path, "wb"), protocol=2)
   
