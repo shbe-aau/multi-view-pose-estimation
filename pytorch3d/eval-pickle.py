@@ -81,53 +81,52 @@ def main():
     # Load dataset
     data = pickle.load(open(args.pi,"rb"), encoding="latin1")
 
-
+    # Prepare renderer
     obj_path = "/shared-folder/AugmentedAutoencoder/pytorch3d/data/t-less-obj19/cad/obj_19.ply"
     obj_model = inout.load_ply(obj_path.replace(".obj",".ply"))
     img_size = 320
-
     K = np.array([1075.65091572, 0.0, 320.0/2.0,
                   0.0, 1073.90347929, 320.0/2.0,
                   0.0, 0.0, 1.0]).reshape(3,3)
-    
     renderer = Renderer(obj_model, (img_size,img_size), K,
                         surf_color=(1, 1, 1), mode='rgb', random_light=False)
 
     # Loop through dataset
     for i,img in enumerate(data["images"]):
-
-        #if(data["visib_fract"][i] < 0.5):
-        #    continue
-        
         print("Current image: {0}/{1}".format(i+1,len(data["images"])))
-
-        # Run through encoder
-        img_torch = torch.from_numpy(img).unsqueeze(0).permute(0,3,1,2).to(device)
-        code = encoder(img_torch.float())
-
-        # Run through model
-        predicted_poses = model(code)
-        Rs_predicted = compute_rotation_matrix_from_ortho6d(predicted_poses)
-
-        R = Rs_predicted.detach().cpu().numpy()[0]
         
-        # Invert xy axes
-        xy_flip = np.eye(3, dtype=np.float)
-        xy_flip[0,0] = -1.0
-        xy_flip[1,1] = -1.0
-        R = R.dot(xy_flip)
+        if("Rs_predicted" in data):
+            R_predicted = data["Rs_predicted"][i]
+        else:
+            #if(data["visib_fract"][i] < 0.5):
+            #    continue
+        
+            # Run through encoder
+            img_torch = torch.from_numpy(img).unsqueeze(0).permute(0,3,1,2).to(device)
+            code = encoder(img_torch.float())
 
-        # Inverse rotation matrix
-        R = np.transpose(R)
+            # Run through model
+            predicted_poses = model(code)
+            Rs_predicted = compute_rotation_matrix_from_ortho6d(predicted_poses)
+
+            R_predicted = Rs_predicted.detach().cpu().numpy()[0]
+        
+            # Invert xy axes
+            xy_flip = np.eye(3, dtype=np.float)
+            xy_flip[0,0] = -1.0
+            xy_flip[1,1] = -1.0
+            R_predicted = R_predicted.dot(xy_flip)
+
+            # Inverse rotation matrix
+            R_predicted = np.transpose(R_predicted)
         
         if(visualize):
-
             t_gt = np.array(data["ts"][i])
             t = np.array([0,0,500])
 
             # Render predicted pose
-            R = correct_trans_offset(R,t_gt)
-            ren_predicted = renderer.render(R, t)
+            R_predicted = correct_trans_offset(R_predicted,t_gt)
+            ren_predicted = renderer.render(R_predicted, t)
 
             # Render groundtruth pose
             R_gt = data["Rs"][i]
@@ -137,12 +136,19 @@ def main():
             cv2.imshow("input image", np.flip(img,axis=2))
             cv2.imshow("gt render", np.flip(ren_gt,axis=2))
             cv2.imshow("predict render", np.flip(ren_predicted,axis=2))
+
+            if("codebook_images" in data):
+                cv2.imshow("codebook image",
+                           np.flip(data["codebook_images"][i],axis=2))                
+            
             key = cv2.waitKey(0)            
             if(key == ord("q")):
                 visualize = False
                 #break
                 continue
-    
+
+    # Save to CSV
+    # NOT IMPLEMENTED
 
 if __name__ == '__main__':
     main()

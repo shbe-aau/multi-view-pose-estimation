@@ -88,11 +88,7 @@ def main():
                       "codebook_images":images,
                       "Rs":data["Rs"],
                       "Rs_predicted":Rs_predicted,
-                      "ts":data["ts"],
-                      "elevs":data["elevs"],
-                      "azims":data["azims"],
-                      "dist":data["dist"],
-                      "light_dir":data["light_dir"]}
+                      "ts":data["ts"]}
         pickle_path_out = (arguments.pickle_path).replace("-images", "-poses")
         print("Saving to: {0}".format(pickle_path_out))
         pickle.dump(coded_data, open(pickle_path_out, "wb"), protocol=2)
