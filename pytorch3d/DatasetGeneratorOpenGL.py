@@ -48,7 +48,8 @@ from utils.pytless.renderer import Renderer
 class DatasetGenerator():
 
     def __init__(self, background_path, obj_path, obj_distance, batch_size,
-                 encoder_weights, device, sampling_method="sphere", random_light=True):
+                 encoder_weights, device, sampling_method="sphere", random_light=True,
+                 num_bgs=17000):
         self.device = device
         self.obj_path = obj_path
         self.batch_size = batch_size
@@ -60,7 +61,7 @@ class DatasetGenerator():
                            0, 0, 1]).reshape(3,3)
         self.aug = self.setup_augmentation()
         self.model = inout.load_ply(obj_path.replace(".obj",".ply"))
-        self.backgrounds = self.load_bg_images("backgrounds", background_path, 170,
+        self.backgrounds = self.load_bg_images("backgrounds", background_path, num_bgs,
                                                self.img_size, self.img_size)
         if(encoder_weights is not None):
             self.encoder = self.load_encoder(encoder_weights)
@@ -186,7 +187,7 @@ class DatasetGenerator():
         return R,t
     
     # Sampling based on the T-LESS dataset
-    def tless_sampling(self):
+    def tless_sampling_broken(self):
         # Generate random pose for the batch
         # All images in the batch will share pose but different augmentations
         R, t = look_at_view_transform(self.dist, elev=0, azim=0, up=((0, 1, 0),))
@@ -215,6 +216,32 @@ class DatasetGenerator():
         t = torch.tensor([0.0, 0.0, self.dist])
         return R.squeeze(),t
 
+    def tless_sampling(self):
+        theta_sample = np.random.uniform(low=0.0, high=2.0*np.pi, size=1)[0]
+        phi_sample = np.random.uniform(low=0.0, high=2.0*np.pi, size=1)[0]
+        
+        x = self.dist*np.sin(theta_sample)*np.cos(phi_sample)
+        y = self.dist*np.sin(theta_sample)*np.sin(phi_sample)
+        z = self.dist*np.cos(theta_sample)
+        
+        cam_position = torch.tensor([x, y, z]).unsqueeze(0)
+        if(z < 0):
+            R = look_at_rotation(cam_position, up=((0, 0, -1),)).squeeze()
+        else:
+            R = look_at_rotation(cam_position, up=((0, 0, 1),)).squeeze()
+
+        # Rotate in-plane
+        if(not self.simple_pose_sampling):
+            rot_degrees = np.random.uniform(low=-90.0, high=90.0, size=1)
+            rot = scipyR.from_euler('z', rot_degrees, degrees=True)    
+            rot_mat = torch.tensor(rot.as_matrix(), dtype=torch.float32)
+            R = torch.matmul(R, rot_mat)
+            R = R.squeeze()
+        
+        t = torch.tensor([0.0, 0.0, self.dist])
+        return R,t
+        
+    
     # Truely random
     # Based on: https://www.cmu.edu/biolphys/deserno/pdf/sphere_equi.pdf
     def sphere_sampling(self):
@@ -368,6 +395,7 @@ if __name__ == "__main__":
     parser.add_argument("-s", help="pose sampling method", default="tless-simple")
     parser.add_argument("-e", help="path to .npy encoder weights", default=None)
     parser.add_argument("-rl", help="enable random light", default=True)
+    parser.add_argument("-ng", help="number of backgrounds", type=int, default=17000)
     arguments = parser.parse_args()
 
     # Create dataset generator
@@ -380,6 +408,7 @@ if __name__ == "__main__":
                           sampling_method=arguments.s,
                           encoder_weights=arguments.e,
                           random_light=str2bool(arguments.rl),
+                          num_bgs=arguments.ng,
                           device=device)
 
     # Generate data
