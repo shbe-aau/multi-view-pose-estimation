@@ -72,6 +72,11 @@ class DatasetGenerator():
                                  self.K, surf_color=(1, 1, 1), mode='rgb',
                                  random_light=random_light)
 
+        self.pose_reuse = False
+        if(sampling_method.split("-")[-1] == "reuse"):
+            self.pose_reuse = True
+        sampling_method = sampling_method.replace("-reuse","")
+        
         self.simple_pose_sampling = False
         if(sampling_method == "tless"):
             self.pose_sampling = self.tless_sampling
@@ -91,9 +96,24 @@ class DatasetGenerator():
         elif(sampling_method == "fixed"): # Mainly for debugging purposes
             self.pose_sampling = self.fixed_sampling
             self.simple_pose_sampling = False
+        elif(sampling_method == "sundermeyer-random"):
+            self.pose_sampling = self.sm_quat_random
+            self.simple_pose_sampling = False            
         else:
             print("ERROR! Invalid view sampling method: {0}".format(sampling_method))
 
+        self.poses = []
+        for i in np.arange(20*1000):
+            R, t = self.pose_sampling()
+            self.poses.append(R)
+        self.pose_sampling = self.reuse_poses
+
+    def reuse_poses(self):
+        random.shuffle(self.poses)
+        R = self.poses[-1]
+        t = torch.tensor([0.0, 0.0, self.dist])
+        return R,t        
+        
     def load_encoder(self, weights_path):
         model = Encoder(weights_path).to(self.device)
         model.eval()
@@ -241,6 +261,37 @@ class DatasetGenerator():
         t = torch.tensor([0.0, 0.0, self.dist])
         return R,t
         
+
+    # Based on Sundermeyer
+    def sm_quat_random(self):
+        # Sample random quaternion
+        rand = np.random.rand(3)
+        r1 = np.sqrt(1.0 - rand[0])
+        r2 = np.sqrt(rand[0])
+        pi2 = math.pi * 2.0
+        t1 = pi2 * rand[1]
+        t2 = pi2 * rand[2]
+        random_quat = np.array([np.cos(t2)*r2, np.sin(t1)*r1,
+                                np.cos(t1)*r1, np.sin(t2)*r2])
+
+        # Convert quaternion to rotation matrix
+        q = np.array(random_quat, dtype=np.float64, copy=True)
+        n = np.dot(q, q)
+        if n < 0.0001: #_EPS:
+            return np.identity(4)
+        q *= math.sqrt(2.0 / n)
+        q = np.outer(q, q)
+        R = np.array([
+            [1.0-q[2, 2]-q[3, 3],     q[1, 2]-q[3, 0],     q[1, 3]+q[2, 0], 0.0],
+            [    q[1, 2]+q[3, 0], 1.0-q[1, 1]-q[3, 3],     q[2, 3]-q[1, 0], 0.0],
+            [    q[1, 3]-q[2, 0],     q[2, 3]+q[1, 0], 1.0-q[1, 1]-q[2, 2], 0.0],
+            [                0.0,                 0.0,                 0.0, 1.0]])
+
+        R = torch.from_numpy(R[:3,:3])
+        R = torch.inverse(R)
+        t = torch.tensor([0.0, 0.0, self.dist])
+        return R,t
+
     
     # Truely random
     # Based on: https://www.cmu.edu/biolphys/deserno/pdf/sphere_equi.pdf
