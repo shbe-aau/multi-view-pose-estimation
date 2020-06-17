@@ -60,6 +60,7 @@ def main():
     parser.add_argument("-mp", help="path to the model checkpoint")
     parser.add_argument("-ep", help="path to the encoder weights")
     parser.add_argument("-pi", help="path to the pickle input file")
+    parser.add_argument("-op", help="path to the CAD model for the object", default=None)
     args = parser.parse_args()
     
     # Set the cuda device 
@@ -81,15 +82,18 @@ def main():
     # Load dataset
     data = pickle.load(open(args.pi,"rb"), encoding="latin1")
 
-    # Prepare renderer
-    obj_path = "/shared-folder/AugmentedAutoencoder/pytorch3d/data/t-less-obj19/cad/obj_19.ply"
-    obj_model = inout.load_ply(obj_path.replace(".obj",".ply"))
-    img_size = 320
-    K = np.array([1075.65091572, 0.0, 320.0/2.0,
-                  0.0, 1073.90347929, 320.0/2.0,
-                  0.0, 0.0, 1.0]).reshape(3,3)
-    renderer = Renderer(obj_model, (img_size,img_size), K,
-                        surf_color=(1, 1, 1), mode='rgb', random_light=False)
+    # Prepare renderer if defined
+    obj_path = args.op
+    if(obj_path is not None):
+        obj_model = inout.load_ply(obj_path.replace(".obj",".ply"))
+        img_size = 320
+        K = np.array([1075.65091572, 0.0, 320.0/2.0,
+                      0.0, 1073.90347929, 320.0/2.0,
+                      0.0, 0.0, 1.0]).reshape(3,3)
+        renderer = Renderer(obj_model, (img_size,img_size), K,
+                            surf_color=(1, 1, 1), mode='rgb', random_light=False)
+    else:
+        renderer = None
 
     # Loop through dataset
     for i,img in enumerate(data["images"]):
@@ -124,19 +128,20 @@ def main():
             t_gt = np.array(data["ts"][i])
             t = np.array([0,0,500])
 
-            # Render predicted pose
-            R_predicted = correct_trans_offset(R_predicted,t_gt)
-            ren_predicted = renderer.render(R_predicted, t)
+            if(renderer is not None):
+                # Render predicted pose
+                R_predicted = correct_trans_offset(R_predicted,t_gt)
+                ren_predicted = renderer.render(R_predicted, t)
 
-            # Render groundtruth pose
-            R_gt = data["Rs"][i]
-            R_gt = correct_trans_offset(R_gt,t_gt)
-            ren_gt = renderer.render(R_gt, t)
-            
+                # Render groundtruth pose
+                R_gt = data["Rs"][i]
+                R_gt = correct_trans_offset(R_gt,t_gt)
+                ren_gt = renderer.render(R_gt, t)
+
+                cv2.imshow("gt render", np.flip(ren_gt,axis=2))
+                cv2.imshow("predict render", np.flip(ren_predicted,axis=2))
+                
             cv2.imshow("input image", np.flip(img,axis=2))
-            cv2.imshow("gt render", np.flip(ren_gt,axis=2))
-            cv2.imshow("predict render", np.flip(ren_predicted,axis=2))
-
             if("codebook_images" in data):
                 cv2.imshow("codebook image",
                            np.flip(data["codebook_images"][i],axis=2))                
