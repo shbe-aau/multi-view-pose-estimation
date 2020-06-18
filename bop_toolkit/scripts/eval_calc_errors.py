@@ -145,7 +145,6 @@ for result_filename in p['result_filenames']:
   method = str(result_info[0])
   dataset_info = result_info[1].split('-')
   dataset = str(dataset_info[0])
-  print(dataset_info)
   split = str(dataset_info[1])
   split_type = str(dataset_info[2]) if len(dataset_info) > 2 else None
   split_type_str = ' - ' + split_type if split_type is not None else ''
@@ -193,7 +192,7 @@ for result_filename in p['result_filenames']:
   # Load the estimation targets.
   targets = inout.load_json(
     os.path.join(dp_split['base_path'], p['targets_filename']))
-
+  
   # Organize the targets by scene, image and object.
   misc.log('Organizing estimation targets...')
   targets_org = {}

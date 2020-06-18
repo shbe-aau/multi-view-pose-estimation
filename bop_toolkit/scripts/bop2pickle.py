@@ -21,7 +21,7 @@ p = {
   'dataset': 'tless',
 
   # Dataset split. Options: 'train', 'val', 'test'.
-  'dataset_split': 'test',
+  'dataset_split': 'train',
 
   # Dataset split type. None = default. See dataset_params.py for options.
   'dataset_split_type': None,
@@ -34,7 +34,7 @@ p = {
 
   # Select ID's of scenes, images and GT poses to be processed.
   # Empty list [] means that all ID's will be used.
-  'scene_ids': [13],
+  'scene_ids': [],
   'im_ids': [], #1,101,201,301,401,501],
   'gt_ids': [],
   'obj_ids': [19],
@@ -94,14 +94,6 @@ if p['scene_ids']:
   scene_ids_curr = set(scene_ids_curr).intersection(p['scene_ids'])
 
 for scene_id in scene_ids_curr:
-  images = []
-  Rs = []
-  ts = []
-  bbox_obj = []
-  bbox_visib = []
-  visib_fract = []
-  obj_ids = []
-  
   # Load scene info and ground-truth poses.
   #scene_camera = inout.load_scene_camera(
   #  dp_split['scene_camera_tpath'].format(scene_id=scene_id))
@@ -118,6 +110,17 @@ for scene_id in scene_ids_curr:
   if p['im_ids']:
     im_ids = set(im_ids).intersection(p['im_ids'])
 
+
+  # Save scene data in a dict
+  data={"images":[],
+        "Rs":[],
+        "ts":[],
+        "visib_fract":[],
+        "scene_ids":[],
+        "img_ids":[],
+        "obj_ids":[]}
+    
+    
   # Loops through the images
   for im_counter, im_id in enumerate(im_ids):
    
@@ -149,15 +152,14 @@ for scene_id in scene_ids_curr:
       if(bb[2] == 0 or bb[3] == 0):
         continue
       cropped = extract_square_patch(rgb, bb)
-      #cropped = rgb[bb[1]:bb[1]+bb[3],bb[0]:bb[0]+bb[2],:]
-      
-      images.append(cropped)
-      Rs.append(gt['cam_R_m2c'])
-      ts.append(gt['cam_t_m2c'])
-      bbox_obj.append(gt_info['bbox_obj']) 
-      bbox_visib.append(gt_info['bbox_visib'])
-      visib_fract.append(gt_info['visib_fract'])
-      obj_ids.append(gt['obj_id'])
+
+      data["images"].append(cropped)
+      data["Rs"].append(gt['cam_R_m2c'])
+      data["ts"].append(gt['cam_t_m2c'])
+      data["visib_fract"].append(gt_info['visib_fract'])
+      data["scene_ids"].append(scene_id)
+      data["img_ids"].append(im_id)
+      data["obj_ids"].append(gt['obj_id'])
 
       print("Processing image {0}/{1}".format(im_counter+1,len(im_ids)))
       
@@ -172,16 +174,7 @@ for scene_id in scene_ids_curr:
         cv2.imshow("object crop", np.flip(cropped,axis=2))
         cv2.waitKey(0)
 
-  # Save scene data to pickle file
-  data={"images":images,
-      "Rs":Rs,
-      "ts":ts,
-      #"bbox_obj":bbox_obj,
-      #"bbox_visib":bbox_visib,
-      "visib_fract":visib_fract,
-        "obj_ids":obj_ids}
-
-  if(len(images) == 0):
+  if(len(data["images"]) == 0):
     continue
   
   if(p["dataset_split"] == "train"):

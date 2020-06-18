@@ -21,6 +21,13 @@ from Encoder import Encoder
 from utils.pytless import inout, misc
 from utils.pytless.renderer import Renderer
 
+def arr2str(arr):
+    flat_arr = arr.flatten().tolist()
+    str_arr = ""
+    for i in np.arange(len(flat_arr)):
+        str_arr += "{0:.8f} ".format(flat_arr[i])
+    return str_arr[:-1]
+
 def loadCheckpoint(model_path):
     # Load checkpoint and parameters
     checkpoint = torch.load(model_path)
@@ -49,8 +56,6 @@ def correct_trans_offset(R, t_est):
                          [np.sin(d_alpha_x),0,np.cos(d_alpha_x)]]) 
     R_corrected = np.dot(R_corr_y,np.dot(R_corr_x,R))
     return R_corrected
-    
-
 
 def main():
     visualize = True
@@ -61,6 +66,7 @@ def main():
     parser.add_argument("-ep", help="path to the encoder weights")
     parser.add_argument("-pi", help="path to the pickle input file")
     parser.add_argument("-op", help="path to the CAD model for the object", default=None)
+    parser.add_argument("-o", help="output path", default="./output.csv")
     args = parser.parse_args()
     
     # Set the cuda device 
@@ -95,6 +101,15 @@ def main():
     else:
         renderer = None
 
+    # Store results in a dict
+    results = {"scene_id":[],
+               "im_id":[],
+               "obj_id":[],
+               "score":[],
+               "R":[],
+               "t":[],
+               "time":[]}        
+        
     # Loop through dataset
     for i,img in enumerate(data["images"]):
         print("Current image: {0}/{1}".format(i+1,len(data["images"])))
@@ -123,23 +138,33 @@ def main():
 
             # Inverse rotation matrix
             R_predicted = np.transpose(R_predicted)
-        
+
+        results["scene_id"].append(data["scene_ids"][i])
+        results["im_id"].append(data["img_ids"][i])
+        results["obj_id"].append(data["obj_ids"][i])
+        results["score"].append(-1)
+        results["R"].append(arr2str(R_predicted))
+        results["t"].append(arr2str(data["ts"][i]))
+        results["time"].append(-1)
+
+        if(renderer is None):
+            visualize = False
+            
         if(visualize):
             t_gt = np.array(data["ts"][i])
             t = np.array([0,0,500])
 
-            if(renderer is not None):
-                # Render predicted pose
-                R_predicted = correct_trans_offset(R_predicted,t_gt)
-                ren_predicted = renderer.render(R_predicted, t)
+            # Render predicted pose
+            R_predicted = correct_trans_offset(R_predicted,t_gt)
+            ren_predicted = renderer.render(R_predicted, t)
 
-                # Render groundtruth pose
-                R_gt = data["Rs"][i]
-                R_gt = correct_trans_offset(R_gt,t_gt)
-                ren_gt = renderer.render(R_gt, t)
+            # Render groundtruth pose
+            R_gt = data["Rs"][i]
+            R_gt = correct_trans_offset(R_gt,t_gt)
+            ren_gt = renderer.render(R_gt, t)
 
-                cv2.imshow("gt render", np.flip(ren_gt,axis=2))
-                cv2.imshow("predict render", np.flip(ren_predicted,axis=2))
+            cv2.imshow("gt render", np.flip(ren_gt,axis=2))
+            cv2.imshow("predict render", np.flip(ren_predicted,axis=2))
                 
             cv2.imshow("input image", np.flip(img,axis=2))
             if("codebook_images" in data):
@@ -153,7 +178,18 @@ def main():
                 continue
 
     # Save to CSV
-    # NOT IMPLEMENTED
+    output_path = args.o
+    with open(output_path, "w") as f:
+        col_names = list(results.keys())
+        w = csv.DictWriter(f, results.keys())
+        w.writeheader()
+        num_lines = len(results[col_names[0]])
+
+        for i in np.arange(num_lines):
+            row_dict = {}
+            for c in col_names:
+                row_dict[c] = results[c][i]
+            w.writerow(row_dict)
 
 if __name__ == '__main__':
     main()
