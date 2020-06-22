@@ -20,7 +20,7 @@ class ThauThreshold(torch.autograd.Function):
     @staticmethod
     def backward(ctx, g):
         return g
-    
+
 # Required to backpropagate when thresholding (torch.where)
 # See: https://discuss.pytorch.org/t/how-do-i-pass-grad-through-torch-where/74671
 # And: https://discuss.pytorch.org/t/torch-where-function-blocks-gradient/72570/6
@@ -206,11 +206,11 @@ def Loss(predicted_poses, gt_poses, renderer, ts, mean, std, loss_method="diff",
 
         total = torch.randn(diff.shape, device=renderer.device, requires_grad=True)
         total = NonZero.apply(diff)
-        
+
         vsd_batch = torch.sum(outliers, dim=1)/torch.sum(total, dim=1)
         vsd_all = torch.sum(outliers)/torch.sum(total)
         return vsd_all, vsd_batch, gt_imgs, predicted_imgs
-    
+
     elif(loss_method=="multiview"):
         gt_imgs = []
         predicted_imgs = []
@@ -280,7 +280,7 @@ def Loss(predicted_poses, gt_poses, renderer, ts, mean, std, loss_method="diff",
             batch_cam_pose = torch.mean(batch_cam_pose, dim=2)
             #renderer.renderer.shader.lights.direction = batch_cam_pose
 
-            
+
             gt_images = renderer.renderBatch(Rs_new, Ts)
             gt_images = (gt_images-mean)/std
             gt_imgs.append(gt_images)
@@ -292,13 +292,13 @@ def Loss(predicted_poses, gt_poses, renderer, ts, mean, std, loss_method="diff",
             batch_cam_pose = -1.0*torch.matmul(Rs_new,Ts.permute(1,0))
             batch_cam_pose = torch.mean(batch_cam_pose, dim=2)
             #renderer.renderer.shader.lights.direction = batch_cam_pose
-            
+
             predicted_images = renderer.renderBatch(Rs_new, Ts)
             predicted_images = (predicted_images-mean)/std
             predicted_imgs.append(predicted_images)
 
         gt_imgs = torch.cat(gt_imgs)
-        predicted_imgs = torch.cat(predicted_imgs)        
+        predicted_imgs = torch.cat(predicted_imgs)
 
         loss = nn.MSELoss(reduction="none")
         loss = loss(gt_imgs.flatten(start_dim=1), predicted_imgs.flatten(start_dim=1))

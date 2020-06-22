@@ -38,7 +38,7 @@ p = {
   'im_ids': [], #1,101,201,301,401,501],
   'gt_ids': [],
   'obj_ids': [19],
-  
+
   # Folder containing the BOP datasets.
   'datasets_path': config.datasets_path,
 }
@@ -97,7 +97,7 @@ for scene_id in scene_ids_curr:
   # Load scene info and ground-truth poses.
   #scene_camera = inout.load_scene_camera(
   #  dp_split['scene_camera_tpath'].format(scene_id=scene_id))
-  scene_gt = inout.load_scene_gt( 
+  scene_gt = inout.load_scene_gt(
     dp_split['scene_gt_tpath'].format(scene_id=scene_id))
   scene_gt_info = inout.load_scene_gt(
     dp_split['scene_gt_info_tpath'].format(scene_id=scene_id))
@@ -119,11 +119,11 @@ for scene_id in scene_ids_curr:
         "scene_ids":[],
         "img_ids":[],
         "obj_ids":[]}
-    
-    
+
+
   # Loops through the images
   for im_counter, im_id in enumerate(im_ids):
-   
+
     # List of considered ground-truth poses.
     gt_ids_curr = range(len(scene_gt[im_id]))
     if p['gt_ids']:
@@ -131,7 +131,7 @@ for scene_id in scene_ids_curr:
 
     # Collect the ground-truth poses.
     gt_poses = []
-    for gt_id in gt_ids_curr:    
+    for gt_id in gt_ids_curr:
       gt = scene_gt[im_id][gt_id]
       gt_info = scene_gt_info[im_id][gt_id]
 
@@ -162,7 +162,7 @@ for scene_id in scene_ids_curr:
       data["obj_ids"].append(gt['obj_id'])
 
       print("Processing image {0}/{1}".format(im_counter+1,len(im_ids)))
-      
+
       if(visualize):
         # Draw bbox and display
         color = (0,255,0)
@@ -176,10 +176,9 @@ for scene_id in scene_ids_curr:
 
   if(len(data["images"]) == 0):
     continue
-  
+
   if(p["dataset_split"] == "train"):
     output_path = "./tless-train-obj{0}.p".format(scene_id)
   else:
     output_path = "./tless-test-scene{0}.p".format(scene_id)
   pickle.dump(data, open(output_path, "wb"), protocol=2)
-  

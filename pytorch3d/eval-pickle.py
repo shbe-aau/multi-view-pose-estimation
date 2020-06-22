@@ -40,7 +40,7 @@ def loadCheckpoint(model_path):
     # Load optimizer
     optimizer = torch.optim.Adam(model.parameters())
     optimizer.load_state_dict(checkpoint['optimizer'])
-    
+
     print("Loaded the checkpoint: \n" + model_path)
     return model, optimizer, epoch, None
 
@@ -50,16 +50,16 @@ def correct_trans_offset(R, t_est):
     d_alpha_y = np.arctan(t_est[1]/t_est[2])
     R_corr_x = np.array([[1,0,0],
                          [0,np.cos(d_alpha_y),-np.sin(d_alpha_y)],
-                         [0,np.sin(d_alpha_y),np.cos(d_alpha_y)]]) 
+                         [0,np.sin(d_alpha_y),np.cos(d_alpha_y)]])
     R_corr_y = np.array([[np.cos(d_alpha_x),0,-np.sin(d_alpha_x)],
                          [0,1,0],
-                         [np.sin(d_alpha_x),0,np.cos(d_alpha_x)]]) 
+                         [np.sin(d_alpha_x),0,np.cos(d_alpha_x)]])
     R_corrected = np.dot(R_corr_y,np.dot(R_corr_x,R))
     return R_corrected
 
 def main():
     visualize = True
-    
+
     # Read configuration file
     parser = argparse.ArgumentParser()
     parser.add_argument("-mp", help="path to the model checkpoint")
@@ -68,13 +68,13 @@ def main():
     parser.add_argument("-op", help="path to the CAD model for the object", default=None)
     parser.add_argument("-o", help="output path", default="./output.csv")
     args = parser.parse_args()
-    
-    # Set the cuda device 
+
+    # Set the cuda device
     device = torch.device("cuda:0")
-    torch.cuda.set_device(device)                 
+    torch.cuda.set_device(device)
 
     # Initialize a model
-    model = Model(output_size=6).to(device)   
+    model = Model(output_size=6).to(device)
 
     # Load model checkpoint
     model, optimizer, epoch, learning_rate = loadCheckpoint(args.mp)
@@ -92,9 +92,9 @@ def main():
     obj_path = args.op
     if(obj_path is not None):
         obj_model = inout.load_ply(obj_path.replace(".obj",".ply"))
-        img_size = 320
-        K = np.array([1075.65091572, 0.0, 320.0/2.0,
-                      0.0, 1073.90347929, 320.0/2.0,
+        img_size = 128
+        K = np.array([1075.65091572, 0.0, 128.0/2.0,
+                      0.0, 1073.90347929, 128.0/2.0,
                       0.0, 0.0, 1.0]).reshape(3,3)
         renderer = Renderer(obj_model, (img_size,img_size), K,
                             surf_color=(1, 1, 1), mode='rgb', random_light=False)
@@ -108,18 +108,18 @@ def main():
                "score":[],
                "R":[],
                "t":[],
-               "time":[]}        
-        
+               "time":[]}
+
     # Loop through dataset
     for i,img in enumerate(data["images"]):
         print("Current image: {0}/{1}".format(i+1,len(data["images"])))
-        
+
         if("Rs_predicted" in data):
             R_predicted = data["Rs_predicted"][i]
         else:
             #if(data["visib_fract"][i] < 0.5):
             #    continue
-        
+
             # Run through encoder
             img_torch = torch.from_numpy(img).unsqueeze(0).permute(0,3,1,2).to(device)
             code = encoder(img_torch.float())
@@ -129,7 +129,7 @@ def main():
             Rs_predicted = compute_rotation_matrix_from_ortho6d(predicted_poses)
 
             R_predicted = Rs_predicted.detach().cpu().numpy()[0]
-        
+
             # Invert xy axes
             xy_flip = np.eye(3, dtype=np.float)
             xy_flip[0,0] = -1.0
@@ -149,10 +149,10 @@ def main():
 
         if(renderer is None):
             visualize = False
-            
+
         if(visualize):
             t_gt = np.array(data["ts"][i])
-            t = np.array([0,0,500])
+            t = np.array([0,0,t_gt[2]])
 
             # Render predicted pose
             R_predicted = correct_trans_offset(R_predicted,t_gt)
@@ -165,14 +165,20 @@ def main():
 
             cv2.imshow("gt render", np.flip(ren_gt,axis=2))
             cv2.imshow("predict render", np.flip(ren_predicted,axis=2))
-                
+
             cv2.imshow("input image", np.flip(img,axis=2))
             if("codebook_images" in data):
                 cv2.imshow("codebook image",
-                           np.flip(data["codebook_images"][i],axis=2))                
-            
-            key = cv2.waitKey(0)            
+                           np.flip(data["codebook_images"][i],axis=2))
+
+            print(ren_gt.shape)
+            print(ren_predicted.shape)
+            print(img.shape)
+            numpy_horizontal_concat = np.concatenate((np.flip(ren_gt,axis=2), np.flip(ren_predicted,axis=2), np.flip(img,axis=2)), axis=1)
+            cv2.imshow("gt - prediction - input", numpy_horizontal_concat)
+            key = cv2.waitKey(0)
             if(key == ord("q")):
+                exit()
                 visualize = False
                 #break
                 continue
