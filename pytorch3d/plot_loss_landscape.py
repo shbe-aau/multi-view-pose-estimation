@@ -55,15 +55,15 @@ def plot_points(points, name):
     fig.savefig(name, dpi=fig.dpi)
     #plt.show()
 
-def render_point(point, ts, br):
+def toMatArray(point):
     r = R.from_euler('yz', point['spherical']) # select point wanted for comparison here
-    # print(point['spherical'])
-    # print(point['cartesian'])
-    # print(r.as_matrix())
-    # print(r.apply(vec))
     Rs = []
     Rs.append(r.as_matrix())
+    return Rs
 
+
+def render_point(point, ts, br):
+    Rs = toMatArray(point)
     images = br.renderBatch(Rs, ts)
 
     return images
@@ -81,7 +81,7 @@ def main():
 
     # Prepare rotation matrices for multi view loss function
     #eulerViews = json.loads(args.get('Rendering', 'VIEWS'))
-    #views = prepareViews(eulerViews)
+    views = prepareViews([[0, 0, 0]])
 
     # Set the cuda device
     device = torch.device('cuda:0')
@@ -116,7 +116,9 @@ def main():
     # print(Rs)
     ts.append(T.copy())
 
+    # referene point data, right now it's the first point in the set
     ref_image = render_point(points[0], ts, br)
+    ref_pose = toMatArray(points[0])
 
     i = 0
     losses = []
@@ -133,7 +135,7 @@ def main():
         if args.getboolean('Training', 'SAVE_IMAGES'):
             cv2.imwrite(os.path.join(batch_img_dir, '{}.png'.format(i)), im)
 
-        loss, batch_loss, gt_images, predicted_images = Loss(image, ref_image, br, ts, 0, 1, loss_method='loss_landscape')
+        loss, batch_loss, gt_images, predicted_images = Loss(toMatArray(point), ref_pose, br, ts, 0, 1, loss_method='multiview', views=views, fixed_gt_images=ref_image)
         loss = (loss).detach().cpu().numpy()
         losses.append(loss)
         i += 1
