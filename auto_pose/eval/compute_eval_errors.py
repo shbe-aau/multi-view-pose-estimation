@@ -6,14 +6,14 @@ import configparser
 
 def get_log_dir(workspace_path, experiment_name, experiment_group=''):
     return os.path.join(
-        workspace_path, 
+        workspace_path,
         'experiments',
         experiment_group,
         experiment_name
     )
 def get_config_file_path(workspace_path, experiment_name, experiment_group=''):
     return os.path.join(
-        workspace_path, 
+        workspace_path,
         'cfg',
         experiment_group,
         '{}.cfg'.format(experiment_name)
@@ -21,7 +21,7 @@ def get_config_file_path(workspace_path, experiment_name, experiment_group=''):
 
 def get_eval_config_file_path(workspace_path, eval_cfg='eval.cfg'):
     return os.path.join(
-        workspace_path, 
+        workspace_path,
         'cfg_eval',
         eval_cfg
     )

@@ -8,12 +8,12 @@ from utils import *
 from model import Model
 
 from BatchRender import BatchRender
-        
-# Set the cuda device 
+
+# Set the cuda device
 device = torch.device("cuda:0")
 torch.cuda.set_device(device)
 
-br = BatchRender("./data/ikea_mug_scaled_reduced.obj", device)           
+br = BatchRender("./data/ikea_mug_scaled_reduced.obj", device)
 
 # Initialize and load the model
 model = Model().to(device)
@@ -27,21 +27,21 @@ losses = []
 for i in np.arange(1000):
     # Load ground truth
     R_gt = data["Rs"][i]
-    
+
     # Predict pose
     codes = []
     codes.append(data["codes"][i])
     batch_codes = torch.tensor(np.stack(codes), device=device, dtype=torch.float32) # Bx128
-    
+
     pose_quat = model(batch_codes)
     R_predicted = quat2mat(pose_quat)
     #print(R_predicted)
     R_predicted = R_predicted.detach().cpu().numpy().squeeze()
     #print(R_predicted.shape)
     #print(R_predicted)
-    
+
     # Render images
-    T = np.array([0.0,  0.0, 3.5], dtype=np.float32)   
+    T = np.array([0.0,  0.0, 3.5], dtype=np.float32)
     Ts = [T.copy(), T.copy()]
     Rs = [R_gt.copy(), R_predicted.copy()]
 
@@ -54,7 +54,7 @@ for i in np.arange(1000):
     loss = torch.mean(diff)
     losses.append(loss.detach().cpu().numpy())
     print("Step: {0} Loss: {1}".format(i,loss))
-    
+
     #images = images.detach().cpu().numpy()
     #print(images.shape)
 
@@ -64,7 +64,7 @@ for i in np.arange(1000):
         plt.subplot(1, 2, 1)
         plt.imshow((images[0])[..., 3])
         plt.title("GT")
-    
+
         plt.subplot(1, 2, 2)
         plt.imshow((images[1])[..., 3])
         plt.title("Predicted")

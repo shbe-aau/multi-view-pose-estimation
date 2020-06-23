@@ -23,7 +23,7 @@ from pytorch3d.transforms import Rotate, Translate
 
 # rendering components
 from pytorch3d.renderer import (
-    OpenGLPerspectiveCameras, look_at_view_transform, look_at_rotation, 
+    OpenGLPerspectiveCameras, look_at_view_transform, look_at_rotation,
     RasterizationSettings, MeshRenderer, MeshRasterizer, BlendParams,
     SilhouetteShader, PhongShader, PointLights
 )
@@ -34,29 +34,29 @@ class Model(nn.Module):
         self.meshes = meshes
         self.device = meshes.device
         self.renderer = renderer
-        
-        # Get the silhouette of the reference RGB image by finding all the non zero values. 
+
+        # Get the silhouette of the reference RGB image by finding all the non zero values.
         image_ref = torch.from_numpy((image_ref[..., :3].max(-1) != 0).astype(np.float32))
         self.register_buffer('image_ref', image_ref)
-        
-        # Create an optimizable parameter for the camera as a quaternion. 
+
+        # Create an optimizable parameter for the camera as a quaternion.
         self.camera_position = nn.Parameter(
             torch.from_numpy(np.array([0.2, 1.2, 1.2], dtype=np.float32)).to(meshes.device))
 
     def forward(self):
-        
+
         # Render the image using the updated camera orientation.
         # The translation to the camera T is fixed
         T = torch.from_numpy(np.array([0.0,  0.0, 3.0], dtype=np.float32)).to(device).unsqueeze(0)
         R = quat2mat(self.camera_position.unsqueeze(0))
         image = self.renderer(meshes_world=self.meshes.clone(), R=R, T=T)
-        
+
         # Calculate the silhouette loss
         loss = torch.sum((image[..., 3] - self.image_ref) ** 2)
         return loss, image
 
 
-# Set the cuda device 
+# Set the cuda device
 device = torch.device("cuda:0")
 torch.cuda.set_device(device)
 
@@ -70,8 +70,8 @@ textures = Textures(verts_rgb=verts_rgb.to(device))
 
 # Create a Meshes object for the teapot. Here we have only one mesh in the batch.
 teapot_mesh = Meshes(
-    verts=[verts.to(device)],   
-    faces=[faces.to(device)], 
+    verts=[verts.to(device)],
+    faces=[faces.to(device)],
     textures=textures
 )
 
@@ -79,24 +79,24 @@ teapot_mesh = Meshes(
 # Initialize an OpenGL perspective camera.
 cameras = OpenGLPerspectiveCameras(device=device)
 
-# To blend the 100 faces we set a few parameters which control the opacity and the sharpness of 
-# edges. Refer to blending.py for more details. 
+# To blend the 100 faces we set a few parameters which control the opacity and the sharpness of
+# edges. Refer to blending.py for more details.
 blend_params = BlendParams(sigma=1e-4, gamma=1e-4)
 
 # Define the settings for rasterization and shading. Here we set the output image to be of size
 # 256x256. To form the blended image we use 100 faces for each pixel. Refer to rasterize_meshes.py
-# for an explanation of this parameter. 
+# for an explanation of this parameter.
 raster_settings = RasterizationSettings(
-    image_size=256, 
-    blur_radius=np.log(1. / 1e-4 - 1.) * blend_params.sigma, 
-    faces_per_pixel=100, 
+    image_size=256,
+    blur_radius=np.log(1. / 1e-4 - 1.) * blend_params.sigma,
+    faces_per_pixel=100,
     bin_size=0
 )
 
-# Create a silhouette mesh renderer by composing a rasterizer and a shader. 
+# Create a silhouette mesh renderer by composing a rasterizer and a shader.
 silhouette_renderer = MeshRenderer(
     rasterizer=MeshRasterizer(
-        cameras=cameras, 
+        cameras=cameras,
         raster_settings=raster_settings
     ),
     shader=SilhouetteShader(blend_params=blend_params)
@@ -105,25 +105,25 @@ silhouette_renderer = MeshRenderer(
 
 # We will also create a phong renderer. This is simpler and only needs to render one face per pixel.
 raster_settings = RasterizationSettings(
-    image_size=256, 
-    blur_radius=0.0, 
-    faces_per_pixel=1, 
+    image_size=256,
+    blur_radius=0.0,
+    faces_per_pixel=1,
     bin_size=0
 )
-# We can add a point light in front of the object. 
+# We can add a point light in front of the object.
 lights = PointLights(device=device, location=((2.0, 2.0, -2.0),))
 phong_renderer = MeshRenderer(
     rasterizer=MeshRasterizer(
-        cameras=cameras, 
+        cameras=cameras,
         raster_settings=raster_settings
     ),
     shader=PhongShader(device=device, lights=lights)
 )
 
 # Render reference image
-R = torch.from_numpy(np.array([0.4, 1.2, -3.0], dtype=np.float32)).to(device).unsqueeze(0)       
+R = torch.from_numpy(np.array([0.4, 1.2, -3.0], dtype=np.float32)).to(device).unsqueeze(0)
 R = quat2mat(R)
-T = torch.from_numpy(np.array([0.0,  0.0, 3.0], dtype=np.float32)).to(device).unsqueeze(0)      
+T = torch.from_numpy(np.array([0.0,  0.0, 3.0], dtype=np.float32)).to(device).unsqueeze(0)
 image_ref = phong_renderer(meshes_world=teapot_mesh, R=R, T=T)
 image_ref = image_ref.cpu().numpy()
 
@@ -160,21 +160,21 @@ for i in np.arange(30):
     optimizer.step()
 
     print("Step: {0} - loss: {1}".format(i,loss.data))
-    
+
     if last_loss is not None and (abs(last_loss-loss.data)<0.00001):
         break
 
     # Update last loss
     last_loss = loss.data
-    
-    # Save outputs to create a GIF. 
+
+    # Save outputs to create a GIF.
     if True: #i % 10 == 0:
         # Render the image using the updated camera orientation.
         # The translation to the camera T is fixed
         # This is only for producing the .gif file
         T = torch.from_numpy(np.array([0.0,  0.0, 3.0], dtype=np.float32)).to(device).unsqueeze(0)
         R = quat2mat(model.camera_position.unsqueeze(0))
-        
+
         image = phong_renderer(meshes_world=model.meshes.clone(), R=R, T=T)
         image = image[0, ..., :3].detach().squeeze().cpu().numpy()
         image = img_as_ubyte(image)
@@ -192,5 +192,5 @@ plt.grid("off")
 plt.title("Reference silhouette")
 plt.show()
 
-        
+
 writer.close()

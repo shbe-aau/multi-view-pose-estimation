@@ -26,7 +26,7 @@ ckpt_dir = u.get_checkpoint_dir(log_dir)
 
 train_cfg_file_path = u.get_train_config_exp_file_path(log_dir, experiment_name)
 train_args = configparser.ConfigParser()
-train_args.read(train_cfg_file_path)  
+train_args.read(train_cfg_file_path)
 
 width = 960
 height = 720
@@ -38,7 +38,7 @@ with tf.Session() as sess:
 
     while videoStream.isActive():
         image = videoStream.read()
-        
+
         # try your detector here:
         # bb_xywh = detector.detect(image)
         # image_crop = dataset.extract_square_patch(image, bb_xywh, train_args.getfloat('Dataset','PAD_FACTOR'))
@@ -57,7 +57,7 @@ with tf.Session() as sess:
             else:
                 pred_view = np.concatenate((pred_view, curr_view), axis=1)
             print(R[i])
-        cv2.imshow('pred view rendered', pred_view)        
+        cv2.imshow('pred view rendered', pred_view)
         cv2.imshow('resized webcam input', img)
         k = cv2.waitKey(1)
         if k == 27:

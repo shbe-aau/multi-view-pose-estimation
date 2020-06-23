@@ -16,7 +16,7 @@ import copy
 from utils.utils import *
 from utils.tools import *
 
-from BatchRender import BatchRender 
+from BatchRender import BatchRender
 
 
 def main():
@@ -24,12 +24,12 @@ def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("experiment_name")
     arguments = parser.parse_args()
-    
+
     cfg_file_path = os.path.join("./experiments", arguments.experiment_name)
     args = configparser.ConfigParser()
     args.read(cfg_file_path)
 
-    # Set the cuda device 
+    # Set the cuda device
     device = torch.device("cuda:0")
     torch.cuda.set_device(device)
 
@@ -39,7 +39,7 @@ def main():
                      batch_size=args.getint('Evaluation', 'BATCH_SIZE'),
                      render_method="hard-depth",
                      image_size=args.getint('Rendering', 'IMAGE_SIZE'))
-                   
+
 
     data = pickle.load(open(args.get('Evaluation', 'TEST_DATA_PATH'),"rb"), encoding="latin1")
     output_path = args.get('Training', 'OUTPUT_PATH')
@@ -49,7 +49,7 @@ def main():
     evalEpoch(br, data, output_path,
               t=json.loads(args.get('Rendering', 'T')),
               visualize=args.getboolean('Evaluation', 'SAVE_IMAGES'))
-    
+
 def evalEpoch(br, data, output_path, t, visualize=False):
     batch_size = br.batch_size
     num_samples = len(data["Rs"])
@@ -88,7 +88,7 @@ def evalEpoch(br, data, output_path, t, visualize=False):
             curr = np.vstack([-curr[0,:],
                               -curr[1,:],
                               curr[2,:]])
-            
+
             Rs_predicted.append(curr)
             data["Rs_predicted"][b] = Rs_predicted[-1]
 
@@ -108,7 +108,7 @@ def evalEpoch(br, data, output_path, t, visualize=False):
 
         predicted_rgbs = rgb_render.renderBatch(Rs_predicted, ts).cpu().detach().numpy()
         gt_rgbs = rgb_render.renderBatch(Rs, ts).cpu().detach().numpy()
-        
+
         # Calculate VSD
         thau = 200 / 1000 #20 mm in meters
         sigma = 0.3
@@ -126,13 +126,13 @@ def evalEpoch(br, data, output_path, t, visualize=False):
             mask_gt = curr_gt == -1
             diff[mask_gt] == 0
             diff[mask_prediction] == 0
-            
+
             outliers = diff[diff > thau]
             total = diff[diff != 0]
             vsd = len(outliers)/(len(total)+1)
 
             losses.append(vsd)
-            
+
             print("Sample: {0}/{1} - VSD: {2}".format(curr_batch[obj_k],num_samples,vsd))
 
             if(visualize):
@@ -148,7 +148,7 @@ def evalEpoch(br, data, output_path, t, visualize=False):
                     plt.subplot(2, 3, 2)
                     plt.imshow(data["codebook_images"][curr_batch[obj_k]])
                     plt.title("Codebook image")
-                else:                    
+                else:
                     plt.subplot(2, 3, 2)
                     plt.imshow(gt_rgbs[obj_k])
                     plt.title("GT rendered")
@@ -160,7 +160,7 @@ def evalEpoch(br, data, output_path, t, visualize=False):
                 plt.subplot(2, 3, 4)
                 plt.imshow(curr_gt, vmin=14, vmax=16)
                 plt.title("GT rendered\n {0}".format(data["Rs"][curr_batch[obj_k]]))
-                
+
                 plt.subplot(2, 3, 5)
                 plt.imshow(curr_prediction, vmin=14, vmax=16)
                 plt.title("Predicted\n {0}".format(data["Rs_predicted"][curr_batch[obj_k]]))

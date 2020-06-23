@@ -199,6 +199,3 @@ def sample_views(min_n_views, radius=1,
         views.append({'R': R, 't': t})
 
     return views, pts_level
-
-
-

@@ -27,10 +27,10 @@ d_alpha_x = np.arctan(t_est[0]/t_est[2])
 d_alpha_y = np.arctan(t_est[1]/t_est[2])
 R_corr_x = np.array([[1,0,0],
                      [0,np.cos(d_alpha_y),-np.sin(d_alpha_y)],
-                     [0,np.sin(d_alpha_y),np.cos(d_alpha_y)]]) 
+                     [0,np.sin(d_alpha_y),np.cos(d_alpha_y)]])
 R_corr_y = np.array([[np.cos(d_alpha_x),0,-np.sin(d_alpha_x)],
                      [0,1,0],
-                     [np.sin(d_alpha_x),0,np.cos(d_alpha_x)]]) 
+                     [np.sin(d_alpha_x),0,np.cos(d_alpha_x)]])
 R_corrected = np.dot(R_corr_y,np.dot(R_corr_x,R))
 R = R_corrected
 

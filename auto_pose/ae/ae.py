@@ -47,6 +47,3 @@ class AE(object):
             tf.summary.histogram('Variance', self._encoder.q_sigma)
         tf.summary.histogram('Mean', self._encoder.z)
         return loss
-
-
-

@@ -49,9 +49,7 @@ with tf.Session() as sess:
         print(R)
 
         pred_view = dataset.render_rot( R,downSample = 1)
-    
+
         cv2.imshow('resized img', cv2.resize(im/255.,(256,256)))
         cv2.imshow('pred_view', cv2.resize(pred_view,(256,256)))
         cv2.waitKey(0)
-
-

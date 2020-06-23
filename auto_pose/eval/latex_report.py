@@ -24,8 +24,8 @@ r'''
 
 \usepackage{pifont}
 \hypersetup{
-    colorlinks=true, 
-    linktoc=all,     
+    colorlinks=true,
+    linktoc=all,
     linkcolor=blue,
 }
 \pagestyle{fancy}

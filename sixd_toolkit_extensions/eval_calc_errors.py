@@ -32,7 +32,7 @@ def eval_calc_errors(eval_args, eval_dir):
     #[DATA]
     dataset = eval_args.get('DATA','DATASET')
     test_type = eval_args.get('DATA','CAM_TYPE')
-    
+
     #[METRIC]
     # Top N pose estimates (with the highest score) to be evaluated for each
     # object in each image
@@ -50,7 +50,7 @@ def eval_calc_errors(eval_args, eval_dir):
     print('Processing: ' + result_path)
     # Other paths
     #-------------------------------------------------------------------------------
-    
+
 
     for error_type in error_types:
 

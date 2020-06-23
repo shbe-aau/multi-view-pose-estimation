@@ -18,7 +18,7 @@ def load_weights(weight_file):
 
 class Encoder(nn.Module):
 
-    
+
     def __init__(self, weight_file):
         super(Encoder, self).__init__()
         global __weights_dict
@@ -53,10 +53,10 @@ class Encoder(nn.Module):
         intermediate = autoencoder_conv2d_3_Relu.permute(0,2,3,1)
         autoencoder_Flatten_flatten_Reshape = torch.reshape(input = intermediate, shape = (-1,32768))
         #autoencoder_Flatten_flatten_Reshape = torch.reshape(input = autoencoder_conv2d_3_Relu, shape = (-1,32768))
-        
+
         autoencoder_Flatten_flatten_strided_slice = autoencoder_Flatten_flatten_Shape[0:1]
         autoencoder_dense_MatMul = self.autoencoder_dense_MatMul(autoencoder_Flatten_flatten_Reshape)
-        autoencoder_Flatten_flatten_Reshape_shape = [autoencoder_Flatten_flatten_strided_slice,autoencoder_Flatten_flatten_Reshape_shape_1]        
+        autoencoder_Flatten_flatten_Reshape_shape = [autoencoder_Flatten_flatten_strided_slice,autoencoder_Flatten_flatten_Reshape_shape_1]
         return autoencoder_dense_MatMul
 
 

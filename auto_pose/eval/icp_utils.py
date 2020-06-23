@@ -1,7 +1,7 @@
 import numpy as np
 import time
 import matplotlib.pyplot as plt
-from mpl_toolkits.mplot3d import Axes3D 
+from mpl_toolkits.mplot3d import Axes3D
 import os
 from sklearn.neighbors import NearestNeighbors
 
@@ -55,7 +55,7 @@ def best_fit_transform(A, B, depth_only=False, no_depth=False):
         if np.linalg.det(R) < 0:
            Vt[m-1,:] *= -1
            R = np.dot(Vt.T, U.T)
-        
+
         t = centroid_B.T - np.dot(R,centroid_A.T)
         if no_depth:
             t = np.array([t[0],t[1],0])
@@ -131,7 +131,7 @@ def icp(A, B, init_pose=None, max_iterations=100, tolerance=0.001, verbose=False
         ax.set_xlabel('X axis')
         ax.set_ylabel('Y axis')
         ax.set_zlabel('Z axis')
-        scaling = np.array([getattr(ax, 'get_{}lim'.format(dim))() for dim in 'xyz']) 
+        scaling = np.array([getattr(ax, 'get_{}lim'.format(dim))() for dim in 'xyz'])
         ax.auto_scale_xyz(*[[np.min(scaling), np.max(scaling)]]*3)
         ax.scatter(A[:,0],A[:,1],A[:,2], label='initial', marker='.', c='green')
         ax.scatter(B[:,0],B[:,1],B[:,2], label='target', marker='.', c='blue')
@@ -154,7 +154,7 @@ def icp(A, B, init_pose=None, max_iterations=100, tolerance=0.001, verbose=False
         # update the current source
         src = np.dot(T, src)
 
-        
+
         mean_error = np.mean(distances)
         # print mean_error
         # check error
@@ -179,7 +179,7 @@ class SynRenderer(object):
     def __init__(self,train_args):
         MODEL_PATH = train_args.get('Paths','MODEL_PATH')
         self.model = train_args.get('Dataset','MODEL')
-        
+
         self.model_path = MODEL_PATH.replace(self.model,'cad')
         self.renderer
 
@@ -196,12 +196,12 @@ class SynRenderer(object):
         # renderer = meshrenderer.Renderer(['/net/rmc-lx0050/home_local/sund_ma/data/SLC_precise_blue.ply'],1,'.',1)
         # R = transform.random_rotation_matrix()[:3,:3]
         W_test,H_test = test_shape[:2]
-        _, depth_x = self.renderer.render( 
+        _, depth_x = self.renderer.render(
                         obj_id=0,
-                        W=W_test, 
+                        W=W_test,
                         H=H_test,
-                        K=K_test, 
-                        R=R_est, 
+                        K=K_test,
+                        R=R_est,
                         t=np.array([0,0,t_est[2]]),
                         near=10,
                         far=10000,
@@ -220,12 +220,12 @@ class SynRenderer(object):
     def render_trafo(self, K_test, R_est, t_est, test_shape, downSample = 1):
         W_test,H_test = test_shape[:2]
 
-        bgr, depth_x = self.renderer.render( 
+        bgr, depth_x = self.renderer.render(
                         obj_id=0,
-                        W=W_test,#/downSample, 
+                        W=W_test,#/downSample,
                         H=H_test,#/downSample,
-                        K=K_test, 
-                        R=R_est, 
+                        K=K_test,
+                        R=R_est,
                         t=np.array(t_est),
                         near=10,
                         far=10000,
@@ -251,7 +251,7 @@ def icp_refinement(depth_crop, icp_renderer, R_est, t_est, K_test, test_render_d
     centroid_synthetic_pts = np.mean(synthetic_pts, axis=0)
     max_mean_dist = np.max(np.linalg.norm(synthetic_pts - centroid_synthetic_pts,axis=1))
     # print 'max_mean_dist', max_mean_dist
-    
+
     K_test_crop = K_test.copy()
     K_test_crop[0,2] = depth_crop.shape[0]/2
     K_test_crop[1,2] = depth_crop.shape[1]/2
@@ -269,7 +269,7 @@ def icp_refinement(depth_crop, icp_renderer, R_est, t_est, K_test, test_render_d
         sub_idcs_real = np.random.choice(len(real_depth_pts),np.min([len(real_depth_pts),len(synthetic_pts),N]))
         sub_idcs_syn = np.random.choice(len(synthetic_pts),np.min([len(real_depth_pts),len(synthetic_pts),N]))
         a=time.time()
-        T, distances, iterations = icp(synthetic_pts[sub_idcs_syn], real_depth_pts[sub_idcs_real], 
+        T, distances, iterations = icp(synthetic_pts[sub_idcs_syn], real_depth_pts[sub_idcs_real],
                                         tolerance=0.000001, verbose=verbose, depth_only=depth_only, no_depth=no_depth)
         print 'icp_time', time.time()-a
 
@@ -294,7 +294,7 @@ def icp_refinement(depth_crop, icp_renderer, R_est, t_est, K_test, test_render_d
         H_est = np.zeros((4,4))
         # R_est, t_est is from model to camera
         H_est[3,3] = 1
-        H_est[:3,3] = t_est 
+        H_est[:3,3] = t_est
         H_est[:3,:3] = R_est
 
         H_est_refined = np.dot(T,H_est)

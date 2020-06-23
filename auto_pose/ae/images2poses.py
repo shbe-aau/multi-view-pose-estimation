@@ -29,9 +29,9 @@ def main():
     parser.add_argument('--at_step', default=None, required=False)
     arguments = parser.parse_args()
 
-    
+
     full_name = arguments.experiment_name.split('/')
-    
+
     experiment_name = full_name.pop()
     experiment_group = full_name.pop() if len(full_name) > 0 else ''
 
@@ -43,7 +43,7 @@ def main():
 
     train_cfg_file_path = u.get_train_config_exp_file_path(log_dir, experiment_name)
     train_args = configparser.ConfigParser()
-    train_args.read(train_cfg_file_path)  
+    train_args.read(train_cfg_file_path)
 
     gpu_options = tf.GPUOptions(per_process_gpu_memory_fraction=0.7)
     config = tf.ConfigProto(gpu_options=gpu_options)
@@ -71,7 +71,7 @@ def main():
                     else:
                         pred_view = np.concatenate((pred_view, curr_view), axis=1)
                     print(R[k])
-                cv2.imshow('pred view rendered', pred_view)        
+                cv2.imshow('pred view rendered', pred_view)
                 cv2.imshow('resized webcam input', img)
                 k = cv2.waitKey(0)
                 if k == 27:
@@ -83,7 +83,7 @@ def main():
                 images.append(curr_view)
                 #print(Rs_predicted[-1])
                 print(i)
-            
+
         coded_data = {"images":data["images"],
                       "codebook_images":images,
                       "Rs":data["Rs"],
@@ -94,8 +94,6 @@ def main():
         pickle.dump(coded_data, open(pickle_path_out, "wb"), protocol=2)
 
         sess.close()
-        
+
 if __name__ == '__main__':
     main()
-
-

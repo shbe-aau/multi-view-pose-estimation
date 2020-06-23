@@ -26,14 +26,14 @@ def main():
 
 
 	this_dir = os.path.dirname(os.path.abspath(__file__))
-	
+
 	if not os.path.exists(cfg_path):
 		cfg_template_path = os.path.join(this_dir, 'cfg')
 		shutil.copytree(cfg_template_path, cfg_path)
 	if not os.path.exists(eval_cfg_path):
 		eval_cfg_template_path = os.path.join(this_dir, 'cfg_eval')
 		shutil.copytree(eval_cfg_template_path, eval_cfg_path)
-		
+
 	if not os.path.exists(experiments_path):
 		os.makedirs(experiments_path)
 

@@ -261,7 +261,7 @@ def plot_recall_curves(recall_dict, p):
       else:
         plt.plot(recalls[key])
       all_recalls += recalls[key]
-      
+
     plt.legend()
 
     plt.xticks(np.arange(len(corr_thres)), corr_thres)
@@ -271,9 +271,8 @@ def plot_recall_curves(recall_dict, p):
       plt.xlabel('thres @ r px')
     else:
       plt.xlabel('thres @ object diameter')
-    
-    plt.title(error['type'] + ' - ' + 'average recall: ' 
+
+    plt.title(error['type'] + ' - ' + 'average recall: '
       + '{:.4f}'.format(np.mean(all_recalls)))
 
   plt.show()
-  

@@ -25,14 +25,14 @@ def load_tless_dataset(folder_path):
     with open(gt_path, 'r') as fp:
         dataset = yaml.load(fp, Loader=yaml.FullLoader)
 
-    # Add images to the dataset dict        
+    # Add images to the dataset dict
     for k in dataset.keys():
         img_name = "{:04d}.png".format(int(k))
         print("Loading image: {0}".format(img_name))
         curr_img = cv2.imread(os.path.join(img_path, img_name))
         dataset[k][0]['image'] = curr_img/255.0
     return dataset
-        
+
 
 # Parse parameters
 parser = argparse.ArgumentParser()
@@ -67,7 +67,7 @@ for k in dataset.keys():
 
     # Inverse rot matrix
     curr_R = np.linalg.inv(curr_R)
-    
+
     Rs.append(curr_R)
     curr_t = np.array(dataset[k][0]["cam_t_m2c"]).reshape(3,1)
     ts.append(curr_t)
@@ -77,7 +77,7 @@ for k in dataset.keys():
         plt.subplot(1, 3, 1)
         plt.imshow(curr_img)
         plt.title("Original image")
-        
+
         plt.subplot(1, 3, 2)
         plt.imshow(cropped_img)
         plt.title("Cropped image")

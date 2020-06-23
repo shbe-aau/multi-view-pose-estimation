@@ -46,8 +46,8 @@ textures = Textures(verts_rgb=verts_rgb.to(device))
 
 # Create a Meshes object for the teapot. Here we have only one mesh in the batch.
 mesh = Meshes(
-    verts=[verts.to(device)],   
-    faces=[faces.to(device)], 
+    verts=[verts.to(device)],
+    faces=[faces.to(device)],
     textures=textures
 )
 

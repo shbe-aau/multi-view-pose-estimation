@@ -36,8 +36,8 @@ class AePoseEstimator:
         self._camK = np.array(eval(test_args.get('CAMERA','K_test'))).reshape(3,3)
         self._width = test_args.getint('CAMERA','width')
         self._height = test_args.getint('CAMERA','height')
-        
-    
+
+
 
         self._upright = test_args.getboolean('AAE','upright')
         self.all_experiments = eval(test_args.get('AAE','experiments'))
@@ -60,7 +60,7 @@ class AePoseEstimator:
 
         self.sess = tf.Session(config=config)
         set_session(self.sess)
-        self.detector = load_model(str(test_args.get('DETECTOR','detector_model_path')), 
+        self.detector = load_model(str(test_args.get('DETECTOR','detector_model_path')),
                             backbone_name=test_args.get('DETECTOR','backbone'))
         #detector = self._load_model_with_nms(test_args)
 
@@ -101,7 +101,7 @@ class AePoseEstimator:
         x, y, w, h = np.array(bb_xywh).astype(np.int32)
         size = int(np.maximum(h, w) * pad_factor)
 
-        
+
         left = np.maximum(x+w//2-size//2, 0)
         right = x+w//2+size/2
         top = np.maximum(y+h//2-size//2, 0)
@@ -134,7 +134,7 @@ class AePoseEstimator:
         print batch_image.dtype
         boxes, scores, labels = self.detector.predict(batch_image)
         print(scores)
-        
+
         valid_dets = np.where(scores[0] >= self.det_threshold)
 
         boxes /= scale
@@ -183,19 +183,19 @@ class AePoseEstimator:
                 continue
 
 
-            det_img = self.extract_square_patch(color_img, 
-                                                box_xywh, 
+            det_img = self.extract_square_patch(color_img,
+                                                box_xywh,
                                                 self.pad_factors[clas_idx],
-                                                resize=self.patch_sizes[clas_idx], 
+                                                resize=self.patch_sizes[clas_idx],
                                                 interpolation=cv2.INTER_LINEAR,
                                                 black_borders=True)
 
-            Rs_est, ts_est = self.all_codebooks[clas_idx].auto_pose6d(self.sess, 
-                                                                        det_img, 
-                                                                        box_xywh, 
+            Rs_est, ts_est = self.all_codebooks[clas_idx].auto_pose6d(self.sess,
+                                                                        det_img,
+                                                                        box_xywh,
                                                                         self._camK,
-                                                                        1, 
-                                                                        self.all_train_args[clas_idx], 
+                                                                        1,
+                                                                        self.all_train_args[clas_idx],
                                                                         upright=self._upright)
 
             R_est = Rs_est.squeeze()
@@ -204,29 +204,29 @@ class AePoseEstimator:
             if self.icp:
                 assert H == depth_img.shape[0]
 
-                depth_crop = self.extract_square_patch(depth_img, 
+                depth_crop = self.extract_square_patch(depth_img,
                                                     box_xywh,
                                                     self.pad_factors[clas_idx],
-                                                    resize=self.patch_sizes[clas_idx], 
+                                                    resize=self.patch_sizes[clas_idx],
                                                     interpolation=cv2.INTER_NEAREST) * self._depth_scale
                 R_est_auto = R_est.copy()
                 t_est_auto = t_est.copy()
 
                 R_est, t_est = self.icp_handle.icp_refinement(depth_crop, R_est, t_est, self._camK, (W,H), clas_idx=clas_idx, depth_only=True)
-                _, ts_est, _ = self.all_codebooks[clas_idx].auto_pose6d(self.sess, 
-                                                                            det_img, 
-                                                                            box_xywh, 
+                _, ts_est, _ = self.all_codebooks[clas_idx].auto_pose6d(self.sess,
+                                                                            det_img,
+                                                                            box_xywh,
                                                                             self._camK,
-                                                                            1, 
-                                                                            self.all_train_args[clas_idx], 
+                                                                            1,
+                                                                            self.all_train_args[clas_idx],
                                                                             upright=self._upright,
                                                                             depth_pred=t_est[2])
                 t_est = ts_est.squeeze()
                 R_est, _ = self.icp_handle.icp_refinement(depth_crop, R_est, ts_est.squeeze(), self._camK, (W,H), clas_idx=clas_idx, no_depth=True)
-                # depth_crop = self.extract_square_patch(depth_img, 
+                # depth_crop = self.extract_square_patch(depth_img,
                 #                                     box_xywh,
                 #                                     self.pad_factors[clas_idx],
-                #                                     resize=self.patch_sizes[clas_idx], 
+                #                                     resize=self.patch_sizes[clas_idx],
                 #                                     interpolation=cv2.INTER_NEAREST)
                 # R_est, t_est = self.icp_handle.icp_refinement(depth_crop, R_est, t_est, self._camK, (W,H))
 
@@ -238,7 +238,7 @@ class AePoseEstimator:
             print 'translation from camera: ',  H_est[:3,3]
 
             if self._camPose:
-                H_est = np.dot(camPose, H_est)           
+                H_est = np.dot(camPose, H_est)
 
             all_pose_estimates.append(H_est)
             all_class_idcs.append(clas_idx)
@@ -286,7 +286,7 @@ class AePoseEstimator:
         #        nms_threshold = test_args.getfloat('DETECTOR','nms_threshold'),
         #        score_threshold = test_args.getfloat('DETECTOR','det_threshold'),
         #        max_detections = test_args.getint('DETECTOR', 'max_detections')
-        #        )([boxes, classification] + other)        
+        #        )([boxes, classification] + other)
         detections = layers.filter_detections.filter_detections(
                 boxes=boxes,
                 classification=classification,

@@ -36,9 +36,9 @@ if args.vis:
 
     ply_model_paths = [str(train_args.get('Paths','MODEL_PATH')) for train_args in ae_pose_est.all_train_args]
     cad_reconst = [str(train_args.get('Dataset','MODEL')) for train_args in ae_pose_est.all_train_args]
-    
-    renderer = meshrenderer.Renderer(ply_model_paths, 
-                    samples=1, 
+
+    renderer = meshrenderer.Renderer(ply_model_paths,
+                    samples=1,
                     vertex_tmp_store_folder=get_dataset_path(workspace_path),
                     vertex_scale=float(1)) # float(1) for some models
 
@@ -58,7 +58,7 @@ while videoStream.isActive():
         bgr, depth,_ = renderer.render_many(obj_ids = [clas_idx for clas_idx in all_class_idcs],
                     W = ae_pose_est._width,
                     H = ae_pose_est._height,
-                    K = ae_pose_est._camK, 
+                    K = ae_pose_est._camK,
                     # R = transform.random_rotation_matrix()[:3,:3],
                     Rs = [pose_est[:3,:3] for pose_est in all_pose_estimates],
                     ts = [pose_est[:3,3] for pose_est in all_pose_estimates],
@@ -68,18 +68,18 @@ while videoStream.isActive():
                     phong={'ambient':0.4,'diffuse':0.8, 'specular':0.3})
 
         bgr = cv2.resize(bgr,(ae_pose_est._width,ae_pose_est._height))
-        
+
         g_y = np.zeros_like(bgr)
-        g_y[:,:,1]= bgr[:,:,1]    
-        im_bg = cv2.bitwise_and(image,image,mask=(g_y[:,:,1]==0).astype(np.uint8))                 
+        g_y[:,:,1]= bgr[:,:,1]
+        im_bg = cv2.bitwise_and(image,image,mask=(g_y[:,:,1]==0).astype(np.uint8))
         image_show = cv2.addWeighted(im_bg,1,g_y,1,0)
 
         Rs = [pose_est[:3,:3] for pose_est in all_pose_estimates]
         ts = [pose_est[:3,3] for pose_est in all_pose_estimates]
-        
+
         #Draw bounding boxes
         for label,box,score,t,R in zip(labels,boxes,scores,ts,Rs):
-           euler = mat2euler((np.asarray(R).reshape(3,3)),'sxyz') 
+           euler = mat2euler((np.asarray(R).reshape(3,3)),'sxyz')
            box = box.astype(np.int32)
            xmin,ymin,xmax,ymax = box[0],box[1],box[0]+box[2],box[1]+box[3]
            print label

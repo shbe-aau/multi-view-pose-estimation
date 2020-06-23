@@ -56,7 +56,7 @@ p = {
   # the "inst_count" item loaded from "targets_filename".
   #'visib_gt_min': -1,
   'visib_gt_min': 0.1,
-  
+
   # See misc.get_symmetry_transformations().
   'max_sym_disc_step': 0.01,
 
@@ -218,7 +218,7 @@ for result_filename in p['result_filenames']:
         scores_filename = 'scores_{}.json'.format(score_sign)
         scores_path = os.path.join(
           p['eval_path'], result_name, error_sign, scores_filename)
-        
+
         # Load the scores.
         misc.log('Loading calculated scores from: {}'.format(scores_path))
         scores = inout.load_json(scores_path)

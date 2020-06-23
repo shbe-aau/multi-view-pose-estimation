@@ -21,7 +21,7 @@ min_visib = 0.6
 blackness_thres = 16
 vocpath = '/home_local_nvme/sund_ma/data/VOCdevkit/VOC2012/JPEGImages/*.jpg'
 voc_img_pathes = glob.glob(vocpath)
-output_path = '/home_local_nvme/sund_ma/data/scene_renderings/linemod_real_imgs_voc_rotated/01/rgb'  
+output_path = '/home_local_nvme/sund_ma/data/scene_renderings/linemod_real_imgs_voc_rotated/01/rgb'
 
 
 def load_info(path):
@@ -67,7 +67,7 @@ def main():
         from auto_pose.meshrenderer import meshrenderer_phong
         models_cad_files = sorted(glob.glob(os.path.join(cad_path,'*.ply')))
         renderer = meshrenderer_phong.Renderer(
-            models_cad_files, 
+            models_cad_files,
             1
         )
         obj_gts = []
@@ -103,8 +103,8 @@ def main():
     new_scene_gt = {}
 
     bar = pb.ProgressBar(
-        maxval=num_train_imgs, 
-        widgets=[' [', pb.Timer(), ' | ', pb.Counter('%0{}d / {}'.format(len(str(num_train_imgs)), num_train_imgs)), ' ] ', 
+        maxval=num_train_imgs,
+        widgets=[' [', pb.Timer(), ' | ', pb.Counter('%0{}d / {}'.format(len(str(num_train_imgs)), num_train_imgs)), ' ] ',
         pb.Bar(), ' (', pb.ETA(), ') ']
     )
 
@@ -119,10 +119,10 @@ def main():
             rand_obj_id = np.random.randint(0,noofobjects)
             rand_view_id = np.random.randint(0,len(obj_infos[rand_obj_id]))
             img_path = os.path.join(sixd_train_path,'{:02d}'.format(rand_obj_id+1),'rgb','{:04d}.png'.format(rand_view_id))
-            
+
             rand_img = cv2.imread(img_path)
             # rand_depth_img = load_depth2(os.path.join(sixd_train_path,'{:02d}'.format(rand_obj_id+1),'depth','{:04d}.png'.format(rand_view_id)))
-            
+
             # random rotate in-plane
             rot_angle= np.random.rand()*360
             M = cv2.getRotationMatrix2D((int(rand_img.shape[1]/2),int(rand_img.shape[0]/2)),rot_angle,1)
@@ -147,7 +147,7 @@ def main():
 
             ys, xs = np.nonzero(mask)
             new_bb = misc.calc_2d_bbox(xs, ys, mask.shape[:2])
-            
+
             if dataset == 'tless':
                 #tless specific
                 crop_x = np.array([20,380]) + np.random.randint(-15,15)
@@ -158,7 +158,7 @@ def main():
                 crop_y = np.array([0,480])# + np.random.randint(-20,20)
 
             mask = mask[crop_y[0]:crop_y[1],crop_x[0]:crop_x[1]]
-            rand_img = rand_img[crop_y[0]:crop_y[1],crop_x[0]:crop_x[1]] 
+            rand_img = rand_img[crop_y[0]:crop_y[1],crop_x[0]:crop_x[1]]
 
 
 
@@ -193,8 +193,8 @@ def main():
             # x,y,w,h = np.round(np.array(gt['obj_bb'])*s+np.array([x_offset,y_offset,0,0])).astype(np.int32)
             new_scene_gt[i].append({'obj_id':rand_obj_id+1,'obj_bb':[x,y,w,h]})
 
-            
-        
+
+
         bg = voc_imgs[np.random.randint(0,noofvoc_imgs)]
         stacked_new_train_mask = np.dstack((new_train_mask,new_train_mask,new_train_mask))
         new_train_img[stacked_new_train_mask==0] = bg[stacked_new_train_mask==0]
@@ -202,7 +202,7 @@ def main():
 
         if visualize:
             print new_scene_gt[i]
-            for sc_gt in new_scene_gt[i]: 
+            for sc_gt in new_scene_gt[i]:
                 x,y,w,h = sc_gt['obj_bb']
                 cv2.rectangle(new_train_img, (x, y), (x+w, y+h), color=(32, 192, 192))
             cv2.imshow('new_train_img', new_train_img)
@@ -220,5 +220,3 @@ def main():
 
 if __name__ == '__main__':
     main()
-
-

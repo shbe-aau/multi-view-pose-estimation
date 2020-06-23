@@ -34,13 +34,13 @@ p = {
       't': np.array([[0, 0, 500]]).T
     }
   ],
-  
+
   # Folder containing the BOP datasets.
   'datasets_path': config.datasets_path,
-  
+
   # Folder for output visualisations.
   'vis_path': os.path.join(config.output_path, 'vis_object_symmetries'),
-  
+
   # Path templates for output images.
   'vis_rgb_tpath': os.path.join(
     '{vis_path}', '{dataset}', '{obj_id:06d}',

@@ -282,7 +282,7 @@ class Dataset(object):
             #                    obj_bb[1]-(random_scale*obj_bb[3]-obj_bb[3])*0.5,
             #                    obj_bb[2]*random_scale,
             #                    obj_bb[3]*random_scale])
-            
+
             x, y, w, h = obj_bb
 
             rand_trans_x = np.random.uniform(-max_rel_offset, max_rel_offset) * w

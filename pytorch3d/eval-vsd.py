@@ -17,7 +17,7 @@ from utils.utils import *
 from utils.tools import *
 
 from Model import Model
-from BatchRender import BatchRender 
+from BatchRender import BatchRender
 from losses import Loss
 
 def latestCheckpoint(model_dir):
@@ -42,7 +42,7 @@ def loadCheckpoint(model_path):
 
     lr_reducer = torch.optim.lr_scheduler.StepLR(optimizer, step_size=2, gamma=0.9)
     lr_reducer.load_state_dict(checkpoint['lr_reducer'])
-    
+
     print("Loaded the checkpoint: \n" + model_path)
     return model, optimizer, epoch, lr_reducer
 
@@ -51,12 +51,12 @@ def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("experiment_name")
     arguments = parser.parse_args()
-    
+
     cfg_file_path = os.path.join("./experiments", arguments.experiment_name)
     args = configparser.ConfigParser()
     args.read(cfg_file_path)
 
-    # Set the cuda device 
+    # Set the cuda device
     device = torch.device("cuda:0")
     torch.cuda.set_device(device)
 
@@ -66,10 +66,10 @@ def main():
                      batch_size=args.getint('Evaluation', 'BATCH_SIZE'),
                      render_method="hard-depth",
                      image_size=args.getint('Rendering', 'IMAGE_SIZE'))
-                   
+
 
     # Initialize a model using the renderer, mesh and reference image
-    model = Model(output_size=6).to(device)   
+    model = Model(output_size=6).to(device)
 
     data = pickle.load(open(args.get('Evaluation', 'TEST_DATA_PATH'),"rb"), encoding="latin1")
     data["codes"] = data["codes"]
@@ -92,7 +92,7 @@ def main():
     evalEpoch(mean, std, br, data, model, device, output_path,
               t=json.loads(args.get('Rendering', 'T')),
               visualize=args.getboolean('Evaluation', 'SAVE_IMAGES'))
-    
+
 def evalEpoch(mean, std, br, data, model,
               device, output_path, t, visualize=False):
     batch_size = br.batch_size
@@ -120,7 +120,7 @@ def evalEpoch(mean, std, br, data, model,
             codes.append(data["codes"][b])
         batch_codes = torch.tensor(np.stack(codes), device=device, dtype=torch.float32) # Bx128
 
-        predicted_poses = model(batch_codes)        
+        predicted_poses = model(batch_codes)
 
         # Prepare ground truth poses for the loss function
         T = np.array(t, dtype=np.float32)
@@ -137,7 +137,7 @@ def evalEpoch(mean, std, br, data, model,
 
         predicted_rgbs = rgb_render.renderBatch(Rs_predicted, ts).cpu().detach().numpy()
         gt_rgbs = rgb_render.renderBatch(Rs, ts).cpu().detach().numpy()
-        
+
         # Calculate VSD
         thau = 20 # 20 mm
         sigma = 0.3
@@ -155,13 +155,13 @@ def evalEpoch(mean, std, br, data, model,
             mask_gt = curr_gt == -1
             diff[mask_gt] == 0
             diff[mask_prediction] == 0
-            
+
             outliers = diff[diff > thau]
             total = diff[diff != 0]
             vsd = len(outliers)/(len(total)+1)
 
             losses.append(vsd)
-            
+
             print("Sample: {0}/{1} - VSD: {2}".format(curr_batch[obj_k],num_samples,vsd))
 
             if(visualize):
@@ -184,7 +184,7 @@ def evalEpoch(mean, std, br, data, model,
                 plt.subplot(2, 3, 4)
                 plt.imshow(curr_gt, vmin=14, vmax=16)
                 plt.title("GT rendered")
-                
+
                 plt.subplot(2, 3, 5)
                 plt.imshow(curr_prediction, vmin=14, vmax=16)
                 plt.title("Predicted")

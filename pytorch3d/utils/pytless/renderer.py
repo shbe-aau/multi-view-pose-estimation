@@ -179,13 +179,13 @@ class _Canvas(app.Canvas):
 
         # Create buffers
         self.vertex_buffer = gloo.VertexBuffer(vertices)
-        self.index_buffer = gloo.IndexBuffer(faces.flatten().astype(np.uint32))        
+        self.index_buffer = gloo.IndexBuffer(faces.flatten().astype(np.uint32))
 
 
     def render(self, R, t):
         # Update distance between camera and object
         self.dist = np.linalg.norm(t)
-        
+
         # Model matrix
         self.mat_model = np.eye(4, dtype=np.float32) # From object space to world space
 
@@ -219,7 +219,7 @@ class _Canvas(app.Canvas):
         if(self.random_light):
             random_light_pos = (np.random.uniform(-1.0, 1.0, size=3)*self.dist).astype(np.float32)
             program['u_light_eye_pos'] = random_light_pos.tolist()
-        
+
         program['u_light_ambient_w'] = self.ambient_weight
         program['u_mv'] = _compute_model_view(self.mat_model, self.mat_view)
         # program['u_nm'] = compute_normal_matrix(self.model, self.view)
@@ -293,7 +293,7 @@ class Renderer:
     def __init__(self, model, im_size, K, clip_near=100, clip_far=2000,
            surf_color=None, bg_color=(0.0, 0.0, 0.0, 0.0),
                  ambient_weight=0.1, mode='rgb+depth', random_light=True):
-        
+
         self.model = model
         self.im_size = im_size
         self.K = K
@@ -336,16 +336,16 @@ class Renderer:
                          self.bg_color, self.ambient_weight,
                          render_rgb, render_depth, random_light)
 
-        
+
     def render(self, R, t, ):
         # Rendering
         #---------------------------------------------------------------------------
 
         self.c.render(R,t)
-        
+
         #app.run()
         app.process_events()
-    
+
         #---------------------------------------------------------------------------
         if self.mode == 'rgb':
             out = self.c.rgb

@@ -143,9 +143,9 @@ for result_filename in p['result_filenames']:
   # output final scores and plot recall curves
   err_types = [e['type'] for e in p['errors']]
   for err_type in err_types:
-    misc.log('Average Recall {}: {}'.format(err_type, 
+    misc.log('Average Recall {}: {}'.format(err_type,
       aur[err_type]))
-    
+
   if set(['vsd', 'mssd', 'mspd']).issubset(err_types):
     test_set = os.path.basename(result_filename)
     mean_error = np.mean([aur[err_type] for err_type in err_types])

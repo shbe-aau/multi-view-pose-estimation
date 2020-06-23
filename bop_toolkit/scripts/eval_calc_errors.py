@@ -124,7 +124,7 @@ p['eval_path'] = str(args.eval_path)
 p['datasets_path'] = str(args.datasets_path)
 p['targets_filename'] = str(args.targets_filename)
 p['out_errors_tpath'] = str(args.out_errors_tpath)
-  
+
 misc.log('-----------')
 misc.log('Parameters:')
 for k, v in p.items():
@@ -192,7 +192,7 @@ for result_filename in p['result_filenames']:
   # Load the estimation targets.
   targets = inout.load_json(
     os.path.join(dp_split['base_path'], p['targets_filename']))
-  
+
   # Organize the targets by scene, image and object.
   misc.log('Organizing estimation targets...')
   targets_org = {}

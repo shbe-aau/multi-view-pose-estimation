@@ -20,7 +20,7 @@ from pytorch3d.transforms import Rotate, Translate
 
 # rendering components
 from pytorch3d.renderer import (
-    OpenGLPerspectiveCameras, look_at_view_transform, look_at_rotation, 
+    OpenGLPerspectiveCameras, look_at_view_transform, look_at_rotation,
     RasterizationSettings, MeshRenderer, MeshRasterizer, BlendParams,
     SoftSilhouetteShader, SoftPhongShader, HardPhongShader, PointLights
 )
@@ -30,15 +30,15 @@ def prepareRenderer(sigma_, gamma_, blur_radius_, faces_per_pixel_, device):
     blend_params = BlendParams(sigma=sigma_, gamma=gamma_)
 
     raster_settings = RasterizationSettings(
-        image_size=256, 
-        blur_radius=np.log(1. / blur_radius_ - 1.) * blend_params.sigma, 
-        faces_per_pixel=faces_per_pixel_, 
+        image_size=256,
+        blur_radius=np.log(1. / blur_radius_ - 1.) * blend_params.sigma,
+        faces_per_pixel=faces_per_pixel_,
         bin_size=0
     )
 
     # renderer = MeshRenderer(
     #     rasterizer=MeshRasterizer(
-    #         cameras=cameras, 
+    #         cameras=cameras,
     #         raster_settings=raster_settings
     #     ),
     #     shader=SoftSilhouetteShader(blend_params=blend_params)
@@ -46,15 +46,15 @@ def prepareRenderer(sigma_, gamma_, blur_radius_, faces_per_pixel_, device):
     lights = PointLights(device=device, location=((2.0, 2.0, -2.0),))
     renderer = MeshRenderer(
         rasterizer=MeshRasterizer(
-            cameras=cameras, 
+            cameras=cameras,
             raster_settings=raster_settings
         ),
         shader=SoftPhongShader(blend_params=blend_params, device=device, lights=lights)
     )
     return renderer
-    
 
-# Set the cuda device 
+
+# Set the cuda device
 device = torch.device("cuda:0")
 torch.cuda.set_device(device)
 
@@ -69,8 +69,8 @@ textures = Textures(verts_rgb=verts_rgb.to(device))
 
 # Create a Meshes object for the teapot. Here we have only one mesh in the batch.
 teapot_mesh = Meshes(
-    verts=[verts.to(device)],   
-    faces=[faces.to(device)], 
+    verts=[verts.to(device)],
+    faces=[faces.to(device)],
     textures=textures
 )
 

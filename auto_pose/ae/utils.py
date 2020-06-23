@@ -27,19 +27,19 @@ def batch_iteration_indices(N, batch_size):
 
 def get_dataset_path(workspace_path):
     return os.path.join(
-        workspace_path, 
+        workspace_path,
         'tmp_datasets',
     )
 
 def get_checkpoint_dir(log_dir):
     return os.path.join(
-        log_dir, 
+        log_dir,
         'checkpoints'
     )
 
 def get_log_dir(workspace_path, experiment_name, experiment_group=''):
     return os.path.join(
-        workspace_path, 
+        workspace_path,
         'experiments',
         experiment_group,
         experiment_name
@@ -47,7 +47,7 @@ def get_log_dir(workspace_path, experiment_name, experiment_group=''):
 
 def get_train_fig_dir(log_dir):
     return os.path.join(
-        log_dir, 
+        log_dir,
         'train_figures'
     )
 
@@ -66,7 +66,7 @@ def get_checkpoint_basefilename(log_dir):
 
 def get_config_file_path(workspace_path, experiment_name, experiment_group=''):
     return os.path.join(
-        workspace_path, 
+        workspace_path,
         'cfg',
         experiment_group,
         '{}.cfg'.format(experiment_name)
@@ -76,7 +76,7 @@ def get_config_file_path(workspace_path, experiment_name, experiment_group=''):
 
 def get_eval_config_file_path(workspace_path, eval_cfg='eval.cfg'):
     return os.path.join(
-        workspace_path, 
+        workspace_path,
         'cfg_eval',
         eval_cfg
     )

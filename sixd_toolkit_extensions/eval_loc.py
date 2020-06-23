@@ -188,7 +188,7 @@ def match_and_eval_performance_scores(eval_args, eval_dir):
     #[DATA]
     dataset = eval_args.get('DATA','DATASET')
     test_type = eval_args.get('DATA','CAM_TYPE')
-    
+
 
     #[METRIC]
     # Top N pose estimates (with the highest score) to be evaluated for each

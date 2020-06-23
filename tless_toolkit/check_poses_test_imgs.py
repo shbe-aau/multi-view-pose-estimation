@@ -19,7 +19,7 @@ model_type = 'cad' # options: 'cad', 'reconst'
 im_step = 100 # Consider every im_step-th image
 
 # Path to the T-LESS dataset.
-# Which you can download using the t-less_download.py script. 
+# Which you can download using the t-less_download.py script.
 #data_path = '/Add/your/path/here/t-less_v2'
 data_path = './t-less_v2'
 

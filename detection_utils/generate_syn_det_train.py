@@ -23,7 +23,7 @@ if __name__ == '__main__':
     parser.add_argument('--radius', default=800, type=int)
     parser.add_argument('--min_rot_views', default=1000, type=int)
     args = parser.parse_args()
-    
+
     output_path = args.output_path
 
     models_cad_files = glob.glob(os.path.join(args.model,'*.ply'))
@@ -34,7 +34,7 @@ if __name__ == '__main__':
     # models_cad_files = [file for file in models_cad_files]
     # print models_cad_files
     # exit()
-    
+
     vertex_tmp_store_folder = '.'
     model_type = args.model_type
 
@@ -62,8 +62,8 @@ if __name__ == '__main__':
     ], random_order=True)
 
     renderer = SceneRenderer(
-        models_cad_files, 
-        vertex_tmp_store_folder, 
+        models_cad_files,
+        vertex_tmp_store_folder,
         args.scale,
         args.width,
         args.height,
@@ -79,13 +79,13 @@ if __name__ == '__main__':
         obj_ids=obj_ids,
         model_type=model_type
     )
-    
+
     max_round = args.num
-    
+
     #print max_round
-    
+
     widgets = ['Processing: ', pb.Percentage(), ' ', pb.Bar(marker='#',left='[',right=']'),' ', pb.ETA()]
-    
+
     if not os.path.exists(output_path):
         os.makedirs(output_path)
 
@@ -94,13 +94,13 @@ if __name__ == '__main__':
 
     for round in xrange(max_round):
         filename = str('image_' + str(round))
-        
+
         bgr, obj_info = renderer.render()
-        
+
         cv2.imwrite(os.path.join(output_path, filename + '.png'),bgr)
         # cv2.imshow('bgr',bgr)
         write_xml(obj_info, args.width, args.height, obj_info, '', output_path, filename)
-        
+
         if args.show_images:
             for o in obj_info:
                 xmin, ymin, xmax, ymax = o['bb']

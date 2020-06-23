@@ -138,7 +138,7 @@ class Precomputer(object):
       Precomputer.pre_Ys = (Precomputer.ys - K[1, 2]) / np.float64(K[1, 1])
 
     return Precomputer.pre_Xs, Precomputer.pre_Ys
-  
+
 
 def depth_im_to_dist_im_fast(depth_im, K):
   """Converts a depth image to a distance image.

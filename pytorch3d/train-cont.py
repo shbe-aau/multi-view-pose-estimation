@@ -53,7 +53,7 @@ def loadCheckpoint(model_path):
 
     lr_reducer = torch.optim.lr_scheduler.StepLR(optimizer, step_size=2, gamma=0.9)
     lr_reducer.load_state_dict(checkpoint['lr_reducer'])
-    
+
     print("Loaded the checkpoint: \n" + model_path)
     return model, optimizer, epoch, lr_reducer
 
@@ -280,7 +280,7 @@ def trainEpoch(mean, std, br, data, model,
     # Generate training data
     data = dataset_gen.generate_samples(num_samples)
     print("Generated {0} samples!".format(len(data["codes"])))
-    
+
     model.train()
     losses = []
     batch_size = br.batch_size

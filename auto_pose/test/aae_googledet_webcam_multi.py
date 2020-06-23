@@ -81,7 +81,7 @@ def load_frozenmodel():
                 serialized_graph = fid.read()
                 od_graph_def.ParseFromString(serialized_graph)
                 dest_nodes = ['Postprocessor/convert_scores','Postprocessor/ExpandDims_1']
-    
+
                 edges = {}
                 name_to_node_map = {}
                 node_seq = {}
@@ -94,35 +94,35 @@ def load_frozenmodel():
                     seq += 1
                 for d in dest_nodes:
                     assert d in name_to_node_map, "%s is not in graph" % d
-    
+
                 nodes_to_keep = set()
                 next_to_visit = dest_nodes[:]
-                
+
                 while next_to_visit:
                     n = next_to_visit[0]
                     del next_to_visit[0]
                     if n in nodes_to_keep: continue
                     nodes_to_keep.add(n)
                     next_to_visit += edges[n]
-    
+
                 nodes_to_keep_list = sorted(list(nodes_to_keep), key=lambda n: node_seq[n])
                 nodes_to_remove = set()
-                
+
                 for n in node_seq:
                     if n in nodes_to_keep_list: continue
                     nodes_to_remove.add(n)
                 nodes_to_remove_list = sorted(list(nodes_to_remove), key=lambda n: node_seq[n])
-    
+
                 keep = graph_pb2.GraphDef()
                 for n in nodes_to_keep_list:
                     keep.node.extend([copy.deepcopy(name_to_node_map[n])])
-    
+
                 remove = graph_pb2.GraphDef()
                 remove.node.extend([score_def])
                 remove.node.extend([expand_def])
                 for n in nodes_to_remove_list:
                     remove.node.extend([copy.deepcopy(name_to_node_map[n])])
-    
+
                 with tf.device('/gpu:0'):
                     tf.import_graph_def(keep, name='')
                 with tf.device('/cpu:0'):
@@ -180,24 +180,24 @@ def detection(detection_graph, category_index, score, expand):
 
                 train_cfg_file_path = utils.get_config_file_path(workspace_path, experiment_name, experiment_group)
                 train_args = configparser.ConfigParser()
-                train_args.read(train_cfg_file_path)  
+                train_args.read(train_cfg_file_path)
                 h_train, w_train, c = train_args.getint('Dataset','H'),train_args.getint('Dataset','W'), train_args.getint('Dataset','C')
                 model_paths.append(train_args.get('Paths','MODEL_PATH'))
                 all_train_args.append(train_args)
-                  
+
                 log_dir = utils.get_log_dir(workspace_path,experiment_name,experiment_group)
                 ckpt_dir = utils.get_checkpoint_dir(log_dir)
 
                 all_codebooks.append(factory.build_codebook_from_name(experiment_name, experiment_group, return_dataset=False))
                 factory.restore_checkpoint(sess, tf.train.Saver(var_list=tf.get_collection(tf.GraphKeys.GLOBAL_VARIABLES, scope=experiment_name)), ckpt_dir)
-            
-            
-            #opts = tf.profiler.ProfileOptionBuilder.float_operation()    
+
+
+            #opts = tf.profiler.ProfileOptionBuilder.float_operation()
             #flops = tf.profiler.profile(sess.graph, run_meta=run_meta, cmd='op', options=opts)
             #exit()
             # i_class_mapping = {v: k for k, v in class_i_mapping.iteritems()}
             renderer = meshrenderer_phong.Renderer(
-                model_paths, 
+                model_paths,
                 1
             )
 
@@ -264,7 +264,7 @@ def detection(detection_graph, category_index, score, expand):
                 img_crops = []
                 det_bbs = []
                 det_classes = []
-                det_scores = []                
+                det_scores = []
 
                 det_aae_bbs = []
                 det_aae_objects_k = []
@@ -272,7 +272,7 @@ def detection(detection_graph, category_index, score, expand):
                 boxes = np.squeeze(boxes)
                 scores = np.squeeze(scores)
                 classes = np.squeeze(classes).astype(np.int32)
-                
+
 
                 highest_class_score = {clas:0.0 for clas in classes}
                 for box,score, clas in zip(boxes,scores, classes):
@@ -315,14 +315,14 @@ def detection(detection_graph, category_index, score, expand):
                         ts.append(t.squeeze())
 
                     Rs = np.array(Rs)
-                    ts = np.array(ts)                                    
-                    
-                    bgr_y,_,_ = renderer.render_many( 
+                    ts = np.array(ts)
+
+                    bgr_y,_,_ = renderer.render_many(
                         obj_ids=np.array(det_aae_objects_k).astype(np.int32),
                         W=width/arguments.down,
                         H=height/arguments.down,
-                        K=K_down, 
-                        Rs=Rs, 
+                        K=K_down,
+                        Rs=Rs,
                         ts=ts,
                         near=1.,
                         far=10000.,
@@ -330,16 +330,16 @@ def detection(detection_graph, category_index, score, expand):
                         # calc_bbs=False,
                         # depth=False
                     )
-                    
-                
+
+
                     bgr_y = cv2.resize(bgr_y,(width,height))
 
-                    
+
                     g_y = np.zeros_like(bgr_y)
-                    g_y[:,:,1]= bgr_y[:,:,1]    
-                    im_bg = cv2.bitwise_and(image,image,mask=(g_y[:,:,1]==0).astype(np.uint8))                 
+                    g_y[:,:,1]= bgr_y[:,:,1]
+                    im_bg = cv2.bitwise_and(image,image,mask=(g_y[:,:,1]==0).astype(np.uint8))
                     image = cv2.addWeighted(im_bg,1,g_y,1,0)
-                    
+
                 for bb,score,clas in zip(det_bbs,det_scores,det_classes):
                     xmin,ymin,xmax,ymax = bb[0],bb[1],bb[2]+bb[0],bb[1]+bb[3]
                     cv2.putText(image, '%s : %1.3f' % (category_index[clas]['name'],score), (xmin, ymax+20), cv2.FONT_ITALIC, .5, color_dict[clas-1], 2)
@@ -432,4 +432,3 @@ for _,val in category.iteritems():
         clas_k_map[int(val['id'])] = aae_list.index(val['name'])
 
 detection(graph, category, score, expand)
-

@@ -42,7 +42,7 @@ void main() {
     gl_Position = u_mvp * vec4(a_position, 1.0);
     v_color = a_color;
     v_texcoord = a_texcoord;
-    
+
     // The following points/vectors are expressed in the eye coordinates.
     v_eye_pos = (u_mv * vec4(a_position, 1.0)).xyz; // Vertex.
     v_L = normalize(u_light_eye_pos - v_eye_pos); // Vector to the light.

@@ -78,7 +78,7 @@ class DatasetGenerator():
         if(sampling_method.split("-")[-1] == "reuse"):
             self.pose_reuse = True
         sampling_method = sampling_method.replace("-reuse","")
-        
+
         self.simple_pose_sampling = False
         if(sampling_method == "tless"):
             self.pose_sampling = self.tless_sampling
@@ -102,12 +102,12 @@ class DatasetGenerator():
             self.pose_sampling = self.sm_quat_random
             self.simple_pose_sampling = False
         elif(sampling_method == "sundermeyer-sphere"):
-            views = viewsphere_for_embedding(num_views=2000, num_cyclo=36)            
+            views = viewsphere_for_embedding(num_views=2000, num_cyclo=36)
             self.poses = []
             for i in np.arange(views.shape[0]):
                 print("num views: ",views.shape[0])
                 self.poses.append(torch.from_numpy(views[i]))
-            self.pose_sampling = self.reuse_poses            
+            self.pose_sampling = self.reuse_poses
         else:
             print("ERROR! Invalid view sampling method: {0}".format(sampling_method))
 
@@ -122,8 +122,8 @@ class DatasetGenerator():
         random.shuffle(self.poses)
         R = self.poses[-1]
         t = torch.tensor([0.0, 0.0, self.dist])
-        return R,t        
-        
+        return R,t
+
     def load_encoder(self, weights_path):
         model = Encoder(weights_path).to(self.device)
         model.eval()
@@ -132,7 +132,7 @@ class DatasetGenerator():
     def load_bg_images(self, output_path, background_path, num_bg_images, h, w, c=3):
         if(background_path == ""):
             return []
-    
+
         bg_img_paths = glob.glob(background_path + "*.jpg")
         noof_bg_imgs = min(num_bg_images, len(bg_img_paths))
         shape = (h, w, c)
@@ -147,7 +147,7 @@ class DatasetGenerator():
             print(len(file_list))
             from random import shuffle
             shuffle(file_list)
-            
+
             for j,fname in enumerate(file_list):
                 print('loading bg img %s/%s' % (j,noof_bg_imgs))
                 bgr = cv2.imread(fname)
@@ -190,7 +190,7 @@ class DatasetGenerator():
         return aug
 
     # From: https://docs.scipy.org/doc/scipy/reference/generated/scipy.stats.special_ortho_group.html
-    def haar_sampling(self):        
+    def haar_sampling(self):
         R = torch.tensor(special_ortho_group.rvs(3), dtype=torch.float32).unsqueeze(0)
         t = torch.tensor([0.0, 0.0, self.dist])
         return R,t
@@ -200,60 +200,60 @@ class DatasetGenerator():
         # Generate random pose for the batch
         # All images in the batch will share pose but different augmentations
         R, t = look_at_view_transform(self.dist, elev=0, azim=0, up=((0, 1, 0),))
-    
+
         # Sample azimuth and apply transformation
         azim = 35.0
-        rot = scipyR.from_euler('z', azim, degrees=True)    
+        rot = scipyR.from_euler('z', azim, degrees=True)
         rot_mat = torch.tensor(rot.as_matrix(), dtype=torch.float32)
         R = torch.matmul(R, rot_mat)
-        
+
         # Sample elevation and apply transformation
         elev = 25.
-        rot = scipyR.from_euler('x', elev, degrees=True)    
+        rot = scipyR.from_euler('x', elev, degrees=True)
         rot_mat = torch.tensor(rot.as_matrix(), dtype=torch.float32)
         R = torch.matmul(R, rot_mat)
-        
+
         t = torch.tensor([0.0, 0.0, self.dist])
         return R,t
-    
+
     # Sampling based on the T-LESS dataset
     def tless_sampling_broken(self):
         # Generate random pose for the batch
         # All images in the batch will share pose but different augmentations
         R, t = look_at_view_transform(self.dist, elev=0, azim=0, up=((0, 1, 0),))
-    
+
         # Sample azimuth and apply transformation
         azim = np.random.uniform(low=0.0, high=360.0, size=1)
-        rot = scipyR.from_euler('z', azim, degrees=True)    
+        rot = scipyR.from_euler('z', azim, degrees=True)
         rot_mat = torch.tensor(rot.as_matrix(), dtype=torch.float32)
         R = torch.matmul(R, rot_mat)
-        
+
         # Sample elevation and apply transformation
         elev = np.random.uniform(low=-360, high=0.0, size=1)
-        rot = scipyR.from_euler('x', elev, degrees=True)    
+        rot = scipyR.from_euler('x', elev, degrees=True)
         rot_mat = torch.tensor(rot.as_matrix(), dtype=torch.float32)
         R = torch.matmul(R, rot_mat)
 
         # Sample cam plane rotation and apply
         if(not self.simple_pose_sampling):
             in_plane = np.random.uniform(low=0.0, high=360.0, size=1)
-            rot = scipyR.from_euler('y', in_plane, degrees=True)    
+            rot = scipyR.from_euler('y', in_plane, degrees=True)
             rot_mat = torch.tensor(rot.as_matrix(), dtype=torch.float32)
             R = torch.inverse(R)
             R = torch.matmul(R, rot_mat)
             R = torch.inverse(R)
-        
+
         t = torch.tensor([0.0, 0.0, self.dist])
         return R.squeeze(),t
 
     def tless_sampling(self):
         theta_sample = np.random.uniform(low=0.0, high=2.0*np.pi, size=1)[0]
         phi_sample = np.random.uniform(low=0.0, high=2.0*np.pi, size=1)[0]
-        
+
         x = self.dist*np.sin(theta_sample)*np.cos(phi_sample)
         y = self.dist*np.sin(theta_sample)*np.sin(phi_sample)
         z = self.dist*np.cos(theta_sample)
-        
+
         cam_position = torch.tensor([x, y, z]).unsqueeze(0)
         if(z < 0):
             R = look_at_rotation(cam_position, up=((0, 0, -1),)).squeeze()
@@ -263,14 +263,14 @@ class DatasetGenerator():
         # Rotate in-plane
         if(not self.simple_pose_sampling):
             rot_degrees = np.random.uniform(low=-90.0, high=90.0, size=1)
-            rot = scipyR.from_euler('z', rot_degrees, degrees=True)    
+            rot = scipyR.from_euler('z', rot_degrees, degrees=True)
             rot_mat = torch.tensor(rot.as_matrix(), dtype=torch.float32)
             R = torch.matmul(R, rot_mat)
             R = R.squeeze()
-        
+
         t = torch.tensor([0.0, 0.0, self.dist])
         return R,t
-        
+
 
     # Based on Sundermeyer
     def sm_quat_random(self):
@@ -301,7 +301,7 @@ class DatasetGenerator():
         t = torch.tensor([0.0, 0.0, self.dist])
         return R,t
 
-    
+
     # Truely random
     # Based on: https://www.cmu.edu/biolphys/deserno/pdf/sphere_equi.pdf
     def sphere_sampling(self):
@@ -321,14 +321,14 @@ class DatasetGenerator():
         # Rotate in-plane
         if(not self.simple_pose_sampling):
             rot_degrees = np.random.uniform(low=-90.0, high=90.0, size=1)
-            rot = scipyR.from_euler('z', rot_degrees, degrees=True)    
+            rot = scipyR.from_euler('z', rot_degrees, degrees=True)
             rot_mat = torch.tensor(rot.as_matrix(), dtype=torch.float32)
             R = torch.matmul(R, rot_mat)
             R = R.squeeze()
-        
+
         t = torch.tensor([0.0, 0.0, self.dist])
         return R,t
-    
+
     def generate_image_batch(self):
         # Generate random poses
         curr_Rs = []
@@ -347,16 +347,16 @@ class DatasetGenerator():
             xy_flip[1,1] = -1.0
             R_opengl = np.dot(R,xy_flip)
             R_opengl = np.transpose(R_opengl)
-        
+
             # Render images
             #ren_rgb = renderer.render(self.model, (self.img_size,self.img_size),
             #                          self.K, R_opengl, t, surf_color=(1, 1, 1), mode='rgb')
 
             ren_rgb = self.renderer.render(R_opengl, t)
-            
+
             curr_Rs.append(R)
             curr_ts.append(t)
-            
+
             image_renders.append(ren_rgb)
 
         # Augment data
@@ -376,7 +376,7 @@ class DatasetGenerator():
                 alpha = image_base[:, :, 0:3].astype(float)
                 sum_img = np.sum(image_base[:,:,:3], axis=2)
                 alpha[sum_img > 0] = 1
-                
+
                 image_base[:, :, 0:3] = image_base[:, :, 0:3] * alpha + img_back[:, :, 0:3] * (1 - alpha)
             else:
                 image_base = image_base[:, :, 0:3]
@@ -398,7 +398,7 @@ class DatasetGenerator():
             rand_trans_x = np.random.uniform(-self.max_rel_offset, self.max_rel_offset) * w
             rand_trans_y = np.random.uniform(-self.max_rel_offset, self.max_rel_offset) * h
             obj_bb_off = obj_bb + np.array([rand_trans_x,rand_trans_y,0,0])
-            
+
             cropped = extract_square_patch(image_ref, obj_bb_off)
             cropped_org = extract_square_patch(org_img, obj_bb)
             images.append(cropped[:,:,:3])
@@ -481,8 +481,8 @@ if __name__ == "__main__":
             cv2.namedWindow(window_name)
             cv2.moveWindow(window_name,42,42)
             # Flip last axis to convert from RGB to BGR before showing using cv2
-            cv2.imshow(window_name, np.flip(img,axis=2)) 
-            key = cv2.waitKey(0)            
+            cv2.imshow(window_name, np.flip(img,axis=2))
+            key = cv2.waitKey(0)
             cv2.destroyWindow(window_name)
             if(key == ord("q")):
                 break
@@ -493,4 +493,3 @@ if __name__ == "__main__":
         output_path = "./training-images.p"
     pickle.dump(data, open(output_path, "wb"), protocol=2)
     print("Saved dataset to: ", output_path)
-    

@@ -34,6 +34,3 @@ class VAO(object):
 
     def bind(self):
         glBindVertexArray(self.__id)
-
-
-

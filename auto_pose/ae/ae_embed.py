@@ -23,7 +23,7 @@ def main():
     parser.add_argument('--at_step', default=None, required=False)
     arguments = parser.parse_args()
     full_name = arguments.experiment_name.split('/')
-    
+
     experiment_name = full_name.pop()
     experiment_group = full_name.pop() if len(full_name) > 0 else ''
     at_step = arguments.at_step

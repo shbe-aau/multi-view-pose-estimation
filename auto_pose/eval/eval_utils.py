@@ -11,7 +11,7 @@ from auto_pose.ae import utils as u
 
 
 def get_gt_scene_crops(scene_id, eval_args, train_args):
-    
+
 
     dataset_name = eval_args.get('DATA','DATASET')
     cam_type = eval_args.get('DATA','CAM_TYPE')
@@ -28,7 +28,7 @@ def get_gt_scene_crops(scene_id, eval_args, train_args):
     current_config_hash = hashlib.md5(cfg_string).hexdigest()
 
     current_file_name = os.path.join(dataset_path, current_config_hash + '.npz')
-    
+
 
     if os.path.exists(current_file_name):
         data = np.load(current_file_name)
@@ -45,14 +45,14 @@ def get_gt_scene_crops(scene_id, eval_args, train_args):
 
         # only available for primesense, sixdtoolkit can generate
         visib_gt = inout.load_yaml(data_params['scene_gt_stats_mpath'].format(scene_id, delta))
-        
+
         bb_gt = inout.load_gt(data_params['scene_gt_mpath'].format(scene_id))
 
-        test_img_crops, test_img_depth_crops, bbs, bb_scores, bb_vis = generate_scene_crops(test_imgs, test_imgs_depth, bb_gt, eval_args, 
+        test_img_crops, test_img_depth_crops, bbs, bb_scores, bb_vis = generate_scene_crops(test_imgs, test_imgs_depth, bb_gt, eval_args,
                                                                                             train_args, visib_gt=visib_gt)
 
         np.savez(current_file_name, test_img_crops=test_img_crops, test_img_depth_crops=test_img_depth_crops, bbs = bbs, bb_scores=bb_scores, visib_gt=bb_vis)
-        
+
         current_cfg_file_name = os.path.join(dataset_path, current_config_hash + '.cfg')
         with open(current_cfg_file_name, 'w') as f:
             f.write(cfg_string)
@@ -98,11 +98,11 @@ def generate_scene_crops(test_imgs, test_depth_imgs, bboxes, eval_args, train_ar
                     #print bb
                     ## uebler hack: remove!
                     # xmin, ymin, xmax, ymax = bb
-                    # x, y, w, h = xmin, ymin, xmax-xmin, ymax-ymin 
+                    # x, y, w, h = xmin, ymin, xmax-xmin, ymax-ymin
                     # bb = np.array([x, y, w, h])
                     ##
                     x,y,w,h = bb
-                    
+
                     size = int(np.maximum(h,w) * pad_factor)
                     left = int(np.max([x+w/2-size/2, 0]))
                     right = int(np.min([x+w/2+size/2, W]))
@@ -150,8 +150,8 @@ def load_scenes(scene_id, eval_args, depth=False):
                 imgs[view_id,...] = inout.load_depth2(depth_path) * cam_p['depth_scale']
             except:
                 print depth_path,' not found'
-    
-    else:    
+
+    else:
         print (noof_imgs,) + p['test_im_size'][::-1] + (3,)
         imgs = np.empty((noof_imgs,) + p['test_im_size'][::-1] + (3,), dtype=np.uint8)
         print noof_imgs
@@ -174,7 +174,7 @@ def get_all_scenes_for_obj(eval_args):
         obj_id = eval_args.getint('DATA', 'OBJ_ID')
     except:
         obj_id = eval(eval_args.get('DATA', 'OBJECTS'))[0]
-    
+
 
     cfg_string = str(dataset_name)
     current_config_hash = hashlib.md5(cfg_string).hexdigest()
@@ -182,9 +182,9 @@ def get_all_scenes_for_obj(eval_args):
 
     if os.path.exists(current_file_name):
         obj_scene_dict = np.load(current_file_name).item()
-    else:    
+    else:
         p = dataset_params.get_dataset_params(dataset_name, model_type='', train_type='', test_type=cam_type, cam_type=cam_type)
-        
+
         obj_scene_dict = {}
         scene_gts = []
         for scene_id in range(1,p['scene_count']+1):
@@ -220,7 +220,7 @@ def select_img_crops(crop_candidates, test_crops_depth, bbs, bb_scores, visibs, 
         idcs = np.argsort(-np.array(bb_scores))
     else:
         idcs = np.argsort(-np.array(visibs))
-    
+
     if icp:
         return (np.array(crop_candidates)[idcs], np.array(test_crops_depth)[idcs], np.array(bbs)[idcs], np.array(bb_scores)[idcs], np.array(visibs)[idcs])
     else:

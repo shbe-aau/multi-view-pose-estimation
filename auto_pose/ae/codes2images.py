@@ -28,7 +28,7 @@ def main():
     parser.add_argument('--at_step', default=None, required=False)
     arguments = parser.parse_args()
     full_name = arguments.experiment_name.split('/')
-    
+
     experiment_name = full_name.pop()
     experiment_group = full_name.pop() if len(full_name) > 0 else ''
     at_step = arguments.at_step
@@ -78,8 +78,8 @@ def main():
         num_codes = len(data["codes"])
         num_samples = 20
         samples_indices = np.random.uniform(0,num_codes-1,num_samples).astype(np.int)
-        
-        for k,index in enumerate(samples_indices):            
+
+        for k,index in enumerate(samples_indices):
             code = data["codes"][index]
             img_rec = sess.run(ae.reconstruction, feed_dict={ae.z: [code]})
             img_rec = np.array(img_rec[0])
@@ -101,6 +101,6 @@ def main():
             fig.savefig(file_name, dpi=fig.dpi,quality=50)
             plt.clf()
             print("Wrote file: {0}".format(file_name))
-            
+
 if __name__ == '__main__':
     main()

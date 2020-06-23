@@ -24,7 +24,7 @@ class Texture(object):
 
     def subImage(self, level, xoffset, yoffset, width, height,
                         data_format, data_type, pixels):
-        glTextureSubImage2D(self.__id[0], level, xoffset, yoffset, 
+        glTextureSubImage2D(self.__id[0], level, xoffset, yoffset,
             width, height, data_format, data_type, pixels)
 
     def generate_mipmap(self):
@@ -68,9 +68,9 @@ class Texture1D(object):
         if wrap_r!=None:
             glTextureParameteri(self.__id[0], GL_TEXTURE_WRAP_R, wrap_r)
 
-    def subImage(self, level, xoffset, width, 
+    def subImage(self, level, xoffset, width,
                         data_format, data_type, pixels):
-        glTextureSubImage1D(self.__id[0], level, xoffset,  
+        glTextureSubImage1D(self.__id[0], level, xoffset,
             width, data_format, data_type, pixels)
 
     def generate_mipmap(self):
@@ -160,7 +160,7 @@ class TextureMultisample(object):
 
     def subImage(self, level, xoffset, yoffset, width, height,
                         data_format, data_type, pixels):
-        glTextureSubImage2D(self.__id[0], level, xoffset, yoffset, 
+        glTextureSubImage2D(self.__id[0], level, xoffset, yoffset,
             width, height, data_format, data_type, pixels)
 
     def makeResident(self):
