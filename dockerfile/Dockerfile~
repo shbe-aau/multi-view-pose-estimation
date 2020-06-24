@@ -61,7 +61,7 @@ RUN apt-get update && apt-get install -y \
 
 RUN ${PIP} --no-cache-dir install --upgrade \
     pip \
-    setuptools
+    'setuptools<45.0.0'
 
 # Some TF tools expect a "python" binary
 RUN ln -s $(which ${PYTHON}) /usr/local/bin/python 
@@ -71,7 +71,65 @@ RUN ln -s $(which ${PYTHON}) /usr/local/bin/python
 #   tensorflow-gpu
 #   tf-nightly
 #   tf-nightly-gpu
-RUN ${PIP} install tensorflow-gpu==1.13.1
+RUN ${PIP} install tensorflow-gpu==1.14.0
 
 COPY bashrc /etc/bash.bashrc
 RUN chmod a+rwx /etc/bash.bashrc
+
+# Install dependicies for OpenCV
+RUN apt-get update && apt-get install -y --no-install-recommends \
+        libsm6 \
+	libxext6 \
+	libxrender-dev
+
+# Install OpenCV
+RUN apt-get update
+RUN apt-get install -y build-essential apt-utils
+
+RUN apt-get install -y cmake git libgtk2.0-dev pkg-config libavcodec-dev \
+  libavformat-dev libswscale-dev
+RUN  apt-get update && apt-get install -y python-dev python-numpy \
+  python python-pip python-dev libtbb2 libtbb-dev \
+  libjpeg-dev libjasper-dev libdc1394-22-dev \
+  python-opencv libopencv-dev libav-tools python-pycurl \
+  libatlas-base-dev gfortran webp qt5-default libvtk6-dev zlib1g-dev
+
+RUN pip install numpy
+
+RUN apt-get install -y python-pip
+RUN pip install --upgrade pip
+
+RUN cd ~/ &&\
+    git clone https://github.com/Itseez/opencv.git &&\
+    git clone https://github.com/Itseez/opencv_contrib.git &&\
+    cd opencv && mkdir build && cd build && cmake  -DWITH_QT=ON -DWITH_OPENGL=ON -DFORCE_VTK=ON -DWITH_TBB=ON -DWITH_GDAL=ON -DWITH_XINE=ON -DBUILD_EXAMPLES=ON .. && \
+    make -j7 && make install && ldconfig
+
+# Install GLFW for OpenGL and install Assimp
+RUN apt-get install -y \
+    	libglfw3-dev \
+	libglfw3 \
+	libassimp-dev
+
+# Pip install stuff
+RUN pip --no-cache-dir install --pre --upgrade PyOpenGL PyOpenGL_accelerate
+RUN pip --no-cache-dir install \
+    cython
+
+RUN pip --no-cache-dir install \
+    cyglfw3 \
+    pyassimp==3.3 \
+    imgaug \
+    progressbar \
+    configparser \
+    opencv-python==3.4.0.14 \
+    opencv-contrib-python
+
+# Install Keras and RetinaNet
+RUN git clone https://github.com/fizyr/keras-retinanet
+RUN cd keras-retinanet && pip install .
+
+# Install AAE (AutoPose) - forked version
+RUN git clone https://github.com/shbe-aau/AugmentedAutoencoder
+RUN cd AugmentedAutoencoder && pip install .
+ENV AE_WORKSPACE_PATH=/shared-folder/autoencoder_ws

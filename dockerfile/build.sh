@@ -1,1 +1,1 @@
-docker build -t tensorflow-opencv-opengl .
+docker build -t pytorch3d .

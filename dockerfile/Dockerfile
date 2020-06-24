@@ -17,7 +17,7 @@
 ## https://github.com/tensorflow/tensorflow/blob/v1.13.1/tensorflow/tools/dockerfiles/dockerfiles/gpu.Dockerfile
 ## Modified by shbe@create.aau.dk
 
-ARG UBUNTU_VERSION=16.04
+ARG UBUNTU_VERSION=18.04
 
 FROM nvidia/cudagl:10.0-base-ubuntu${UBUNTU_VERSION} as base
 
@@ -33,14 +33,13 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
         libcudnn7=7.4.1.5-1+cuda10.0 \
         libfreetype6-dev \
         libhdf5-serial-dev \
-        libpng12-dev \
         libzmq3-dev \
         pkg-config \
         software-properties-common \
         unzip
 
 RUN apt-get update && \
-        apt-get install nvinfer-runtime-trt-repo-ubuntu1604-5.0.2-ga-cuda10.0 \
+        apt-get install nvinfer-runtime-trt-repo-ubuntu1804-5.0.2-ga-cuda10.0 \
         && apt-get update \
         && apt-get install -y --no-install-recommends libnvinfer5=5.0.2-1+cuda10.0 \
         && apt-get clean \
@@ -49,32 +48,19 @@ RUN apt-get update && \
 # For CUDA profiling, TensorFlow requires CUPTI.
 ENV LD_LIBRARY_PATH /usr/local/cuda/extras/CUPTI/lib64:$LD_LIBRARY_PATH
 
-ARG PYTHON=python
-ARG PIP=pip
-
 # See http://bugs.python.org/issue19846
 ENV LANG C.UTF-8
 
-RUN apt-get update && apt-get install -y \
-    ${PYTHON} \
-    ${PYTHON}-pip
+ENV TORCH_CUDA_ARCH_LIST=7.0
 
-RUN ${PIP} --no-cache-dir install --upgrade \
-    pip \
-    'setuptools<45.0.0'
+# Required for Python3.6
+RUN apt-get update && apt-get -q install -y \
+    python3-pip \
+    python3 \
+    git
 
-# Some TF tools expect a "python" binary
-RUN ln -s $(which ${PYTHON}) /usr/local/bin/python 
-
-# Options:
-#   tensorflow
-#   tensorflow-gpu
-#   tf-nightly
-#   tf-nightly-gpu
-RUN ${PIP} install tensorflow-gpu==1.14.0
-
-COPY bashrc /etc/bash.bashrc
-RUN chmod a+rwx /etc/bash.bashrc
+RUN pip3 --no-cache-dir install --upgrade \
+    pip
 
 # Install dependicies for OpenCV
 RUN apt-get update && apt-get install -y --no-install-recommends \
@@ -82,28 +68,25 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 	libxext6 \
 	libxrender-dev
 
-# Install OpenCV
+# Install OpenCV dependencies
 RUN apt-get update
 RUN apt-get install -y build-essential apt-utils
 
+RUN DEBIAN_FRONTEND="noninteractive" apt-get -y install tzdata
 RUN apt-get install -y cmake git libgtk2.0-dev pkg-config libavcodec-dev \
   libavformat-dev libswscale-dev
-RUN  apt-get update && apt-get install -y python-dev python-numpy \
-  python python-pip python-dev libtbb2 libtbb-dev \
-  libjpeg-dev libjasper-dev libdc1394-22-dev \
-  python-opencv libopencv-dev libav-tools python-pycurl \
+RUN  apt-get update && apt-get install -y libtbb2 libtbb-dev \
+  libjpeg-dev libdc1394-22-dev \
   libatlas-base-dev gfortran webp qt5-default libvtk6-dev zlib1g-dev
+RUN pip3 install numpy
 
-RUN pip install numpy
-
-RUN apt-get install -y python-pip
-RUN pip install --upgrade pip
-
+# Install OpenCV from repo
 RUN cd ~/ &&\
     git clone https://github.com/Itseez/opencv.git &&\
     git clone https://github.com/Itseez/opencv_contrib.git &&\
     cd opencv && mkdir build && cd build && cmake  -DWITH_QT=ON -DWITH_OPENGL=ON -DFORCE_VTK=ON -DWITH_TBB=ON -DWITH_GDAL=ON -DWITH_XINE=ON -DBUILD_EXAMPLES=ON .. && \
     make -j7 && make install && ldconfig
+RUN rm -rf ~/opencv && rm -rf ~/opencv_contrib
 
 # Install GLFW for OpenGL and install Assimp
 RUN apt-get install -y \
@@ -112,11 +95,10 @@ RUN apt-get install -y \
 	libassimp-dev
 
 # Pip install stuff
-RUN pip --no-cache-dir install --pre --upgrade PyOpenGL PyOpenGL_accelerate
-RUN pip --no-cache-dir install \
-    cython
+RUN pip3 --no-cache-dir install --pre --upgrade PyOpenGL PyOpenGL_accelerate
+RUN pip3 --no-cache-dir install cython
 
-RUN pip --no-cache-dir install \
+RUN pip3 --no-cache-dir install \
     cyglfw3 \
     imageio==2.6.0 \
     pyassimp==3.3 \
@@ -126,11 +108,38 @@ RUN pip --no-cache-dir install \
     opencv-python==3.4.0.14 \
     opencv-contrib-python
 
+# Install Tensorflow
+RUN pip3 install tensorflow-gpu==1.14.0
+
 # Install Keras and RetinaNet
-RUN git clone https://github.com/fizyr/keras-retinanet
-RUN cd keras-retinanet && pip install .
+#RUN cd ~/ &&\
+#    git clone https://github.com/fizyr/keras-retinanet
+#RUN cd keras-retinanet && pip install .
+#RUN rm -rf ~/keras-retinanet
+RUN pip3 --no-cache-dir install 'git+https://github.com/fizyr/keras-retinanet'
+
+# Install torch and torch vision
+RUN pip3 --no-cache-dir install \
+    torch \
+    torchvision
+
+# Install nice to have stuff
+RUN pip3 --no-cache-dir install \
+    imageio \
+    matplotlib \
+    scikit-image
+
+# Install nice to have stuff
+RUN pip3 --no-cache-dir install \
+    pyglet \
+    vispy \
+    ruamel.yaml
+
 
 # Install AAE (AutoPose) - forked version
-RUN git clone https://github.com/shbe-aau/AugmentedAutoencoder
-RUN cd AugmentedAutoencoder && pip install .
-ENV AE_WORKSPACE_PATH=/shared-folder/autoencoder_ws
+#RUN pip3 --no-cache-dir install 'git+https://github.com/shbe-aau/AugmentedAutoencoder'
+#ENV AE_WORKSPACE_PATH=/shared-folder/autoencoder_ws
+
+# Install pytorch3d - forked version
+# NEED TO BE DONE MANUALLY IN THE DOCKER CONTAINER...
+#RUN pip3 --no-cache-dir install 'git+https://github.com/shbe-aau/pytorch3d.git'
