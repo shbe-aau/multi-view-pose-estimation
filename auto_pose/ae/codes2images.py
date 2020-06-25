@@ -66,7 +66,7 @@ def main():
     gpu_options = tf.GPUOptions(per_process_gpu_memory_fraction=0.7)
     config = tf.ConfigProto(gpu_options=gpu_options)
 
-    data = pickle.load(open(arguments.pickle_path,"rb"))
+    data = pickle.load(open(arguments.pickle_path,"rb"), encoding="latin1")
 
     with tf.Session(config=config) as sess:
 
