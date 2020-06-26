@@ -1,1 +1,1 @@
-docker build -t pytorch3d .
+docker build -t aae-pytorch3d .
