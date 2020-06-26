@@ -43,7 +43,6 @@ from pytorch3d.renderer import (
 from utils.pytless import inout, misc
 from vispy import app, gloo
 from utils.pytless.renderer import Renderer
-from utils.view_sampler import viewsphere_for_embedding
 
 
 class DatasetGenerator():
@@ -101,13 +100,6 @@ class DatasetGenerator():
         elif(sampling_method == "sundermeyer-random"):
             self.pose_sampling = self.sm_quat_random
             self.simple_pose_sampling = False
-        elif(sampling_method == "sundermeyer-sphere"):
-            views = viewsphere_for_embedding(num_views=2000, num_cyclo=36)
-            self.poses = []
-            for i in np.arange(views.shape[0]):
-                print("num views: ",views.shape[0])
-                self.poses.append(torch.from_numpy(views[i]))
-            self.pose_sampling = self.reuse_poses
         else:
             print("ERROR! Invalid view sampling method: {0}".format(sampling_method))
 
@@ -254,7 +246,7 @@ class DatasetGenerator():
         y = self.dist*np.sin(theta_sample)*np.sin(phi_sample)
         z = self.dist*np.cos(theta_sample)
 
-        cam_position = torch.tensor([x, y, z]).unsqueeze(0)
+        cam_position = torch.tensor([float(x), float(y), float(z)]).unsqueeze(0)
         if(z < 0):
             R = look_at_rotation(cam_position, up=((0, 0, -1),)).squeeze()
         else:
