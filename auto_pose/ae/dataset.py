@@ -212,7 +212,7 @@ class Dataset(object):
         top = np.maximum(y+h/2-size/2, 0)
         bottom = np.minimum(y+h/2+size/2, bgr_y.shape[0])
 
-        bgr_y = bgr_y[top:bottom, left:right]
+        bgr_y = bgr_y[int(top):int(bottom), int(left):int(right)]
         return cv2.resize(bgr_y, self.shape[:2])
 
 

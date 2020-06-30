@@ -14,6 +14,7 @@ setup(
                             'ae_embed = auto_pose.ae.ae_embed:main',
                             'ae_eval = auto_pose.eval.ae_eval:main',
                             'codes2images = auto_pose.ae.codes2images:main',
+                            'images2poses = auto_pose.ae.images2poses:main',
                             'images2codes = auto_pose.ae.images2codes:main'
         ]
     },
