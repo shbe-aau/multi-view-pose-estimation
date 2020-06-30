@@ -5,14 +5,14 @@
 
 import os
 import numpy as np
+import argparse
+import pickle
+import cv2
 
 from bop_toolkit_lib import config
 from bop_toolkit_lib import dataset_params
 from bop_toolkit_lib import inout
 from bop_toolkit_lib import misc
-
-import pickle
-import cv2
 
 # PARAMETERS.
 ################################################################################
@@ -44,8 +44,22 @@ p = {
 }
 ################################################################################
 
-visualize = False
 
+# Command line arguments.
+# ------------------------------------------------------------------------------
+parser = argparse.ArgumentParser()
+parser.add_argument('--datasets_path', default=p['datasets_path'])
+parser.add_argument('--dataset_split', default=p['dataset_split'])
+parser.add_argument('--scene_ids', type=int, nargs='+', default=p['scene_ids'])
+parser.add_argument('--obj_ids', type=int, nargs='+', default=p['obj_ids'])
+args = parser.parse_args()
+
+p['datasets_path'] = str(args.datasets_path)
+p['dataset_split'] = str(args.dataset_split)
+p['scene_ids'] = args.scene_ids
+p['obj_ids'] = args.obj_ids
+
+visualize = False
 
 def extract_square_patch(scene_img, bb_xywh, pad_factor=1.2,resize=(128,128),
                          interpolation=cv2.INTER_NEAREST,black_borders=False):
