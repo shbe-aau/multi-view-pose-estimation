@@ -117,3 +117,13 @@ RUN pip3 --no-cache-dir install \
 # Install pytorch3d (forked)
 ENV FORCE_CUDA=1
 RUN pip3 --no-cache-dir install 'git+https://github.com/shbe-aau/pytorch3d.git'
+
+# Missing stuff
+RUN pip3 --no-cache-dir install \
+    pypng \
+    pytz \
+    glumpy
+
+# Python3 alias
+RUN ln -s /usr/bin/python3 /usr/bin/python & \
+    ln -s /usr/bin/pip3 /usr/bin/pip

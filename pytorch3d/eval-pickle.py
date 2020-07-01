@@ -69,24 +69,27 @@ def main():
     parser.add_argument("-o", help="output path", default="./output.csv")
     args = parser.parse_args()
 
-    # Set the cuda device
-    device = torch.device("cuda:0")
-    torch.cuda.set_device(device)
-
-    # Initialize a model
-    model = Model(output_size=6).to(device)
-
-    # Load model checkpoint
-    model, optimizer, epoch, learning_rate = loadCheckpoint(args.mp)
-    model.to(device)
-    model.eval()
-
-    # Load and prepare encoder
-    encoder = Encoder(args.ep).to(device)
-    encoder.eval()
-
     # Load dataset
     data = pickle.load(open(args.pi,"rb"), encoding="latin1")
+
+    # Run prepare our model if needed
+    if("Rs_predicted" not in data):
+
+        # Set the cuda device
+        device = torch.device("cuda:0")
+        torch.cuda.set_device(device)
+
+        # Initialize a model
+        model = Model(output_size=6).to(device)
+
+        # Load model checkpoint
+        model, optimizer, epoch, learning_rate = loadCheckpoint(args.mp)
+        model.to(device)
+        model.eval()
+
+        # Load and prepare encoder
+        encoder = Encoder(args.ep).to(device)
+        encoder.eval()
 
     # Prepare renderer if defined
     obj_path = args.op
@@ -185,6 +188,7 @@ def main():
 
     # Save to CSV
     output_path = args.o
+    print("Saving to: ", output_path)
     with open(output_path, "w") as f:
         col_names = list(results.keys())
         w = csv.DictWriter(f, results.keys())
