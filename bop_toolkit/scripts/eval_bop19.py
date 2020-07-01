@@ -80,6 +80,9 @@ p = {
   # File with a list of estimation targets to consider. The file is assumed to
   # be stored in the dataset folder.
   'targets_filename': 'test_targets_bop19.json',
+
+  # Folder containing the BOP datasets.
+  'datasets_path': config.datasets_path,
 }
 ################################################################################
 
@@ -94,6 +97,7 @@ parser.add_argument('--result_filenames',
 parser.add_argument('--results_path', default=p['results_path'])
 parser.add_argument('--eval_path', default=p['eval_path'])
 parser.add_argument('--targets_filename', default=p['targets_filename'])
+parser.add_argument('--datasets_path', default=p['datasets_path'])
 args = parser.parse_args()
 
 p['renderer_type'] = str(args.renderer_type)
@@ -101,6 +105,7 @@ p['result_filenames'] = args.result_filenames.split(',')
 p['results_path'] = str(args.results_path)
 p['eval_path'] = str(args.eval_path)
 p['targets_filename'] = str(args.targets_filename)
+p['datasets_path'] = str(args.datasets_path)
 
 # Evaluation.
 # ------------------------------------------------------------------------------
@@ -149,7 +154,7 @@ for result_filename in p['result_filenames']:
     # Calculate error of the pose estimates.
     calc_errors_cmd = [
       'python',
-      os.path.join('scripts', 'eval_calc_errors.py'),
+      os.path.join(os.path.dirname(os.path.abspath(__file__)),'eval_calc_errors.py'),
       '--n_top={}'.format(error['n_top']),
       '--error_type={}'.format(error['type']),
       '--result_filenames={}'.format(result_filename),
@@ -159,6 +164,7 @@ for result_filename in p['result_filenames']:
       '--targets_filename={}'.format(p['targets_filename']),
       '--max_sym_disc_step={}'.format(p['max_sym_disc_step']),
       '--skip_missing=1',
+      '--datasets_path={}'.format(p['datasets_path']),
     ]
     if error['type'] == 'vsd':
       vsd_deltas_str = \
@@ -198,11 +204,12 @@ for result_filename in p['result_filenames']:
 
         calc_scores_cmd = [
           'python',
-          os.path.join('scripts', 'eval_calc_scores.py'),
+          os.path.join(os.path.dirname(os.path.abspath(__file__)), 				'eval_calc_scores.py'),
           '--error_dir_paths={}'.format(error_dir_path),
           '--eval_path={}'.format(p['eval_path']),
           '--targets_filename={}'.format(p['targets_filename']),
           '--visib_gt_min={}'.format(p['visib_gt_min']),
+          '--datasets_path={}'.format(p['datasets_path']),
         ]
 
         calc_scores_cmd += ['--correct_th_{}={}'.format(

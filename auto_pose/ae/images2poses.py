@@ -48,7 +48,7 @@ def main():
     gpu_options = tf.GPUOptions(per_process_gpu_memory_fraction=0.7)
     config = tf.ConfigProto(gpu_options=gpu_options)
 
-    data = pickle.load(open(arguments.pickle_path,"rb"), encoding="latin1")
+    data = pickle.load(open(arguments.pickle_path,"rb")) #, encoding="latin1")
     Rs_predicted = []
     images = []
 
@@ -84,14 +84,11 @@ def main():
                 #print(Rs_predicted[-1])
                 print(i)
 
-        coded_data = {"images":data["images"],
-                      "codebook_images":images,
-                      "Rs":data["Rs"],
-                      "Rs_predicted":Rs_predicted,
-                      "ts":data["ts"]}
+        data["codebook_images"] = images
+        data["Rs_predicted"] = Rs_predicted
         pickle_path_out = (arguments.pickle_path).replace("-images", "-poses")
         print("Saving to: {0}".format(pickle_path_out))
-        pickle.dump(coded_data, open(pickle_path_out, "wb"), protocol=2)
+        pickle.dump(data, open(pickle_path_out, "wb"), protocol=2)
 
         sess.close()
 

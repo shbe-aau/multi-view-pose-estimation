@@ -63,6 +63,19 @@ p = {
   'result_filenames': [
     '/path/to/csv/with/results',
   ],
+
+  # Folder with results to be evaluated.
+  'results_path': config.results_path,
+
+  # Folder for the calculated pose errors and performance scores.
+  'eval_path': config.eval_path,
+
+  # File with a list of estimation targets to consider. The file is assumed to
+  # be stored in the dataset folder.
+  'targets_filename': 'test_targets_bop19.json',
+
+  # Folder containing the BOP datasets.
+  'datasets_path': config.datasets_path,
 }
 ################################################################################
 
@@ -75,10 +88,18 @@ parser.add_argument('--visib_gt_min', default=p['visib_gt_min'])
 parser.add_argument('--result_filenames',
                     default=','.join(p['result_filenames']),
                     help='Comma-separated names of files with results.')
+parser.add_argument('--results_path', default=p['results_path'])
+parser.add_argument('--eval_path', default=p['eval_path'])
+parser.add_argument('--targets_filename', default=p['targets_filename'])
+parser.add_argument('--datasets_path', default=p['datasets_path'])
 args = parser.parse_args()
 
 p['visib_gt_min'] = float(args.visib_gt_min)
 p['result_filenames'] = args.result_filenames.split(',')
+p['results_path'] = str(args.results_path)
+p['eval_path'] = str(args.eval_path)
+p['targets_filename'] = str(args.targets_filename)
+p['datasets_path'] = str(args.datasets_path)
 
 # Evaluation.
 # ------------------------------------------------------------------------------
@@ -127,13 +148,13 @@ for result_filename in p['result_filenames']:
 
         scores_filename = 'scores_{}.json'.format(score_sign)
         scores_path = os.path.join(
-          config.eval_path, result_name, error_sign, scores_filename)
+          p['eval_path'], result_name, error_sign, scores_filename)
 
         # Load the scores.
         misc.log('Loading calculated scores from: {}'.format(scores_path))
         scores = inout.load_json(scores_path)
-        recalls.append(scores['total_recall'])
-        recall_dict[error['type']][error_sign].append(scores['total_recall'])
+        recalls.append(scores['recall'])
+        recall_dict[error['type']][error_sign].append(scores['recall'])
 
     # Area under the recall surface/curve.
     aur[error['type']] = np.mean(recalls)
