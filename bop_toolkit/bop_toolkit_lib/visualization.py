@@ -237,7 +237,7 @@ def vis_object_poses(
     # plt.savefig(vis_depth_diff_path, pad=0, bbox_inches='tight', quality=95)
     # plt.close()
 
-def plot_recall_curves(recall_dict, p):
+def plot_recall_curves(recall_dict, p, save_to=None):
   """Plots recall curves and displays BOP19 metrics
 
   :param recall_dict: dictionary containing bop19 recall results
@@ -275,4 +275,8 @@ def plot_recall_curves(recall_dict, p):
     plt.title(error['type'] + ' - ' + 'average recall: '
       + '{:.4f}'.format(np.mean(all_recalls)))
 
-  plt.show()
+    if(save_to is not None):
+      plt.savefig('{0}/{1}.png'.format(save_to,error['type']))
+
+  if(save_to is None):
+    plt.show()

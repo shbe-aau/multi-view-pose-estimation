@@ -173,6 +173,7 @@ for result_filename in p['result_filenames']:
     misc.log('Average BOP score on {}: {}'.format(test_set, mean_error))
 
   if p['plot_recall_curves']:
-    visualization.plot_recall_curves(recall_dict, p)
+    plot_path = os.path.join(p['eval_path'], result_name)
+    visualization.plot_recall_curves(recall_dict, p, save_to=plot_path)
 
 misc.log('Done.')
