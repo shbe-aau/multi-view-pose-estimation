@@ -62,11 +62,18 @@ def toMatArray(point):
     return Rs
 
 
-def render_point(point, ts, br):
+def render_point(point, ts, renderer, mean, std, views):
     Rs = toMatArray(point)
-    images = br.renderBatch(Rs, ts)
-
-    return images
+    Rs = torch.tensor(np.stack(Rs), device=renderer.device,
+                            dtype=torch.float32)
+    images = []
+    for v in views:
+        # Render images
+        Rs_new = torch.matmul(Rs, v.to(renderer.device))
+        imgs = renderer.renderBatch(Rs_new, ts)
+        imgs = (imgs-mean)/std
+        images.append(imgs)
+    return torch.cat(images)
 
 def main():
     global learning_rate, optimizer, views, epoch
@@ -80,8 +87,8 @@ def main():
     args.read(cfg_file_path)
 
     # Prepare rotation matrices for multi view loss function
-    #eulerViews = json.loads(args.get('Rendering', 'VIEWS'))
-    views = prepareViews([[0, 0, 0]])
+    eulerViews = json.loads(args.get('Rendering', 'VIEWS'))
+    views = prepareViews(eulerViews)
 
     # Set the cuda device
     device = torch.device('cuda:0')
@@ -116,27 +123,41 @@ def main():
     # print(Rs)
     ts.append(T.copy())
 
+    ref_num = int(args.get('Sampling', 'REFERENCE_NUM', fallback=0)) % len(points)
     # referene point data, right now it's the first point in the set
-    ref_image = render_point(points[0], ts, br)
-    ref_pose = toMatArray(points[0])
+    ref_image = render_point(points[ref_num], ts, br, 0, 1, views)
+    ref_pose = toMatArray(points[ref_num])
+
+    loss_method=args.get('Training', 'LOSS')
 
     i = 0
     losses = []
     for point in points:
-        image = render_point(point, ts, br)
+        if i % 100 is 0:
+            print("{} of {}".format(i, len(points)))
+        #image = render_point(point, ts, br, 0, 1, views)
 
         prepareDir(output_path)
         shutil.copy(cfg_file_path, os.path.join(output_path, cfg_file_path.split('/')[-1]))
 
-        gt_img = (image[0]).detach().cpu().numpy()
+        #gt_img = (image[0]).detach().cpu().numpy()
 
-        im = np.array(gt_img * 255, dtype = np.uint8)
-        threshed = cv2.adaptiveThreshold(im, 255, cv2.ADAPTIVE_THRESH_MEAN_C, cv2.THRESH_BINARY, 3, 0)
+        #im = gt_img
+        #im = np.array(gt_img * 255, dtype = np.uint8)
+        #threshed = cv2.adaptiveThreshold(im, 255, cv2.ADAPTIVE_THRESH_MEAN_C, cv2.THRESH_BINARY, 3, 0)
+        #if args.getboolean('Training', 'SAVE_IMAGES'):
+        #    cv2.imwrite(os.path.join(batch_img_dir, '{}.png'.format(i)), im)
+
+        loss, batch_loss, gt_images, predicted_images = Loss(toMatArray(point), ref_pose, br, ts, 0, 1, loss_method=loss_method, views=views, fixed_gt_images=ref_image)
+        loss = (loss).detach().cpu().numpy()
+        im = (predicted_images).detach().cpu().numpy()
+        if args.get('Rendering', 'SHADER')=="hard-phong":
+            im = np.reshape(im, (len(views)*args.getint('Rendering', 'IMAGE_SIZE'), args.getint('Rendering', 'IMAGE_SIZE'),3))
+            im = im * 255
+        else:
+            im = np.reshape(im, (len(views)*args.getint('Rendering', 'IMAGE_SIZE'), args.getint('Rendering', 'IMAGE_SIZE')))
         if args.getboolean('Training', 'SAVE_IMAGES'):
             cv2.imwrite(os.path.join(batch_img_dir, '{}.png'.format(i)), im)
-
-        loss, batch_loss, gt_images, predicted_images = Loss(toMatArray(point), ref_pose, br, ts, 0, 1, loss_method='multiview', views=views, fixed_gt_images=ref_image)
-        loss = (loss).detach().cpu().numpy()
         losses.append(loss)
         i += 1
 

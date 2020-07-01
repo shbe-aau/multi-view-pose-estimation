@@ -82,11 +82,28 @@ def Loss(predicted_poses, gt_poses, renderer, ts, mean, std, loss_method="diff",
         depth_diff = torch.clamp(diff, 0.0, 20.0)/20.0
         depth_loss = torch.mean(depth_diff)
         depth_batch_loss = torch.mean(depth_diff, dim=1)
-        
+
         loss = pose_loss*depth_loss
         batch_loss = pose_batch_loss*depth_batch_loss
         return loss, batch_loss, gt_imgs, predicted_imgs
-    
+
+    elif(loss_method=="pose-plus-depth"):
+        lbd = 0.5
+        # Calc pose loss
+        #mseLoss = nn.MSELoss(reduction='none')
+        pose_diff = torch.abs(Rs_gt - Rs_predicted).flatten(start_dim=1)/2.0
+        pose_loss = torch.mean(pose_diff)
+        pose_batch_loss = torch.mean(pose_diff, dim=1)
+
+        # Calc depth loss
+        depth_diff = torch.clamp(diff, 0.0, 20.0)/20.0
+        depth_loss = torch.mean(depth_diff)
+        depth_batch_loss = torch.mean(depth_diff, dim=1)
+
+        loss = lbd*pose_loss + (1-lbd)*depth_loss
+        batch_loss = lbd*pose_batch_loss + (1-lbd)*depth_batch_loss
+        return loss, batch_loss, gt_imgs, predicted_imgs
+
     elif(loss_method=="l2-pose"):
         mseLoss = nn.MSELoss(reduction='none')
         l2loss = mseLoss(Rs_predicted, Rs_gt)

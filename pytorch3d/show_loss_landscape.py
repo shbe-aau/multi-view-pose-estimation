@@ -8,6 +8,90 @@ from mpl_toolkits.mplot3d import Axes3D
 #from collections import defaultdict
 import resource, sys
 
+def shared_points(cell1, cell2):
+    shared = []
+    for p in cell1:
+        if p in cell2:
+            shared.append(p)
+    return shared
+
+def plot_boundaries(regions, neighbours, sVoronoi, ax):
+    # plot the boundary of each region by finding a cell on the outer border and folloing the edge until it loops (assumes no hole topology)
+    print(regions[0])
+    print(neighbours[0])
+    print(sVoronoi.regions[0])
+    print(sVoronoi.vertices[0])
+    p1 = sVoronoi.vertices[sVoronoi.regions[50][0]]
+    p2 = sVoronoi.vertices[sVoronoi.regions[50][1]]
+    p3 = sVoronoi.vertices[sVoronoi.regions[50][2]]
+
+    #ax.scatter(p1[0]*1.1, p1[1]*1.1, p1[2]*1.1, c='magenta', s=10)
+    #ax.scatter(p2[0]*1.1, p2[1]*1.1, p2[2]*1.1, c='magenta', s=10)
+    #ax.scatter(p3[0]*1.1, p3[1]*1.1, p3[2]*1.1, c='magenta', s=10)
+
+    for region in regions:
+        border = []
+        bx = []
+        by = []
+        bz = []
+        set = regions[region]['region_set']
+        # find member of set with a non-same-set neightbour
+        start = None
+        next = None
+        current = None
+        for index in set:
+            cell = sVoronoi.regions[index]
+            neighs = neighbours[index]
+            for neigh in neighs:
+                if neigh not in set:
+                    #a = (sVoronoi.points[index]*1.1)
+                    #ax.scatter(a[0], a[1], a[2], c='magenta', s=10)
+                    pts = shared_points(cell, sVoronoi.regions[neigh])
+                    start = pts[0]
+                    next = pts[1]
+                    current = index
+                    border.append(index)
+                    bx = [sVoronoi.vertices[pts[0]][0]*1.1, sVoronoi.vertices[pts[1]][0]*1.1]
+                    by = [sVoronoi.vertices[pts[0]][1]*1.1, sVoronoi.vertices[pts[1]][1]*1.1]
+                    bz = [sVoronoi.vertices[pts[0]][2]*1.1, sVoronoi.vertices[pts[1]][2]*1.1]
+                    break
+        i = 0
+        print()
+        while next is not start:
+            i += 1
+            #print("{} {}".format(next, start))
+            #cell = sVoronoi.regions[current]
+            neighs = neighbours[current]
+            # find which in-neighbour shares point "next"
+            for neigh in neighs:
+                if neigh in set and next in sVoronoi.regions[neigh]:# and (neigh is start or neigh not in border):
+                    cell = sVoronoi.regions[neigh]
+                    neighs2 = neighbours[neigh]
+                    for neigh2 in neighs2:
+                            if neigh2 not in set:
+                                border.append(neigh)
+                                #print("{} {}".format(current,neighs))
+                                #print("{} {}".format(next,start))
+                                #print(border)
+                                current = neigh
+                                pts = shared_points(cell, sVoronoi.regions[neigh2])
+                                if next not in pts:
+                                    #print("Error, missing point in neightbour")
+                                    continue
+                                for p in pts:
+                                    if p is not next:
+                                        next = p
+                                bx.append(sVoronoi.vertices[p][0]*1.1)
+                                by.append(sVoronoi.vertices[p][1]*1.1)
+                                bz.append(sVoronoi.vertices[p][2]*1.1)
+                                ax.scatter(bx, by, bz, c='magenta', s=2)
+                                plt.show()
+                                continue
+            break
+        print(border)
+        ax.scatter(bx, by, bz, c='magenta', s=2)
+
+
 # recursively
 def steepest_region_for(current, neighbours, losses, steepest, found=set(), current_path=set(), regions={}):
     current_path |= {current}
@@ -21,7 +105,7 @@ def steepest_region_for(current, neighbours, losses, steepest, found=set(), curr
 
     found |= {current}
 
-    # global index of naighbour with the highest loss
+    # global index of neighbour with the lowest loss
     index = neighbours[current][np.argmin(losses[neighbours[current]])]
     # if current har smaller loss than than lowest neighbour this it the minima, and has not been found before this
     if losses[index] > losses[current]:
@@ -95,24 +179,28 @@ def voronoi_plot(points_in, losses):
         neighbours_for_i = []
         for j in range(len(sv.regions)):
             neigh = False
+            shared = 0
             vert2 = sv.regions[j]
             for vert in vertices:
                 if vert in vert2:
-                    neigh = True
-                    break
+                    shared += 1
+                    if shared >= 2:
+                        neigh = True
+                        break
             if neigh and i != j:
                 neighbours_for_i.append(j)
         neighbours.append(neighbours_for_i)
 
     regions, steepest_neighbour = steepest_region(neighbours, losses)
+    #plot_boundaries(regions, neighbours, sv, ax)
 
     temp = []
     for i in range(len(neighbours)):
-        point1 = points[i]
+        point1 = sv.points[i]
         point2 = points[steepest_neighbour[i]]
         temp.append(point2-point1)
 
-    x1, y1, z1 = zip(*points)
+    x1, y1, z1 = zip(*sv.points)
     dx, dy, dz = zip(*temp)
 
     col = [[0, 0, 0, 0.5] for i in range(len(neighbours))]
@@ -137,7 +225,7 @@ def voronoi_plot(points_in, losses):
             ax.add_collection3d(polygon)
         i += 1
 
-    x_p, y_p, z_p = zip(*cart)
+    x_p, y_p, z_p = zip(*sv.points)
     x_p = [x_p[i] for i in centers]
     y_p = [y_p[i] for i in centers]
     z_p = [z_p[i] for i in centers]
@@ -184,6 +272,7 @@ def main():
     path = sys.argv[1]
     points = np.load(os.path.join(path, 'points.npy'))
     losses = np.load(os.path.join(path, 'losses.npy'))
+    print(losses)
     voronoi_plot(points, losses)
 
 
