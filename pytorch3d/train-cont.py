@@ -169,12 +169,14 @@ def main():
                           loss_method=args.get('Training', 'LOSS'),
                           t=json.loads(args.get('Rendering', 'T')),
                           num_samples=args.getint('Training', 'NUM_SAMPLES'),
-                          visualize=args.getboolean('Training', 'SAVE_IMAGES'))
+                          visualize=args.getboolean('Training', 'SAVE_IMAGES'),
+                          loss_params=args.getfloat('Training', 'LOSS_PARAMS'))
         append2file([loss], os.path.join(output_path, "train-loss.csv"))
         val_loss = testEpoch(mean, std, br, val_data, model, device, output_path,
                              loss_method=args.get('Training', 'LOSS'),
                           t=json.loads(args.get('Rendering', 'T')),
-                          visualize=args.getboolean('Training', 'SAVE_IMAGES'))
+                          visualize=args.getboolean('Training', 'SAVE_IMAGES'),
+                          loss_params=args.getfloat('Training', 'LOSS_PARAMS'))
         append2file([val_loss], os.path.join(output_path, "validation-loss.csv"))
         val_losses = plotLoss(os.path.join(output_path, "train-loss.csv"),
                  os.path.join(output_path, "train-loss.png"),
@@ -202,7 +204,7 @@ def main():
 
 def testEpoch(mean, std, br, val_data, model,
                device, output_path, loss_method, t,
-               visualize=False):
+               visualize=False, loss_params=0.5):
     global optimizer
     with torch.no_grad():
         dbg("Before test memory: {}".format(torch.cuda.memory_summary(device=device, abbreviated=False)), dbg_memory)
@@ -232,7 +234,7 @@ def testEpoch(mean, std, br, val_data, model,
                 ts.append(T.copy())
 
             loss, batch_loss, gt_images, predicted_images = Loss(predicted_poses, Rs, br, ts,
-                                                                 mean, std, loss_method=loss_method, views=views)
+                                                                 mean, std, loss_method=loss_method, views=views, loss_params=loss_params)
 
             #detach all from gpu
             batch_codes.detach().cpu().numpy()
@@ -273,7 +275,7 @@ def testEpoch(mean, std, br, val_data, model,
 
 def trainEpoch(mean, std, br, data, model,
                device, output_path, loss_method, t,
-               num_samples, visualize=False):
+               num_samples, visualize=False, loss_params=0.5):
     global optimizer, lr_reducer
     dbg("Before train memory: {}".format(torch.cuda.memory_summary(device=device, abbreviated=False)), dbg_memory)
 
@@ -309,7 +311,7 @@ def trainEpoch(mean, std, br, data, model,
             ts.append(T.copy())
 
         loss, batch_loss, gt_images, predicted_images = Loss(predicted_poses, Rs, br, ts,
-                                                             mean, std, loss_method=loss_method, views=views)
+                                                             mean, std, loss_method=loss_method, views=views, loss_params=loss_params)
         loss.backward()
         optimizer.step()
 

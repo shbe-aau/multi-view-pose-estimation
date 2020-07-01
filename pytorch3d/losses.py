@@ -45,7 +45,7 @@ def renderNormCat(Rs, ts, renderer, mean, std, views):
         images.append(imgs)
     return torch.cat(images)
 
-def Loss(predicted_poses, gt_poses, renderer, ts, mean, std, loss_method="diff", views=None, fixed_gt_images=None):
+def Loss(predicted_poses, gt_poses, renderer, ts, mean, std, loss_method="diff", views=None, fixed_gt_images=None, loss_params=0.5):
     Rs_gt = torch.tensor(np.stack(gt_poses), device=renderer.device,
                             dtype=torch.float32)
 
@@ -88,7 +88,6 @@ def Loss(predicted_poses, gt_poses, renderer, ts, mean, std, loss_method="diff",
         return loss, batch_loss, gt_imgs, predicted_imgs
 
     elif(loss_method=="pose-plus-depth"):
-        lbd = 0.5
         # Calc pose loss
         #mseLoss = nn.MSELoss(reduction='none')
         pose_diff = torch.abs(Rs_gt - Rs_predicted).flatten(start_dim=1)/2.0
@@ -100,8 +99,8 @@ def Loss(predicted_poses, gt_poses, renderer, ts, mean, std, loss_method="diff",
         depth_loss = torch.mean(depth_diff)
         depth_batch_loss = torch.mean(depth_diff, dim=1)
 
-        loss = lbd*pose_loss + (1-lbd)*depth_loss
-        batch_loss = lbd*pose_batch_loss + (1-lbd)*depth_batch_loss
+        loss = loss_params*pose_loss + (1-loss_params)*depth_loss
+        batch_loss = loss_params*pose_batch_loss + (1-loss_params)*depth_batch_loss
         return loss, batch_loss, gt_imgs, predicted_imgs
 
     elif(loss_method=="l2-pose"):
