@@ -43,7 +43,7 @@ def renderNormCat(Rs, ts, renderer, mean, std, views):
         imgs = renderer.renderBatch(Rs_new, ts)
         imgs = (imgs-mean)/std
         images.append(imgs)
-    return torch.cat(images)
+    return torch.cat(images, dim=1)
 
 def Loss(predicted_poses, gt_poses, renderer, ts, mean, std, loss_method="diff", views=None, fixed_gt_images=None, loss_params=0.5):
     Rs_gt = torch.tensor(np.stack(gt_poses), device=renderer.device,
