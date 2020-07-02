@@ -83,19 +83,19 @@ def calcMeanVar(br, data, device, t):
 
 def plotView(currView, numViews, vmin, vmax, input_images, groundtruth, predicted, predicted_pose, loss, batch_size):
     # Plot AE input
-    plt.subplot(numViews, 4, currView+1)
-    plt.imshow((input_images[currView*batch_size]*255).astype(np.uint8))
+    plt.subplot(1, 4, 1)
+    plt.imshow((input_images[0]*255).astype(np.uint8))
     plt.title("Input to AE")
 
     # Plot depth map render from ground truth
-    plt.subplot(numViews, 4, currView+(1+numViews))
-    plt.imshow(groundtruth[currView*batch_size].detach().cpu().numpy(),
+    plt.subplot(1, 4, 2)
+    plt.imshow(groundtruth[0].detach().cpu().numpy(),
                vmin=vmin, vmax=vmax)
-    plt.title("View {0} - GT".format(currView))
+    plt.title("Depth Render - GT")
 
     # Plot depth map render from prediction
-    plt.subplot(numViews, 4, currView+(1+2*numViews))
-    plt.imshow(predicted[currView*batch_size].detach().cpu().numpy(),
+    plt.subplot(1, 4, 3)
+    plt.imshow(predicted[0].detach().cpu().numpy(),
                vmin=vmin, vmax=vmax)
     if(currView == 0):
         plt.title("Predicted: \n " + np.array2string((predicted_pose[currView*batch_size]).detach().cpu().numpy(),precision=2))
@@ -103,10 +103,10 @@ def plotView(currView, numViews, vmin, vmax, input_images, groundtruth, predicte
         plt.title("Predicted")
 
     # Plot difference between depth maps
-    loss_contrib = np.abs((groundtruth[currView*batch_size]).detach().cpu().numpy() - (predicted[currView*batch_size]).detach().cpu().numpy())
-    plt.subplot(numViews, 4, currView+(1+3*numViews))
+    loss_contrib = np.abs((groundtruth[0]).detach().cpu().numpy() - (predicted[0]).detach().cpu().numpy())
+    plt.subplot(1, 4, 4)
     plt.imshow(loss_contrib, vmin=0.0, vmax=20.0)
-    plt.title("Loss: {:02f}".format((loss[currView*batch_size]).detach().cpu().numpy()))
+    plt.title("Loss: {:02f}".format((loss[0]).detach().cpu().numpy()))
 
 # Convert quaternion to rotation matrix
 # from: https://github.com/ClementPinard/SfmLearner-Pytorch/blob/master/inverse_warp.py
