@@ -73,7 +73,7 @@ def render_point(point, ts, renderer, mean, std, views):
         imgs = renderer.renderBatch(Rs_new, ts)
         imgs = (imgs-mean)/std
         images.append(imgs)
-    return torch.cat(images)
+    return torch.cat(images, dim=1)
 
 def main():
     global learning_rate, optimizer, views, epoch
