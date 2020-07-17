@@ -108,7 +108,7 @@ def steepest_region_for(current, neighbours, losses, steepest, found=set(), curr
     # global index of neighbour with the lowest loss
     index = neighbours[current][np.argmin(losses[neighbours[current]])]
     # if current har smaller loss than than lowest neighbour this it the minima, and has not been found before this
-    if losses[index] > losses[current]:
+    if losses[index] > losses[current] or (losses[index] >= losses[current] and index > current):
         regions[current] = {'index': current, 'min loss': losses[current], 'region_set': current_path}
         return found, regions, steepest
     steepest[current] = index
@@ -269,6 +269,9 @@ def plot_points(points, losses):
     #ax.plot_surface(X, Y, Z, rstride=1, cstride=1, facecolors=fcolors, shade=0)
 
 def main():
+    import faulthandler
+    faulthandler.enable()
+    #np.set_printoptions(threshold=sys.maxsize)
     path = sys.argv[1]
     points = np.load(os.path.join(path, 'points.npy'))
     losses = np.load(os.path.join(path, 'losses.npy'))

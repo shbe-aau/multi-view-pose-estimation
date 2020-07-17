@@ -3,6 +3,7 @@ import numpy as np
 from utils.utils import *
 from utils.tools import *
 import torch.nn as nn
+from pyquaternion import Quaternion
 
 from pytorch3d.renderer import look_at_view_transform
 from pytorch3d.renderer import look_at_rotation
@@ -72,6 +73,20 @@ def renderNormCat(Rs, ts, renderer, mean, std, views):
         images.append(imgs)
     return torch.cat(images, dim=1)
 
+def mat_theta( A, B ):
+    """ comment cos between vectors or matrices """
+    At = np.transpose(A)
+    AB = np.dot(At, B)
+    temp = (np.trace(AB) - 1) / 2
+    if temp > 1:
+        #print(temp)
+        temp = 1
+    if temp < -1:
+        #print(temp)
+        temp = -1
+    return np.arccos(temp)
+
+
 def Loss(predicted_poses, gt_poses, renderer, ts, mean, std, loss_method="diff", pose_rep="6d-pose", views=None, fixed_gt_images=None, loss_params=0.5):
     Rs_gt = torch.tensor(np.stack(gt_poses), device=renderer.device,
                             dtype=torch.float32)
@@ -82,7 +97,7 @@ def Loss(predicted_poses, gt_poses, renderer, ts, mean, std, loss_method="diff",
                 v = sphere_sampling()
             views[i] = v
         loss_method = loss_method.replace('-random-multiview','')
-    
+
     if fixed_gt_images is None:
         if(pose_rep == '6d-pose'):
             Rs_predicted = compute_rotation_matrix_from_ortho6d(predicted_poses)
@@ -92,7 +107,7 @@ def Loss(predicted_poses, gt_poses, renderer, ts, mean, std, loss_method="diff",
             Rs_predicted = compute_rotation_matrix_from_ortho6d(predicted_poses)
         elif(pose_rep == 'rot-mat'):
             batch_size = predicted_poses.shape[0]
-            Rs_predicted = predicted_poses.view(batch_size, 3, 3)            
+            Rs_predicted = predicted_poses.view(batch_size, 3, 3)
         elif(pose_rep == 'quat'):
             Rs_predicted = compute_rotation_matrix_from_quaternion(predicted_poses)
         elif(pose_rep == 'euler'):
@@ -138,23 +153,23 @@ def Loss(predicted_poses, gt_poses, renderer, ts, mean, std, loss_method="diff",
         loss = pose_loss*depth_loss
         batch_loss = pose_batch_loss*depth_batch_loss
         return loss, batch_loss, gt_imgs, predicted_imgs
-    
+
     elif(loss_method=="pose-plus-depth"):
         # Calc pose loss
         mseLoss = nn.MSELoss(reduction='none')
         pose_diff = torch.abs(Rs_gt - Rs_predicted).flatten(start_dim=1)/2.0
         pose_loss = torch.mean(pose_diff)
         pose_batch_loss = torch.mean(pose_diff, dim=1)
-        
+
         # Calc depth loss
         depth_diff = torch.clamp(diff, 0.0, 20.0)/20.0
         depth_loss = torch.mean(depth_diff)
         depth_batch_loss = torch.mean(depth_diff, dim=1)
-        
+
         loss = loss_params*pose_loss + (1-loss_params)*depth_loss
         batch_loss = loss_params*pose_batch_loss + (1-loss_params)*depth_batch_loss
         return loss, batch_loss, gt_imgs, predicted_imgs
-    
+
     elif(loss_method=="l2-pose"):
         mseLoss = nn.MSELoss(reduction='none')
         l2loss = mseLoss(Rs_predicted, Rs_gt)/6.0
@@ -165,13 +180,13 @@ def Loss(predicted_poses, gt_poses, renderer, ts, mean, std, loss_method="diff",
     elif(loss_method=="l1-depth"):
         loss = torch.mean(diff)
         return loss, torch.mean(diff, dim=1), gt_imgs, predicted_imgs
-    
+
     elif(loss_method=="l1-clamped"):
         diff = torch.clamp(diff, 0.0, loss_params)/loss_params
         loss = torch.mean(diff)
         batch_loss = torch.mean(diff, dim=1)
         return loss, batch_loss, gt_imgs, predicted_imgs
-    
+
     elif(loss_method=="vsd"):
         outliers = torch.randn(diff.shape, device=renderer.device, requires_grad=True)
         outliers = ThauThreshold.apply(diff)
@@ -201,7 +216,7 @@ def Loss(predicted_poses, gt_poses, renderer, ts, mean, std, loss_method="diff",
     elif(loss_method=="sil-ratio"):
         loss = torch.sum(diff) / torch.sum(gt_imgs) #(diff.shape[0]*diff.shape[1])
         batch_loss = torch.sum(diff, dim=1) / torch.sum(gt_imgs, dim=(1,2)) #(diff.shape[1])
-        return loss, batch_loss, gt_imgs, predicted_imgs    
+        return loss, batch_loss, gt_imgs, predicted_imgs
 
     elif(loss_method=="sil-ratio-plus-zdiff"):
         ratio_loss = torch.sum(diff) / torch.sum(gt_imgs)
@@ -213,7 +228,7 @@ def Loss(predicted_poses, gt_poses, renderer, ts, mean, std, loss_method="diff",
         z_loss = torch.mean(z_batch_loss)
 
         loss = loss_params*z_loss + (1-loss_params)*ratio_loss
-        batch_loss = loss_params*z_batch_loss + (1-loss_params)*ratio_batch_loss        
+        batch_loss = loss_params*z_batch_loss + (1-loss_params)*ratio_batch_loss
         return loss, batch_loss, gt_imgs, predicted_imgs
 
     elif(loss_method=="sil-ratio-mul-zdiff"):
@@ -226,8 +241,45 @@ def Loss(predicted_poses, gt_poses, renderer, ts, mean, std, loss_method="diff",
         z_loss = torch.mean(z_batch_loss)
 
         loss = z_loss*ratio_loss
-        batch_loss = z_batch_loss*ratio_batch_loss        
+        batch_loss = z_batch_loss*ratio_batch_loss
         return loss, batch_loss, gt_imgs, predicted_imgs
+
+    elif(loss_method=="qpose"):
+        diff = []
+        Rs_gt = Rs_gt.detach().cpu().numpy()
+        Rs_predicted = Rs_predicted.detach().cpu().numpy()
+        for i in range(len(Rs_gt)):
+            r = scipyR.from_matrix(Rs_gt[i])
+            q_gt = Quaternion(r.as_quat())
+            r = scipyR.from_matrix(Rs_predicted[i])
+            q_pred = Quaternion(r.as_quat())
+            q_diff = Quaternion.absolute_distance(q_gt, q_pred)
+            #q_diff = Quaternion.distance(q_gt, q_pred)
+            #q_diff = Quaternion.sym_distance(q_gt, q_pred)
+            diff.append(q_diff)
+        loss = np.mean(diff)
+        batch_loss = np.mean(diff)
+        loss = torch.tensor(loss, device=renderer.device,
+                                dtype=torch.float32)
+        batch_loss = torch.tensor(batch_loss, device=renderer.device,
+                                dtype=torch.float32)
+        return loss, batch_loss, gt_imgs, predicted_imgs
+
+    elif(loss_method=="mat-theta"):
+        diff = []
+        Rs_gt = Rs_gt.detach().cpu().numpy()
+        Rs_predicted = Rs_predicted.detach().cpu().numpy()
+        for i in range(len(Rs_gt)):
+            theta = mat_theta(Rs_gt[i], Rs_predicted[i])
+            diff.append(theta)
+        loss = np.mean(diff)
+        batch_loss = np.mean(diff)
+        loss = torch.tensor(loss, device=renderer.device,
+                                dtype=torch.float32)
+        batch_loss = torch.tensor(batch_loss, device=renderer.device,
+                                dtype=torch.float32)
+        return loss, batch_loss, gt_imgs, predicted_imgs
+
 
     print("Unknown loss specified")
     return -1, None, None, None
