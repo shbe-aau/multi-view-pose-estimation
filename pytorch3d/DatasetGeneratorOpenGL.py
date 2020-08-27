@@ -15,6 +15,7 @@ import time
 import pickle
 import random
 from utils.utils import *
+from utils.tools import *
 from Encoder import Encoder
 
 import imgaug as ia
@@ -56,7 +57,7 @@ class DatasetGenerator():
         self.batch_size = batch_size
         self.dist = obj_distance
         self.img_size = 320
-        self.max_rel_offset = 0.1
+        self.max_rel_offset = 0.2
         self.K = np.array([1075.65, 0, self.img_size/2,
                            0, 1073.90, self.img_size/2,
                            0, 0, 1]).reshape(3,3)
@@ -82,6 +83,9 @@ class DatasetGenerator():
         if(sampling_method == "tless"):
             self.pose_sampling = self.tless_sampling
             self.simple_pose_sampling = False
+        elif(sampling_method == "quat"):
+            self.pose_sampling = self.quat_sampling
+            self.simple_pose_sampling = False
         elif(sampling_method == "sphere"):
             self.pose_sampling = self.sphere_sampling
             self.simple_pose_sampling = False
@@ -99,6 +103,11 @@ class DatasetGenerator():
             self.simple_pose_sampling = False
         elif(sampling_method == "sundermeyer-random"):
             self.pose_sampling = self.sm_quat_random
+            self.simple_pose_sampling = False
+        elif(".p" in sampling_method):
+            self.pose_sampling = self.pickle_sampling
+            self.pose_path = sampling_method
+            self.poses = []
             self.simple_pose_sampling = False
         else:
             print("ERROR! Invalid view sampling method: {0}".format(sampling_method))
@@ -181,9 +190,22 @@ class DatasetGenerator():
                              random_order=False)
         return aug
 
+    # Randomly sample poses from .p file (pickle)
+    def pickle_sampling(self):
+        # Load poses from .p file once
+        if(len(self.poses) == 0):
+            with open(self.pose_path, "rb") as f:
+                self.poses = pickle.load(f, encoding="latin1")["Rs"]
+
+        # Sample pose randomly
+        random.shuffle(self.poses)
+        R = torch.tensor(self.poses[-1], dtype=torch.float32)
+        t = torch.tensor([0.0, 0.0, self.dist])
+        return R,t
+    
     # From: https://docs.scipy.org/doc/scipy/reference/generated/scipy.stats.special_ortho_group.html
     def haar_sampling(self):
-        R = torch.tensor(special_ortho_group.rvs(3), dtype=torch.float32).unsqueeze(0)
+        R = torch.tensor(special_ortho_group.rvs(3), dtype=torch.float32)
         t = torch.tensor([0.0, 0.0, self.dist])
         return R,t
 
@@ -292,15 +314,18 @@ class DatasetGenerator():
         R = torch.from_numpy(R[:3,:3])
         t = torch.tensor([0.0, 0.0, self.dist])
         return R,t
-
-
+    
+    def quat_sampling(self):
+        R = get_sampled_rotation_matrices_by_quat(1).squeeze()
+        t = torch.tensor([0.0, 0.0, self.dist])
+        return R,t
+    
     # Truely random
     # Based on: https://www.cmu.edu/biolphys/deserno/pdf/sphere_equi.pdf
     def sphere_sampling(self):
+        #z = np.random.uniform(low=-self.dist, high=self.dist, size=1)[0]
         z = np.random.uniform(low=-self.dist, high=self.dist, size=1)[0]
-        #z = -self.dist*0.5
         theta_sample = np.random.uniform(low=0.0, high=2.0*np.pi, size=1)[0]
-        #theta_sample = np.pi
         x = np.sqrt((self.dist**2 - z**2))*np.cos(theta_sample)
         y = np.sqrt((self.dist**2 - z**2))*np.sin(theta_sample)
 
@@ -329,6 +354,7 @@ class DatasetGenerator():
         image_renders = []
         for k in np.arange(self.batch_size):
             R, t = self.pose_sampling()
+            
             R = R.detach().cpu().numpy()
             t = t.detach().cpu().numpy()
 
@@ -349,11 +375,7 @@ class DatasetGenerator():
             curr_Rs.append(R)
             curr_ts.append(t)
 
-            image_renders.append(ren_rgb)
-
-        # Augment data
-        image_renders = np.array(image_renders)
-        images_aug = self.aug(images=image_renders)
+            image_renders.append(ren_rgb)       
 
         if(len(self.backgrounds) > 0):
             bg_im_isd = np.random.choice(len(self.backgrounds), self.batch_size, replace=False)
@@ -361,7 +383,7 @@ class DatasetGenerator():
         images = []
         for k in np.arange(self.batch_size):
             image_base = image_renders[k].copy()
-
+                
             if(len(self.backgrounds) > 0):
                 img_back = self.backgrounds[bg_im_isd[k]]
                 img_back = cv.cvtColor(img_back, cv.COLOR_BGR2RGBA).astype(float)
@@ -375,21 +397,26 @@ class DatasetGenerator():
 
             # Augment data
             image_aug = np.array([image_base])
-            image_aug = self.aug(images=image_aug)
+            image_aug = self.aug(images=image_aug)            
 
             # Convert to float and clip
-            image_aug = image_aug[0].astype(np.float)/255.0
+            image_aug = image_aug[0].astype(np.float)/np.max(image_aug[0])
             image_ref = np.clip(image_aug, 0.0, 1.0)
 
             org_img = image_renders[k]
             ys, xs = np.nonzero(org_img[:,:,0] > 0)
-            obj_bb = calc_2d_bbox(xs,ys,[640,640])
+            obj_bb = calc_2d_bbox(xs,ys,[self.img_size,self.img_size])
 
             # Add relative offset when cropping - like Sundermeyer
             x, y, w, h = obj_bb
+            
+            rand_trans_w = np.random.uniform(-self.max_rel_offset, 0) * w
+            rand_trans_h = np.random.uniform(-self.max_rel_offset, 0) * h
+            
             rand_trans_x = np.random.uniform(-self.max_rel_offset, self.max_rel_offset) * w
             rand_trans_y = np.random.uniform(-self.max_rel_offset, self.max_rel_offset) * h
-            obj_bb_off = obj_bb + np.array([rand_trans_x,rand_trans_y,0,0])
+            obj_bb_off = obj_bb + np.array([rand_trans_x,rand_trans_y,
+                                            rand_trans_w,rand_trans_h])
 
             cropped = extract_square_patch(image_ref, obj_bb_off)
             cropped_org = extract_square_patch(org_img, obj_bb)
@@ -419,8 +446,9 @@ class DatasetGenerator():
             for img in data["images"]:
                 img = torch.from_numpy(img).unsqueeze(0).permute(0,3,1,2).to(self.device)
                 code = self.encoder(img.float())
-                code = code.detach().cpu().numpy()
-                codes.append(code[0])
+                code = code.detach().cpu().numpy()[0]
+                norm_code = code / np.linalg.norm(code)
+                codes.append(norm_code)
             data["codes"] = codes
         return data
 
