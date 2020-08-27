@@ -1,30 +1,18 @@
 import torch
 import torch.nn as nn
 from pytorch3d.renderer.blending import softmax_rgb_blend
+from pytorch3d.renderer.blending import sigmoid_alpha_blend
 
 class DepthShader(nn.Module):
     def __init__(self, blend_params=None):
         super().__init__()
+        self.blend_params = blend_params if blend_params is not None else BlendParams()
 
     def forward(self, fragments, meshes, **kwargs) -> torch.Tensor:
         image = fragments.zbuf
-
-        flattened = torch.flatten(image, start_dim=1)
-        max_val,_ = torch.max(flattened, 1)
-        #print(max_val)
-        #mask = image == -1.0
-
-        #print(mask[:1].shape)
-
-        #for i in range(20):
-        #    mask = image[i] == -1.0
-        #    image[i][mask] = 15.0 #float(torch.max(max_val).cpu().detach().numpy()) #max_val[i]x
-
-        #image[mask] = float(torch.max(max_val).cpu().detach().numpy())
-
-        #colors = torch.stack([fragments.zbuf, fragments.zbuf, fragments.zbuf], dim=4)
-        #images = softmax_rgb_blend(colors, fragments, self.blend_params)
-
-
-
         return image
+        
+        #colors = torch.stack([fragments.zbuf,fragments.zbuf,fragments.zbuf]).permute(1,2,3,4,0)
+        #images = softmax_rgb_blend(colors, fragments, self.blend_params)        
+        #images = sigmoid_alpha_blend(colors, fragments, self.blend_params)
+        #return images
