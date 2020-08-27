@@ -18,6 +18,8 @@ from Model import Model
 from BatchRender import BatchRender
 from losses import Loss
 from DatasetGeneratorOpenGL import DatasetGenerator
+#from DatasetGeneratorSM import DatasetGenerator
+#from DatasetGeneratorPytorch import DatasetGenerator
 
 optimizer = None
 lr_reducer = None
@@ -44,7 +46,8 @@ def loadCheckpoint(model_path):
     epoch = checkpoint['epoch'] + 1
 
     # Load model
-    model = Model(output_size=6).cuda()
+    output_size = checkpoint['model']['l3.bias'].shape[0]
+    model = Model(output_size=output_size).cuda()
     model.load_state_dict(checkpoint['model'])
 
     # Load optimizer
@@ -95,10 +98,23 @@ def main():
                      render_method=args.get('Rendering', 'SHADER'),
                      image_size=args.getint('Rendering', 'IMAGE_SIZE'))
 
-
+    # Set size of model output depending on pose representation
+    pose_rep = args.get('Training', 'POSE_REPRESENTATION')
+    if(pose_rep == '6d-pose'):
+        pose_dim = 6
+    elif(pose_rep == 'quat'):
+        pose_dim = 4
+    elif(pose_rep == 'axis-angle'):
+        pose_dim = 4
+    elif(pose_rep == 'euler'):
+        pose_dim = 3
+    else:
+        print("Unknown pose representation specified: ", pose_rep)
+        pose_dim = -1
+        
     # Initialize a model using the renderer, mesh and reference image
-    model = Model(output_size=6).to(device)
-    #model.load_state_dict(torch.load("./output/model-epoch720.pt"))
+    model = Model(output_size=pose_dim)
+    model.to(device)
 
     # Create an optimizer. Here we are using Adam and we pass in the parameters of the model
     learning_rate=args.getfloat('Training', 'LEARNING_RATE')
@@ -134,6 +150,7 @@ def main():
     model_path = latestCheckpoint(os.path.join(output_path, "models/"))
     if(model_path is not None):
         model, optimizer, epoch, lr_reducer = loadCheckpoint(model_path)
+        #model, _, _, _ = loadCheckpoint(model_path)
 
     if early_stopping:
         validation_csv=os.path.join(output_path, "validation-loss.csv")
@@ -167,6 +184,7 @@ def main():
     while(epoch < args.getint('Training', 'NUM_ITER')):
         loss = trainEpoch(mean, std, br, data, model, device, output_path,
                           loss_method=args.get('Training', 'LOSS'),
+                          pose_rep=args.get('Training', 'POSE_REPRESENTATION'),
                           t=json.loads(args.get('Rendering', 'T')),
                           num_samples=args.getint('Training', 'NUM_SAMPLES'),
                           visualize=args.getboolean('Training', 'SAVE_IMAGES'),
@@ -174,9 +192,10 @@ def main():
         append2file([loss], os.path.join(output_path, "train-loss.csv"))
         val_loss = testEpoch(mean, std, br, val_data, model, device, output_path,
                              loss_method=args.get('Training', 'LOSS'),
-                          t=json.loads(args.get('Rendering', 'T')),
-                          visualize=args.getboolean('Training', 'SAVE_IMAGES'),
-                          loss_params=args.getfloat('Training', 'LOSS_PARAMS'))
+                             pose_rep=args.get('Training', 'POSE_REPRESENTATION'),
+                             t=json.loads(args.get('Rendering', 'T')),
+                             visualize=args.getboolean('Training', 'SAVE_IMAGES'),
+                             loss_params=args.getfloat('Training', 'LOSS_PARAMS'))
         append2file([val_loss], os.path.join(output_path, "validation-loss.csv"))
         val_losses = plotLoss(os.path.join(output_path, "train-loss.csv"),
                  os.path.join(output_path, "train-loss.png"),
@@ -203,7 +222,7 @@ def main():
         epoch = epoch+1
 
 def testEpoch(mean, std, br, val_data, model,
-               device, output_path, loss_method, t,
+               device, output_path, loss_method, pose_rep, t,
                visualize=False, loss_params=0.5):
     global optimizer
     with torch.no_grad():
@@ -219,10 +238,11 @@ def testEpoch(mean, std, br, val_data, model,
             codes = []
             input_images = []
             for b in curr_batch:
-                codes.append(val_data["codes"][b])
+                norm_code = val_data["codes"][b] / np.linalg.norm(val_data["codes"][b])
+                codes.append(norm_code)
                 input_images.append(val_data["images"][b])
             batch_codes = torch.tensor(np.stack(codes), device=device, dtype=torch.float32) # Bx128
-
+            
             predicted_poses = model(batch_codes)
 
             # Prepare ground truth poses for the loss function
@@ -233,8 +253,12 @@ def testEpoch(mean, std, br, val_data, model,
                 Rs.append(val_data["Rs"][b])
                 ts.append(T.copy())
 
-            loss, batch_loss, gt_images, predicted_images = Loss(predicted_poses, Rs, br, ts,
-                                                                 mean, std, loss_method=loss_method, views=views, loss_params=loss_params)
+            if('-random-multiview' in loss_method):
+                loss, batch_loss, gt_images, predicted_images = Loss(predicted_poses, Rs, br, ts,
+                                                                     mean, std, loss_method=loss_method, pose_rep=pose_rep, views=[views[0]], loss_params=loss_params)
+            else:
+                loss, batch_loss, gt_images, predicted_images = Loss(predicted_poses, Rs, br, ts,
+                                                                     mean, std, loss_method=loss_method, pose_rep=pose_rep, views=views, loss_params=loss_params)                
 
             #detach all from gpu
             batch_codes.detach().cpu().numpy()
@@ -242,7 +266,7 @@ def testEpoch(mean, std, br, val_data, model,
             gt_images.detach().cpu().numpy()
             predicted_images.detach().cpu().numpy()
 
-            print("Test batch: {0}/{1} (size: {2}) - loss: {3}".format(i+1,round(num_samples/batch_size), len(Rs),loss.data/batch_size))
+            print("Test batch: {0}/{1} (size: {2}) - loss: {3}".format(i+1,round(num_samples/batch_size), len(Rs),torch.mean(batch_loss)))
             losses = losses + batch_loss.data.detach().cpu().numpy().tolist()
 
             if(visualize):
@@ -274,7 +298,7 @@ def testEpoch(mean, std, br, val_data, model,
         return np.mean(losses)
 
 def trainEpoch(mean, std, br, data, model,
-               device, output_path, loss_method, t,
+               device, output_path, loss_method, pose_rep, t,
                num_samples, visualize=False, loss_params=0.5):
     global optimizer, lr_reducer
     dbg("Before train memory: {}".format(torch.cuda.memory_summary(device=device, abbreviated=False)), dbg_memory)
@@ -311,9 +335,12 @@ def trainEpoch(mean, std, br, data, model,
             ts.append(T.copy())
 
         loss, batch_loss, gt_images, predicted_images = Loss(predicted_poses, Rs, br, ts,
-                                                             mean, std, loss_method=loss_method, views=views, loss_params=loss_params)
+                                                             mean, std, loss_method=loss_method, pose_rep=pose_rep, views=views, loss_params=loss_params)
         loss.backward()
         optimizer.step()
+
+        #print("model weights: ", model.l3.weight[0][:5])
+        #print("encoder weights: ", dataset_gen.encoder.autoencoder_dense_MatMul.weight[:5])
 
         #detach all from gpu
         batch_codes.detach().cpu().numpy()
@@ -321,7 +348,7 @@ def trainEpoch(mean, std, br, data, model,
         gt_images.detach().cpu().numpy()
         predicted_images.detach().cpu().numpy()
 
-        print("Batch: {0}/{1} (size: {2}) - loss: {3}".format(i+1,round(num_samples/batch_size), len(Rs),loss.data/batch_size))
+        print("Batch: {0}/{1} (size: {2}) - loss: {3}".format(i+1,round(num_samples/batch_size), len(Rs),torch.mean(batch_loss)))
         losses = losses + batch_loss.data.detach().cpu().numpy().tolist()
 
         if(visualize):
