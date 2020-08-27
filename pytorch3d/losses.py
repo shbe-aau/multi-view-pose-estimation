@@ -5,6 +5,8 @@ from utils.tools import *
 import torch.nn as nn
 
 from pytorch3d.renderer import look_at_view_transform
+from pytorch3d.renderer import look_at_rotation
+from scipy.spatial.transform import Rotation as scipyR
 
 # Required to backpropagate when thresholding (torch.where)
 # See: https://discuss.pytorch.org/t/how-do-i-pass-grad-through-torch-where/74671
@@ -35,6 +37,31 @@ class NonZero(torch.autograd.Function):
     def backward(ctx, g):
         return g
 
+
+# Truely random
+# Based on: https://www.cmu.edu/biolphys/deserno/pdf/sphere_equi.pdf
+def sphere_sampling():
+    #z = np.random.uniform(low=-self.dist, high=self.dist, size=1)[0]
+    z = np.random.uniform(low=-1, high=1, size=1)[0]
+    theta_sample = np.random.uniform(low=0.0, high=2.0*np.pi, size=1)[0]
+    x = np.sqrt((1**2 - z**2))*np.cos(theta_sample)
+    y = np.sqrt((1**2 - z**2))*np.sin(theta_sample)
+
+    cam_position = torch.tensor([x, y, z]).unsqueeze(0)
+    if(z < 0):
+        R = look_at_rotation(cam_position, up=((0, 0, -1),)).squeeze()
+    else:
+        R = look_at_rotation(cam_position, up=((0, 0, 1),)).squeeze()
+
+    # Rotate in-plane
+    rot_degrees = np.random.uniform(low=-90.0, high=90.0, size=1)
+    rot = scipyR.from_euler('z', rot_degrees, degrees=True)
+    rot_mat = torch.tensor(rot.as_matrix(), dtype=torch.float32)
+    R = torch.matmul(R, rot_mat)
+    R = R.squeeze()
+
+    return R
+
 def renderNormCat(Rs, ts, renderer, mean, std, views):
     images = []
     for v in views:
@@ -45,12 +72,37 @@ def renderNormCat(Rs, ts, renderer, mean, std, views):
         images.append(imgs)
     return torch.cat(images, dim=1)
 
-def Loss(predicted_poses, gt_poses, renderer, ts, mean, std, loss_method="diff", views=None, fixed_gt_images=None, loss_params=0.5):
+def Loss(predicted_poses, gt_poses, renderer, ts, mean, std, loss_method="diff", pose_rep="6d-pose", views=None, fixed_gt_images=None, loss_params=0.5):
     Rs_gt = torch.tensor(np.stack(gt_poses), device=renderer.device,
                             dtype=torch.float32)
 
+    if('-random-multiview' in loss_method):
+        for i,v in enumerate(views):
+            if(i > 0):
+                v = sphere_sampling()
+            views[i] = v
+        loss_method = loss_method.replace('-random-multiview','')
+    
     if fixed_gt_images is None:
-        Rs_predicted = compute_rotation_matrix_from_ortho6d(predicted_poses)
+        if(pose_rep == '6d-pose'):
+            Rs_predicted = compute_rotation_matrix_from_ortho6d(predicted_poses)
+        elif(pose_rep == '6d-pose-flipped'):
+            blend_params = predicted_poses[:,6:]
+            predicted_poses = predicted_poses[:,:6]
+            Rs_predicted = compute_rotation_matrix_from_ortho6d(predicted_poses)
+        elif(pose_rep == 'rot-mat'):
+            batch_size = predicted_poses.shape[0]
+            Rs_predicted = predicted_poses.view(batch_size, 3, 3)            
+        elif(pose_rep == 'quat'):
+            Rs_predicted = compute_rotation_matrix_from_quaternion(predicted_poses)
+        elif(pose_rep == 'euler'):
+            Rs_predicted = look_at_rotation(predicted_poses).to(renderer.device)
+            #Rs_predicted = compute_rotation_matrix_from_euler(predicted_poses)
+        elif(pose_rep == 'axis-angle'):
+            Rs_predicted = compute_rotation_matrix_from_axisAngle(predicted_poses)
+        else:
+            print("Unknown pose representation specified: ", pose_rep)
+            return -1.0
         gt_imgs = renderNormCat(Rs_gt, ts, renderer, mean, std, views)
     else: # this version is for using loss with prerendered ref image and regular rot matrix for predicted pose
         Rs_predicted = predicted_poses
@@ -73,7 +125,7 @@ def Loss(predicted_poses, gt_poses, renderer, ts, mean, std, loss_method="diff",
 
     elif(loss_method=="pose-mul-depth"):
         # Calc pose loss
-        #mseLoss = nn.MSELoss(reduction='none')
+        mseLoss = nn.MSELoss(reduction='none')
         pose_diff = torch.abs(Rs_gt - Rs_predicted).flatten(start_dim=1)/2.0
         pose_loss = torch.mean(pose_diff)
         pose_batch_loss = torch.mean(pose_diff, dim=1)
@@ -86,35 +138,40 @@ def Loss(predicted_poses, gt_poses, renderer, ts, mean, std, loss_method="diff",
         loss = pose_loss*depth_loss
         batch_loss = pose_batch_loss*depth_batch_loss
         return loss, batch_loss, gt_imgs, predicted_imgs
-
+    
     elif(loss_method=="pose-plus-depth"):
         # Calc pose loss
-        #mseLoss = nn.MSELoss(reduction='none')
+        mseLoss = nn.MSELoss(reduction='none')
         pose_diff = torch.abs(Rs_gt - Rs_predicted).flatten(start_dim=1)/2.0
         pose_loss = torch.mean(pose_diff)
         pose_batch_loss = torch.mean(pose_diff, dim=1)
-
+        
         # Calc depth loss
         depth_diff = torch.clamp(diff, 0.0, 20.0)/20.0
         depth_loss = torch.mean(depth_diff)
         depth_batch_loss = torch.mean(depth_diff, dim=1)
-
+        
         loss = loss_params*pose_loss + (1-loss_params)*depth_loss
         batch_loss = loss_params*pose_batch_loss + (1-loss_params)*depth_batch_loss
         return loss, batch_loss, gt_imgs, predicted_imgs
-
+    
     elif(loss_method=="l2-pose"):
         mseLoss = nn.MSELoss(reduction='none')
-        l2loss = mseLoss(Rs_predicted, Rs_gt)
+        l2loss = mseLoss(Rs_predicted, Rs_gt)/6.0
         loss = torch.sum(l2loss)
         batch_loss = torch.sum(l2loss, dim=(1,2))
         return loss, batch_loss, gt_imgs, predicted_imgs
 
-    elif(loss_method=="l1-clamped"):
-        diff = torch.clamp(diff, 0.0, 20.0)
+    elif(loss_method=="l1-depth"):
         loss = torch.mean(diff)
         return loss, torch.mean(diff, dim=1), gt_imgs, predicted_imgs
-
+    
+    elif(loss_method=="l1-clamped"):
+        diff = torch.clamp(diff, 0.0, loss_params)/loss_params
+        loss = torch.mean(diff)
+        batch_loss = torch.mean(diff, dim=1)
+        return loss, batch_loss, gt_imgs, predicted_imgs
+    
     elif(loss_method=="vsd"):
         outliers = torch.randn(diff.shape, device=renderer.device, requires_grad=True)
         outliers = ThauThreshold.apply(diff)
