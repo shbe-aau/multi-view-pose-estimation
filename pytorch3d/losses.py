@@ -191,5 +191,43 @@ def Loss(predicted_poses, gt_poses, renderer, ts, mean, std, loss_method="diff",
         loss = torch.mean(loss, dim=1)
         return torch.mean(loss), loss, gt_imgs, predicted_imgs
 
+    elif(loss_method=="z-diff"):
+        z_predicted = Rs_predicted[:,2,:]
+        z_gt = Rs_gt[:,2,:]
+        batch_loss = (1.0 - (z_predicted*z_gt).sum(-1))/2.0
+        loss = torch.mean(batch_loss)
+        return loss, batch_loss, gt_imgs, predicted_imgs
+
+    elif(loss_method=="sil-ratio"):
+        loss = torch.sum(diff) / torch.sum(gt_imgs) #(diff.shape[0]*diff.shape[1])
+        batch_loss = torch.sum(diff, dim=1) / torch.sum(gt_imgs, dim=(1,2)) #(diff.shape[1])
+        return loss, batch_loss, gt_imgs, predicted_imgs    
+
+    elif(loss_method=="sil-ratio-plus-zdiff"):
+        ratio_loss = torch.sum(diff) / torch.sum(gt_imgs)
+        ratio_batch_loss = torch.sum(diff, dim=1) / torch.sum(gt_imgs, dim=(1,2))
+
+        z_predicted = Rs_predicted[:,2,:]
+        z_gt = Rs_gt[:,2,:]
+        z_batch_loss = (1.0 - (z_predicted*z_gt).sum(-1))/2.0
+        z_loss = torch.mean(z_batch_loss)
+
+        loss = loss_params*z_loss + (1-loss_params)*ratio_loss
+        batch_loss = loss_params*z_batch_loss + (1-loss_params)*ratio_batch_loss        
+        return loss, batch_loss, gt_imgs, predicted_imgs
+
+    elif(loss_method=="sil-ratio-mul-zdiff"):
+        ratio_loss = torch.sum(diff) / torch.sum(gt_imgs)
+        ratio_batch_loss = torch.sum(diff, dim=1) / torch.sum(gt_imgs, dim=(1,2))
+
+        z_predicted = Rs_predicted[:,2,:]
+        z_gt = Rs_gt[:,2,:]
+        z_batch_loss = (1.0 - (z_predicted*z_gt).sum(-1))/2.0
+        z_loss = torch.mean(z_batch_loss)
+
+        loss = z_loss*ratio_loss
+        batch_loss = z_batch_loss*ratio_batch_loss        
+        return loss, batch_loss, gt_imgs, predicted_imgs
+
     print("Unknown loss specified")
     return -1, None, None, None
