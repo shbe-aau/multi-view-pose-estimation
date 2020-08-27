@@ -89,23 +89,26 @@ def plotView(currView, numViews, vmin, vmax, input_images, groundtruth, predicte
 
     # Plot depth map render from ground truth
     plt.subplot(1, 4, 2)
-    plt.imshow(groundtruth[0].detach().cpu().numpy(),
-               vmin=vmin, vmax=vmax)
+    plt.imshow(groundtruth[0].detach().cpu().numpy())#,
+               #vmin=vmin, vmax=vmax)
     plt.title("Depth Render - GT")
 
     # Plot depth map render from prediction
     plt.subplot(1, 4, 3)
-    plt.imshow(predicted[0].detach().cpu().numpy(),
-               vmin=vmin, vmax=vmax)
-    if(currView == 0):
-        plt.title("Predicted: \n " + np.array2string((predicted_pose[currView*batch_size]).detach().cpu().numpy(),precision=2))
-    else:
-        plt.title("Predicted")
+    plt.imshow(predicted[0].detach().cpu().numpy())#,
+               #vmin=vmin, vmax=vmax)
+
+    plt.title("Predicted: \n " + np.array2string((predicted_pose[0]).detach().cpu().numpy(),precision=2))
+    
+    # if(currView == 0):
+    #     plt.title("Predicted: \n " + np.array2string((predicted_pose[currView*batch_size]).detach().cpu().numpy(),precision=2))
+    # else:
+    #     plt.title("Predicted")
 
     # Plot difference between depth maps
     loss_contrib = np.abs((groundtruth[0]).detach().cpu().numpy() - (predicted[0]).detach().cpu().numpy())
     plt.subplot(1, 4, 4)
-    plt.imshow(loss_contrib, vmin=0.0, vmax=20.0)
+    plt.imshow(loss_contrib)#, vmin=0.0, vmax=20.0)
     plt.title("Loss: {:02f}".format((loss[0]).detach().cpu().numpy()))
 
 # Convert quaternion to rotation matrix
