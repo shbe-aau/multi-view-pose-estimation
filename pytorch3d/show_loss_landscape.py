@@ -129,7 +129,7 @@ def steepest_region(neighbours, losses):
             regions.update(regions_temp)
     return regions, steepest
 
-def voronoi_plot(points_in, losses):
+def voronoi_plot(points_in, losses, path):
     from matplotlib import colors
     from mpl_toolkits.mplot3d.art3d import Poly3DCollection
     import matplotlib.pyplot as plt
@@ -171,6 +171,8 @@ def voronoi_plot(points_in, losses):
         polygon = Poly3DCollection([sv.vertices[region]], alpha=1.0)
         polygon.set_color(random_color)
         ax.add_collection3d(polygon)
+
+    fig.savefig(os.path.join(path, "landscape.png"), dpi=fig.dpi)
 
     # determine neighbours
     neighbours = []
@@ -230,6 +232,7 @@ def voronoi_plot(points_in, losses):
     y_p = [y_p[i] for i in centers]
     z_p = [z_p[i] for i in centers]
     ax.scatter(x_p, y_p, z_p, c='k', s=1)
+    fig.savefig(os.path.join(path, "regions.png"), dpi=fig.dpi)
     plt.show()
 
 def plot_points(points, losses):
@@ -273,10 +276,10 @@ def main():
     faulthandler.enable()
     #np.set_printoptions(threshold=sys.maxsize)
     path = sys.argv[1]
-    points = np.load(os.path.join(path, 'points.npy'))
-    losses = np.load(os.path.join(path, 'losses.npy'))
+    points = np.load(os.path.join(path, 'points.npy'), allow_pickle=True)
+    losses = np.load(os.path.join(path, 'losses.npy'), allow_pickle=True)
     print(losses)
-    voronoi_plot(points, losses)
+    voronoi_plot(points, losses, path)
 
 
 if __name__ == '__main__':
