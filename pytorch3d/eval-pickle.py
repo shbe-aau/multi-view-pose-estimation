@@ -127,8 +127,13 @@ def main():
             img_torch = torch.from_numpy(img).unsqueeze(0).permute(0,3,1,2).to(device)
             code = encoder(img_torch.float())
 
+            # Normalize code
+            code = code.detach().cpu().numpy()[0]
+            norm_code = code / np.linalg.norm(code)
+            norm_code = torch.tensor(norm_code).unsqueeze(0)
+
             # Run through model
-            predicted_poses = model(code)
+            predicted_poses = model(norm_code.cuda())
             Rs_predicted = compute_rotation_matrix_from_ortho6d(predicted_poses)
 
             R_predicted = Rs_predicted.detach().cpu().numpy()[0]
