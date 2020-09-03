@@ -253,6 +253,7 @@ def plot_recall_curves(recall_dict, p, save_to=None):
     recalls = recall_dict[error['type']]
     all_recalls = []
     plt.figure()
+    plt.grid(True)
 
     for key in sorted(recalls):
       threshold = key.split('=')[-1]

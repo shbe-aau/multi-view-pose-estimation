@@ -192,7 +192,7 @@ for scene_id in scene_ids_curr:
     continue
 
   if(p["dataset_split"] == "train"):
-    output_path = "./tless-train-obj{0}.p".format(scene_id)
+    output_path = "./tless-train-obj{:02d}.p".format(scene_id)
   else:
-    output_path = "./tless-test-scene{0}.p".format(scene_id)
+    output_path = "./tless-test-scene{:02d}.p".format(scene_id)
   pickle.dump(data, open(output_path, "wb"), protocol=2)
