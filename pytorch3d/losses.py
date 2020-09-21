@@ -3,7 +3,7 @@ import numpy as np
 from utils.utils import *
 from utils.tools import *
 import torch.nn as nn
-from pyquaternion import Quaternion
+#from pyquaternion import Quaternion
 
 from pytorch3d.renderer import look_at_view_transform
 from pytorch3d.renderer import look_at_rotation
@@ -244,26 +244,26 @@ def Loss(predicted_poses, gt_poses, renderer, ts, mean, std, loss_method="diff",
         batch_loss = z_batch_loss*ratio_batch_loss
         return loss, batch_loss, gt_imgs, predicted_imgs
 
-    elif(loss_method=="qpose"):
-        diff = []
-        Rs_gt = Rs_gt.detach().cpu().numpy()
-        Rs_predicted = Rs_predicted.detach().cpu().numpy()
-        for i in range(len(Rs_gt)):
-            r = scipyR.from_matrix(Rs_gt[i])
-            q_gt = Quaternion(r.as_quat())
-            r = scipyR.from_matrix(Rs_predicted[i])
-            q_pred = Quaternion(r.as_quat())
-            q_diff = Quaternion.absolute_distance(q_gt, q_pred)
-            #q_diff = Quaternion.distance(q_gt, q_pred)
-            #q_diff = Quaternion.sym_distance(q_gt, q_pred)
-            diff.append(q_diff)
-        loss = np.mean(diff)
-        batch_loss = np.mean(diff)
-        loss = torch.tensor(loss, device=renderer.device,
-                                dtype=torch.float32)
-        batch_loss = torch.tensor(batch_loss, device=renderer.device,
-                                dtype=torch.float32)
-        return loss, batch_loss, gt_imgs, predicted_imgs
+    # elif(loss_method=="qpose"):
+    #     diff = []
+    #     Rs_gt = Rs_gt.detach().cpu().numpy()
+    #     Rs_predicted = Rs_predicted.detach().cpu().numpy()
+    #     for i in range(len(Rs_gt)):
+    #         r = scipyR.from_matrix(Rs_gt[i])
+    #         q_gt = Quaternion(r.as_quat())
+    #         r = scipyR.from_matrix(Rs_predicted[i])
+    #         q_pred = Quaternion(r.as_quat())
+    #         q_diff = Quaternion.absolute_distance(q_gt, q_pred)
+    #         #q_diff = Quaternion.distance(q_gt, q_pred)
+    #         #q_diff = Quaternion.sym_distance(q_gt, q_pred)
+    #         diff.append(q_diff)
+    #     loss = np.mean(diff)
+    #     batch_loss = np.mean(diff)
+    #     loss = torch.tensor(loss, device=renderer.device,
+    #                             dtype=torch.float32)
+    #     batch_loss = torch.tensor(batch_loss, device=renderer.device,
+    #                             dtype=torch.float32)
+    #     return loss, batch_loss, gt_imgs, predicted_imgs
 
     elif(loss_method=="mat-theta"):
         diff = []
