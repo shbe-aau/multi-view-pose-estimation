@@ -73,6 +73,36 @@ def renderNormCat(Rs, ts, renderer, mean, std, views):
         images.append(imgs)
     return torch.cat(images, dim=1)
 
+
+def renderMulti(Rs_gt, predicted_poses, ts, renderer):
+    num_views = 4
+    pred_images = []
+    gt_images = []
+    confidences = []
+    pred_poses = []
+    pose_index = num_views
+    for v in np.arange(num_views):
+        # Render groundtruth images
+        gt_images.append(renderer.renderBatch(Rs_gt, ts))
+
+        # Extract predicted poses
+        end_index = pose_index + 6
+        curr_poses = predicted_poses[:,pose_index:end_index]
+        curr_poses = compute_rotation_matrix_from_ortho6d(curr_poses)
+        pose_index = end_index
+        pred_images.append(renderer.renderBatch(curr_poses, ts))
+        pred_poses.append(curr_poses)
+
+    # Extract confidences and perform softmax
+    confidences.append(torch.nn.functional.softmax(predicted_poses[:,:4],dim=1))
+
+    gt_images = torch.cat(gt_images, dim=1)
+    pred_images = torch.cat(pred_images, dim=1)
+    confidences = torch.cat(confidences, dim=1)
+    pred_poses = torch.cat(pred_poses, dim=1)
+
+    return gt_images, pred_images, confidences, pred_poses
+
 def mat_theta( A, B ):
     """ comment cos between vectors or matrices """
     At = np.transpose(A)
@@ -101,10 +131,6 @@ def Loss(predicted_poses, gt_poses, renderer, ts, mean, std, loss_method="diff",
     if fixed_gt_images is None:
         if(pose_rep == '6d-pose'):
             Rs_predicted = compute_rotation_matrix_from_ortho6d(predicted_poses)
-        elif(pose_rep == '6d-pose-flipped'):
-            blend_params = predicted_poses[:,6:]
-            predicted_poses = predicted_poses[:,:6]
-            Rs_predicted = compute_rotation_matrix_from_ortho6d(predicted_poses)
         elif(pose_rep == 'rot-mat'):
             batch_size = predicted_poses.shape[0]
             Rs_predicted = predicted_poses.view(batch_size, 3, 3)
@@ -118,19 +144,43 @@ def Loss(predicted_poses, gt_poses, renderer, ts, mean, std, loss_method="diff",
         else:
             print("Unknown pose representation specified: ", pose_rep)
             return -1.0
-        gt_imgs = renderNormCat(Rs_gt, ts, renderer, mean, std, views)
+        #gt_imgs = renderNormCat(Rs_gt, ts, renderer, mean, std, views)
     else: # this version is for using loss with prerendered ref image and regular rot matrix for predicted pose
         Rs_predicted = predicted_poses
         Rs_predicted = torch.Tensor(Rs_predicted).to(renderer.device)
         gt_imgs = fixed_gt_images
-    predicted_imgs = renderNormCat(Rs_predicted, ts, renderer, mean, std, views)
-    diff = torch.abs(gt_imgs - predicted_imgs).flatten(start_dim=1) # not needed for "multiview-l2"
+
+    #predicted_imgs = renderNormCat(Rs_predicted, ts, renderer, mean, std, views)
+    #diff = torch.abs(gt_imgs - predicted_imgs).flatten(start_dim=1) # not needed for "multiview-l2"
 
     if(loss_method=="bce-loss"):
         loss = nn.BCEWithLogitsLoss(reduction="none")
         loss = loss(predicted_imgs.flatten(start_dim=1),gt_imgs.flatten(start_dim=1))
         loss = torch.mean(loss, dim=1)
         return torch.mean(loss), loss, gt_imgs, predicted_imgs
+
+    elif(loss_method=="predicted-multiview"):
+        gt_imgs, predicted_imgs, confs, pred_poses = renderMulti(Rs_gt, predicted_poses, ts, renderer)
+        diff = torch.abs(gt_imgs - predicted_imgs).view(-1,4,128,128).flatten(start_dim=2)
+
+        pred_poses = pred_poses.view(-1,4,3,3)
+        pred_poses_rev = torch.flip(pred_poses,[1])
+
+        # Calc pose loss
+        pose_diff = 1.0 - torch.abs(pred_poses - pred_poses_rev).flatten(start_dim=1) #/2.0
+        pose_loss = torch.mean(pose_diff)
+        pose_batch_loss = torch.mean(pose_diff, dim=1)
+
+        # Calc depth loss
+        depth_diff = torch.clamp(diff, 0.0, 5.0)/5.0
+        depth_diff = depth_diff*confs.view(-1,4,1) # Apply the confidence as weights
+        depth_diff = depth_diff.flatten(start_dim=1)
+        depth_loss = torch.mean(depth_diff)
+        depth_batch_loss = torch.mean(depth_diff, dim=1)
+
+        loss = loss_params*pose_loss + (1-loss_params)*depth_loss
+        batch_loss = loss_params*pose_batch_loss + (1-loss_params)*depth_batch_loss
+        return loss, batch_loss, gt_imgs, predicted_imgs
 
     elif(loss_method=="bce-loss-sum"):
         loss = nn.BCEWithLogitsLoss(reduction="none")
