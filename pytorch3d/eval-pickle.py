@@ -16,8 +16,8 @@ import copy
 from utils.utils import *
 from utils.tools import *
 
-from Model import Model
-from Encoder import Encoder
+from ModelEncoder import ModelEncoder
+#from Encoder import Encoder
 from utils.pytless import inout, misc
 from utils.pytless.renderer import Renderer
 
@@ -28,13 +28,12 @@ def arr2str(arr):
         str_arr += "{0:.8f} ".format(flat_arr[i])
     return str_arr[:-1]
 
-def loadCheckpoint(model_path):
+def loadCheckpoint(model, model_path):
     # Load checkpoint and parameters
     checkpoint = torch.load(model_path)
     epoch = checkpoint['epoch'] + 1
 
     # Load model
-    model = Model(output_size=6).cuda()
     model.load_state_dict(checkpoint['model'])
 
     # Load optimizer
@@ -80,16 +79,13 @@ def main():
         torch.cuda.set_device(device)
 
         # Initialize a model
-        model = Model(output_size=6).to(device)
+        model = ModelEncoder(args.ep,
+                             output_size=6)
 
         # Load model checkpoint
-        model, optimizer, epoch, learning_rate = loadCheckpoint(args.mp)
+        model, optimizer, epoch, learning_rate = loadCheckpoint(model, args.mp)
         model.to(device)
         model.eval()
-
-        # Load and prepare encoder
-        encoder = Encoder(args.ep).to(device)
-        encoder.eval()
 
     # Prepare renderer if defined
     obj_path = args.op
@@ -123,17 +119,9 @@ def main():
             #if(data["visib_fract"][i] < 0.5):
             #    continue
 
-            # Run through encoder
-            img_torch = torch.from_numpy(img).unsqueeze(0).permute(0,3,1,2).to(device)
-            code = encoder(img_torch.float())
-
-            # Normalize code
-            code = code.detach().cpu().numpy()[0]
-            norm_code = code / np.linalg.norm(code)
-            norm_code = torch.tensor(norm_code).unsqueeze(0)
-
             # Run through model
-            predicted_poses = model(norm_code.cuda())
+            img_torch = torch.from_numpy(img).unsqueeze(0).to(device)
+            predicted_poses = model(img_torch)
             Rs_predicted = compute_rotation_matrix_from_ortho6d(predicted_poses)
 
             R_predicted = Rs_predicted.detach().cpu().numpy()[0]
