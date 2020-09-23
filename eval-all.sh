@@ -21,9 +21,9 @@
 # wait
 
 # Eval object 1-20, depth only
-for OBJ_ID in 01 #02 03 04 05 06 07 08 09 10 11 12 13 14 15 16 17 18 19 20
+for OBJ_ID in 19 #01 02 03 04 05 06 07 08 09 10 11 12 13 14 15 16 17 18 19 20
 do
-    bash run-eval.sh ${OBJ_ID} "pose-random-multiview-depth" "pytorch3d/output/pose-2-depth/obj1-20-2nd/obj${OBJ_ID}-random-multiview/models/model-epoch99.pt"
+    bash run-eval.sh ${OBJ_ID} "end2end" "pytorch3d/output/depth/obj1-20-full/obj${OBJ_ID}-random-multiview/models/model-epoch5.pt"
     wait
 done
 
