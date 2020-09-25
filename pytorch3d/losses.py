@@ -74,28 +74,44 @@ def renderNormCat(Rs, ts, renderer, mean, std, views):
     return torch.cat(images, dim=1)
 
 
-def renderMulti(Rs_gt, predicted_poses, ts, renderer):
-    num_views = 4
+def renderMulti(Rs_gt, predicted_poses, ts, renderer, views):
+    num_views = len(views)
     pred_images = []
     gt_images = []
     confidences = []
     pred_poses = []
     pose_index = num_views
-    for v in np.arange(num_views):
+    for i,v in enumerate(views): #np.arange(num_views):
         # Render groundtruth images
         gt_images.append(renderer.renderBatch(Rs_gt, ts))
 
-        # Extract predicted poses
+        # Extract predicted pose
         end_index = pose_index + 6
         curr_poses = predicted_poses[:,pose_index:end_index]
         curr_poses = compute_rotation_matrix_from_ortho6d(curr_poses)
-        pose_index = end_index
-        pred_images.append(renderer.renderBatch(curr_poses, ts))
-        pred_poses.append(curr_poses)
+
+        # #Invert axes
+        # if(i > 0):
+        #    flip = np.eye(3, dtype=np.float32)
+        #    #flip[i-1,i-1] = -1.0
+        #    flip[2,2] = -1.0
+        #    flip[1,1] = -1.0
+        #    flip[0,0] = -1.0
+        #    curr_poses = torch.matmul(curr_poses, torch.from_numpy(flip).to(renderer.device))
+
+        # Render images
+        curr_poses = curr_poses.permute(0,2,1)
+        Rs_new = torch.matmul(curr_poses, v.to(renderer.device))
+        Rs_new = Rs_new.permute(0,2,1)
+        imgs = renderer.renderBatch(Rs_new, ts)
+        pred_images.append(imgs)
+        pred_poses.append(Rs_new)
+
+        #pred_images.append(renderer.renderBatch(curr_poses, ts))
+        #pred_poses.append(curr_poses)
 
     # Extract confidences and perform softmax
-    predicted_poses[:,:4] = torch.clamp(predicted_poses[:,:4], 0.0, 1.0)
-    confidences.append(torch.nn.functional.softmax(predicted_poses[:,:4],dim=1))
+    confidences.append(torch.nn.functional.softmax(predicted_poses[:,:num_views],dim=1))
 
     gt_images = torch.cat(gt_images, dim=1)
     pred_images = torch.cat(pred_images, dim=1)
@@ -161,10 +177,11 @@ def Loss(predicted_poses, gt_poses, renderer, ts, mean, std, loss_method="diff",
         return torch.mean(loss), loss, gt_imgs, predicted_imgs
 
     elif(loss_method=="predictive-multiview"):
-        gt_imgs, predicted_imgs, confs, pred_poses = renderMulti(Rs_gt, predicted_poses, ts, renderer)
-        diff = torch.abs(gt_imgs - predicted_imgs).view(-1,4,128,128).flatten(start_dim=2)
+        num_views = len(views)
+        gt_imgs, predicted_imgs, confs, pred_poses = renderMulti(Rs_gt, predicted_poses, ts, renderer, views)
+        diff = torch.abs(gt_imgs - predicted_imgs).view(-1,num_views,128,128).flatten(start_dim=2)
 
-        pred_poses = pred_poses.view(-1,4,3,3)
+        pred_poses = pred_poses.view(-1,num_views,3,3)
         pred_poses_rev = torch.flip(pred_poses,[1])
 
         # Calc z-diff pose loss
@@ -180,12 +197,17 @@ def Loss(predicted_poses, gt_poses, renderer, ts, mean, std, loss_method="diff",
         #pose_batch_loss = torch.mean(pose_diff, dim=1)
 
         # Calc depth loss
-        depth_diff = torch.clamp(diff, 0.0, 5.0)/5.0
-        depth_diff = depth_diff*confs.view(-1,4,1) # Apply the confidence as weights
+        depth_diff = torch.clamp(diff, 0.0, 20.0)/20.0
+        #print(depth_diff.shape)
+        #print("Before: ", depth_diff[0,:,9000])
+        depth_diff = depth_diff*confs.view(-1,num_views,1) # Apply the confidence as weights
+        #print("After: ",depth_diff[0,:,9000])
+        #print("Confs: ",confs.view(-1,4,1)[0,:])
         depth_diff = depth_diff.flatten(start_dim=1)
         depth_loss = torch.mean(depth_diff)
         depth_batch_loss = torch.mean(depth_diff, dim=1)
 
+        loss_params = 0.0
         loss = loss_params*pose_loss + (1-loss_params)*depth_loss
         batch_loss = loss_params*pose_batch_loss + (1-loss_params)*depth_batch_loss
         return loss, batch_loss, gt_imgs, predicted_imgs
