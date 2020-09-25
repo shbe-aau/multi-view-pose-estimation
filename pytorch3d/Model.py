@@ -9,7 +9,7 @@ class Model(nn.Module):
     def __init__(self, output_size=4):
         super(Model, self).__init__()
 
-        output_size = 4*(1+6)
+        output_size = 6 #4*(1+6)
         self.l1 = nn.Linear(128,128)
         self.l2 = nn.Linear(128,64)
         self.l3 = nn.Linear(64,output_size)

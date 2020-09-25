@@ -147,14 +147,14 @@ def Loss(predicted_poses, gt_poses, renderer, ts, mean, std, loss_method="diff",
         else:
             print("Unknown pose representation specified: ", pose_rep)
             return -1.0
-        #gt_imgs = renderNormCat(Rs_gt, ts, renderer, mean, std, views)
+        gt_imgs = renderNormCat(Rs_gt, ts, renderer, mean, std, views)
     else: # this version is for using loss with prerendered ref image and regular rot matrix for predicted pose
         Rs_predicted = predicted_poses
         Rs_predicted = torch.Tensor(Rs_predicted).to(renderer.device)
         gt_imgs = fixed_gt_images
 
-    #predicted_imgs = renderNormCat(Rs_predicted, ts, renderer, mean, std, views)
-    #diff = torch.abs(gt_imgs - predicted_imgs).flatten(start_dim=1) # not needed for "multiview-l2"
+    predicted_imgs = renderNormCat(Rs_predicted, ts, renderer, mean, std, views)
+    diff = torch.abs(gt_imgs - predicted_imgs).flatten(start_dim=1) # not needed for "multiview-l2"
 
     if(loss_method=="bce-loss"):
         loss = nn.BCEWithLogitsLoss(reduction="none")
@@ -234,6 +234,24 @@ def Loss(predicted_poses, gt_poses, renderer, ts, mean, std, loss_method="diff",
     elif(loss_method=="l1-depth"):
         loss = torch.mean(diff)
         return loss, torch.mean(diff, dim=1), gt_imgs, predicted_imgs
+
+    elif(loss_method=="depth-masked"):
+        mask_gt = gt_imgs.flatten(start_dim=1) > 0
+        mask_pred = predicted_imgs.flatten(start_dim=1) > 0
+        mask = mask_gt * mask_pred
+        masked = diff*mask
+
+        # jaccard index
+        jaccard = torch.sum(mask, dim=1)/(torch.sum(mask_gt, dim=1) + torch.sum(mask_pred, dim=1) - torch.sum(mask, dim=1))
+        jaccard_inv = 1.0 - jaccard
+        batch_j = jaccard_inv
+        j = torch.mean(batch_j)
+
+        loss = torch.sum(masked)/torch.sum(mask)
+        loss = loss*j
+        batch_loss = torch.sum(masked, dim=1)/torch.sum(mask, dim=1)
+        batch_loss = batch_loss*batch_j
+        return loss, batch_loss, gt_imgs, predicted_imgs
 
     elif(loss_method=="l1-clamped"):
         diff = torch.clamp(diff, 0.0, loss_params)/loss_params
