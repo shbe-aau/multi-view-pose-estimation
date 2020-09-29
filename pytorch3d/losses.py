@@ -90,34 +90,26 @@ def renderMulti(Rs_gt, predicted_poses, ts, renderer, views):
         curr_poses = predicted_poses[:,pose_index:end_index]
         curr_poses = compute_rotation_matrix_from_ortho6d(curr_poses)
 
-        # #Invert axes
-        # if(i > 0):
-        #    flip = np.eye(3, dtype=np.float32)
-        #    #flip[i-1,i-1] = -1.0
-        #    flip[2,2] = -1.0
-        #    flip[1,1] = -1.0
-        #    flip[0,0] = -1.0
-        #    curr_poses = torch.matmul(curr_poses, torch.from_numpy(flip).to(renderer.device))
-
         # Render images
-        curr_poses = curr_poses.permute(0,2,1)
+        curr_poses = curr_poses.permute(0,2,1) # Permute instead of transposing
         Rs_new = torch.matmul(curr_poses, v.to(renderer.device))
-        Rs_new = Rs_new.permute(0,2,1)
+        Rs_new = Rs_new.permute(0,2,1) # Permute instead of transposing
         imgs = renderer.renderBatch(Rs_new, ts)
         pred_images.append(imgs)
         pred_poses.append(Rs_new)
 
-        #pred_images.append(renderer.renderBatch(curr_poses, ts))
-        #pred_poses.append(curr_poses)
-
     # Extract confidences and perform softmax
     confidences.append(torch.nn.functional.softmax(predicted_poses[:,:num_views],dim=1))
 
+    b,w,h = gt_images[0].shape
+    confs = torch.nn.functional.softmax(predicted_poses[:,:num_views],dim=1)
+    confs = confs.unsqueeze(-1).unsqueeze(-1)
+    confs = confs.repeat(1,1,w,h)
+
     gt_images = torch.cat(gt_images, dim=1)
     pred_images = torch.cat(pred_images, dim=1)
-    confidences = torch.cat(confidences, dim=1)
+    confidences = confs.view(b,-1,w).squeeze()
     pred_poses = torch.cat(pred_poses, dim=1)
-
     return gt_images, pred_images, confidences, pred_poses
 
 def mat_theta( A, B ):
@@ -179,37 +171,26 @@ def Loss(predicted_poses, gt_poses, renderer, ts, mean, std, loss_method="diff",
     elif(loss_method=="predictive-multiview"):
         num_views = len(views)
         gt_imgs, predicted_imgs, confs, pred_poses = renderMulti(Rs_gt, predicted_poses, ts, renderer, views)
-        diff = torch.abs(gt_imgs - predicted_imgs).view(-1,num_views,128,128).flatten(start_dim=2)
+        diff = torch.abs(gt_imgs - predicted_imgs) #.view(-1,num_views,128,128).flatten(start_dim=2)
 
         pred_poses = pred_poses.view(-1,num_views,3,3)
         pred_poses_rev = torch.flip(pred_poses,[1])
 
-        # Calc z-diff pose loss
-        z_predicted = pred_poses[:,:,2,:]
-        z_gt = pred_poses_rev[:,:,2,:]
-        pose_batch_loss = torch.mean(((z_predicted*z_gt).sum(-1)+1.0)/2.0, dim=1)
-        #print(pose_batch_loss)
-        pose_loss = torch.mean(pose_batch_loss)
-
         # Calc pose loss
-        #pose_diff = 1.0 - torch.abs(pred_poses - pred_poses_rev).flatten(start_dim=1) #/2.0
-        #pose_loss = torch.mean(pose_diff)
-        #pose_batch_loss = torch.mean(pose_diff, dim=1)
+        pose_diff = 1.0 - torch.abs(pred_poses - pred_poses_rev).flatten(start_dim=1) #/2.0
+        pose_loss = torch.mean(pose_diff)
+        pose_batch_loss = torch.mean(pose_diff, dim=1)
 
         # Calc depth loss
-        depth_diff = torch.clamp(diff, 0.0, 20.0)/20.0
-        #print(depth_diff.shape)
-        #print("Before: ", depth_diff[0,:,9000])
-        depth_diff = depth_diff*confs.view(-1,num_views,1) # Apply the confidence as weights
-        #print("After: ",depth_diff[0,:,9000])
-        #print("Confs: ",confs.view(-1,4,1)[0,:])
-        depth_diff = depth_diff.flatten(start_dim=1)
+        #depth_diff = torch.clamp(diff, 0.0,5.0)/5.0
+        depth_diff = diff
+        depth_diff = depth_diff*confs # Apply the confidence as weights
         depth_loss = torch.mean(depth_diff)
-        depth_batch_loss = torch.mean(depth_diff, dim=1)
+        depth_batch_loss = torch.mean(depth_diff, dim=[1,2])
 
-        loss_params = 0.0
         loss = loss_params*pose_loss + (1-loss_params)*depth_loss
         batch_loss = loss_params*pose_batch_loss + (1-loss_params)*depth_batch_loss
+        gt_imgs = gt_imgs*confs
         return loss, batch_loss, gt_imgs, predicted_imgs
 
     elif(loss_method=="bce-loss-sum"):
