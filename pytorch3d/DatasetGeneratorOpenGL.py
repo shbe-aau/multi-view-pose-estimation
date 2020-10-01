@@ -50,7 +50,7 @@ class DatasetGenerator():
 
     def __init__(self, background_path, obj_path, obj_distance, batch_size,
                  encoder_weights, device, sampling_method="sphere", random_light=True,
-                 num_bgs=17000):
+                 num_bgs=170):
         self.device = device
         self.poses = []
         self.obj_path = obj_path
@@ -202,7 +202,7 @@ class DatasetGenerator():
         R = torch.tensor(self.poses[-1], dtype=torch.float32)
         t = torch.tensor([0.0, 0.0, self.dist])
         return R,t
-    
+
     # From: https://docs.scipy.org/doc/scipy/reference/generated/scipy.stats.special_ortho_group.html
     def haar_sampling(self):
         R = torch.tensor(special_ortho_group.rvs(3), dtype=torch.float32)
@@ -314,12 +314,12 @@ class DatasetGenerator():
         R = torch.from_numpy(R[:3,:3])
         t = torch.tensor([0.0, 0.0, self.dist])
         return R,t
-    
+
     def quat_sampling(self):
         R = get_sampled_rotation_matrices_by_quat(1).squeeze()
         t = torch.tensor([0.0, 0.0, self.dist])
         return R,t
-    
+
     # Truely random
     # Based on: https://www.cmu.edu/biolphys/deserno/pdf/sphere_equi.pdf
     def sphere_sampling(self):
@@ -354,7 +354,7 @@ class DatasetGenerator():
         image_renders = []
         for k in np.arange(self.batch_size):
             R, t = self.pose_sampling()
-            
+
             R = R.detach().cpu().numpy()
             t = t.detach().cpu().numpy()
 
@@ -375,7 +375,7 @@ class DatasetGenerator():
             curr_Rs.append(R)
             curr_ts.append(t)
 
-            image_renders.append(ren_rgb)       
+            image_renders.append(ren_rgb)
 
         if(len(self.backgrounds) > 0):
             bg_im_isd = np.random.choice(len(self.backgrounds), self.batch_size, replace=False)
@@ -383,7 +383,7 @@ class DatasetGenerator():
         images = []
         for k in np.arange(self.batch_size):
             image_base = image_renders[k].copy()
-                
+
             if(len(self.backgrounds) > 0):
                 img_back = self.backgrounds[bg_im_isd[k]]
                 img_back = cv.cvtColor(img_back, cv.COLOR_BGR2RGBA).astype(float)
@@ -397,7 +397,7 @@ class DatasetGenerator():
 
             # Augment data
             image_aug = np.array([image_base])
-            image_aug = self.aug(images=image_aug)            
+            image_aug = self.aug(images=image_aug)
 
             # Convert to float and clip
             image_aug = image_aug[0].astype(np.float)/np.max(image_aug[0])
@@ -409,10 +409,10 @@ class DatasetGenerator():
 
             # Add relative offset when cropping - like Sundermeyer
             x, y, w, h = obj_bb
-            
+
             rand_trans_w = np.random.uniform(-self.max_rel_offset, 0) * w
             rand_trans_h = np.random.uniform(-self.max_rel_offset, 0) * h
-            
+
             rand_trans_x = np.random.uniform(-self.max_rel_offset, self.max_rel_offset) * w
             rand_trans_y = np.random.uniform(-self.max_rel_offset, self.max_rel_offset) * h
             obj_bb_off = obj_bb + np.array([rand_trans_x,rand_trans_y,

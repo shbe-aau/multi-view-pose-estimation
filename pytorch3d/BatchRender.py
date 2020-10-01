@@ -68,7 +68,7 @@ class BatchRender:
         elif(self.method == "soft-phong"):
             images = images[..., :3]
         elif(self.method == "soft-depth"):
-            images = images[..., 0] #torch.mean(images, dim=3)
+            images = images#[..., 0] #torch.mean(images, dim=3)
         elif(self.method == "hard-depth"):
             images = images[..., 0] #torch.mean(images, dim=3)
         elif(self.method == "blurry-depth"):
@@ -135,10 +135,10 @@ class BatchRender:
             )
         elif(method=="soft-depth"):
             # Soft Rasterizer - from https://github.com/facebookresearch/pytorch3d/issues/95
-            blend_params = BlendParams(sigma=1e-4, gamma=1e-4)
+            blend_params = BlendParams(sigma=1e-5, gamma=1e-4)
             raster_settings = RasterizationSettings(
                 image_size=image_size,
-                blur_radius= np.log(1. / 1e-7 - 4.) * blend_params.sigma,
+                blur_radius= np.log(1. / 1e-4 - 1.) * blend_params.sigma,
                 faces_per_pixel=self.faces_per_pixel
             )
 
@@ -147,7 +147,8 @@ class BatchRender:
                     cameras=cameras,
                     raster_settings=raster_settings
                 ),
-                shader=DepthShader(blend_params=blend_params)
+                shader=NormalShader(blend_params=blend_params)
+                #shader=DepthShader(blend_params=blend_params)
             )
         elif(method=="hard-depth"):
             raster_settings = RasterizationSettings(
