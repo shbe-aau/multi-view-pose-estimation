@@ -9,10 +9,13 @@ class Model(nn.Module):
     def __init__(self, output_size=4):
         super(Model, self).__init__()
 
-        output_size = 6+4
+        self.num_views = 2
+        output_size = 6 #+self.num_views
         self.l1 = nn.Linear(128,128)
         self.l2 = nn.Linear(128,64)
         self.l3 = nn.Linear(64,output_size)
+
+        self.l4 = nn.Linear(64+output_size,self.num_views)
 
         self.bn1 = nn.BatchNorm1d(128)
         self.bn2 = nn.BatchNorm1d(64)
@@ -26,4 +29,9 @@ class Model(nn.Module):
         x = F.relu(self.bn2(self.l2(x)))
         #y = self.tanh(self.l3(x))
         y = self.l3(x)
-        return y
+
+        # Softmax confidences
+        z = torch.cat([y, x], dim=1)
+        confs = F.softmax(self.l4(z),dim=1)
+
+        return torch.cat([confs, y], dim=1)

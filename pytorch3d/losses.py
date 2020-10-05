@@ -99,7 +99,7 @@ def renderMulti(Rs_gt, predicted_poses, ts, renderer, views):
         pred_poses.append(Rs_new)
 
     # Extract confidences and perform softmax
-    confidences.append(torch.nn.functional.softmax(predicted_poses[:,:num_views],dim=1))
+    confidences.append(predicted_poses[:,:num_views])
 
     b,w,h = gt_images[0].shape
     confs = torch.nn.functional.softmax(predicted_poses[:,:num_views],dim=1)
@@ -171,6 +171,9 @@ def Loss(predicted_poses, gt_poses, renderer, ts, mean, std, loss_method="diff",
     elif(loss_method=="predictive-multiview"):
         num_views = len(views)
         gt_imgs, predicted_imgs, confs, pred_poses = renderMulti(Rs_gt, predicted_poses, ts, renderer, views)
+
+        predicted_imgs = predicted_imgs*confs
+        gt_imgs = gt_imgs*confs
         diff = torch.abs(gt_imgs - predicted_imgs) #.view(-1,num_views,128,128).flatten(start_dim=2)
 
         pred_poses = pred_poses.view(-1,num_views,3,3)
@@ -182,15 +185,14 @@ def Loss(predicted_poses, gt_poses, renderer, ts, mean, std, loss_method="diff",
         pose_batch_loss = torch.mean(pose_diff, dim=1)
 
         # Calc depth loss
-        #depth_diff = torch.clamp(diff, 0.0,5.0)/5.0
+        #depth_diff = torch.clamp(diff, 0.0,20.0)/20.0
         depth_diff = diff
-        depth_diff = depth_diff*confs # Apply the confidence as weights
+        #depth_diff = depth_diff*confs # Apply the confidence as weights
         depth_loss = torch.mean(depth_diff)
         depth_batch_loss = torch.mean(depth_diff, dim=[1,2])
 
         loss = loss_params*pose_loss + (1-loss_params)*depth_loss
         batch_loss = loss_params*pose_batch_loss + (1-loss_params)*depth_batch_loss
-        gt_imgs = gt_imgs*confs
         return loss, batch_loss, gt_imgs, predicted_imgs
 
     elif(loss_method=="bce-loss-sum"):
