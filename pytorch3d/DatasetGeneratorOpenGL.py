@@ -50,7 +50,7 @@ class DatasetGenerator():
 
     def __init__(self, background_path, obj_path, obj_distance, batch_size,
                  encoder_weights, device, sampling_method="sphere", random_light=True,
-                 num_bgs=170):
+                 num_bgs=17000):
         self.device = device
         self.poses = []
         self.obj_path = obj_path
