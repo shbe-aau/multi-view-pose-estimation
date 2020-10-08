@@ -19,7 +19,6 @@ class Model(nn.Module):
 
         self.bn1 = nn.BatchNorm1d(128)
         self.bn2 = nn.BatchNorm1d(64)
-        self.tanh = nn.Tanh()
 
 
     # Input: x = lantent code
