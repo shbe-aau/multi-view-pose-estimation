@@ -80,6 +80,12 @@ class BatchRender:
         verts, faces_idx, _ = load_obj(self.obj_path)
         faces = faces_idx.verts_idx
 
+        # Normalize vertices
+        center = verts.mean(0)
+        verts = verts - center
+        scale = max(verts.abs().max(0)[0])
+        verts = (verts / scale)*100.0
+
         # Initialize each vertex to be white in color.
         #verts_rgb = torch.ones_like(verts[0][None,:,:])
         verts_rgb = torch.ones_like(verts)  # (V, 3)
@@ -138,7 +144,7 @@ class BatchRender:
             blend_params = BlendParams(sigma=1e-4, gamma=1e-4)
             raster_settings = RasterizationSettings(
                 image_size=image_size,
-                blur_radius= np.log(1. / 1e-4 - 1.) * blend_params.sigma,
+                blur_radius= np.log(1. / blend_params.sigma - 1.) * blend_params.sigma,
                 faces_per_pixel=self.faces_per_pixel
             )
 

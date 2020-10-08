@@ -14,6 +14,9 @@ class DepthShader(nn.Module):
         # Z buffer as color
         colors = torch.stack([fragments.zbuf]).permute(1,2,3,4,0)
 
+        mask = colors > 0
+        colors = colors - mask*1000
+
         N, H, W, K = fragments.pix_to_face.shape
         device = fragments.pix_to_face.device
         pixel_colors = torch.ones((N, H, W, 1), dtype=colors.dtype, device=colors.device)
@@ -39,14 +42,15 @@ class DepthShader(nn.Module):
         # term. Therefore 1.0 - alpha will be 1.0.
         alpha = torch.prod((1.0 - prob_map), dim=-1)
 
-        znear = 1.0
+        znear = -10000.0
         zfar = 10000.0
         z_inv = (zfar - fragments.zbuf) / (zfar - znear) * mask
         # pyre-fixme[16]: `Tuple` has no attribute `values`.
         # pyre-fixme[6]: Expected `Tensor` for 1st param but got `float`.
         z_inv_max = torch.max(z_inv, dim=-1).values[..., None].clamp(min=eps)
         # pyre-fixme[6]: Expected `Tensor` for 1st param but got `float`.
-        weights_num = prob_map
+        #weights_num = prob_map
+        weights_num = prob_map * torch.exp((z_inv - z_inv_max) / self.blend_params.gamma)
 
         # Also apply exp normalize trick for the background color weight.
         # Clamp to ensure delta is never 0.
