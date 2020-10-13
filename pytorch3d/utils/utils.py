@@ -98,6 +98,8 @@ def plotView(currView, numViews, vmin, vmax, input_images, groundtruth, predicte
     plt.imshow(predicted[0].detach().cpu().numpy())#,
                #vmin=vmin, vmax=vmax)
 
+    np.set_printoptions(suppress=True)
+    np.set_printoptions(linewidth=30)
     plt.title("Predicted: \n " + np.array2string((predicted_pose[0]).detach().cpu().numpy(),precision=2))
 
     # Plot difference between depth maps
