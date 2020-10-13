@@ -99,11 +99,6 @@ def plotView(currView, numViews, vmin, vmax, input_images, groundtruth, predicte
                #vmin=vmin, vmax=vmax)
 
     plt.title("Predicted: \n " + np.array2string((predicted_pose[0]).detach().cpu().numpy(),precision=2))
-    
-    # if(currView == 0):
-    #     plt.title("Predicted: \n " + np.array2string((predicted_pose[currView*batch_size]).detach().cpu().numpy(),precision=2))
-    # else:
-    #     plt.title("Predicted")
 
     # Plot difference between depth maps
     loss_contrib = np.abs((groundtruth[0]).detach().cpu().numpy() - (predicted[0]).detach().cpu().numpy())
