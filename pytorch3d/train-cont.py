@@ -182,6 +182,7 @@ def main():
 
     np.random.seed(seed=args.getint('Training', 'RANDOM_SEED'))
     while(epoch < args.getint('Training', 'NUM_ITER')):
+        append2file([lr_reducer.get_last_lr()], os.path.join(output_path, "learning-rate.csv"))
         loss = trainEpoch(mean, std, br, data, model, device, output_path,
                           loss_method=args.get('Training', 'LOSS'),
                           pose_rep=args.get('Training', 'POSE_REPRESENTATION'),
