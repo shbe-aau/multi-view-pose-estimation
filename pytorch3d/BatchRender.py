@@ -18,6 +18,8 @@ from pytorch3d.renderer import (
     SoftSilhouetteShader, SoftPhongShader, PointLights, DirectionalLights, HardPhongShader
 )
 
+from pytorch3d.ops import sample_points_from_meshes
+
 from CustomRenderers import *
 
 class BatchRender:
@@ -30,6 +32,7 @@ class BatchRender:
         self.device = device
         self.method = render_method
         self.image_size = image_size
+        self.points = None
 
         # Setup batch of meshes
         self.batch_verts, self.batch_faces, self.batch_textures = self.initMeshes()
@@ -79,6 +82,10 @@ class BatchRender:
         # Load the obj and ignore the textures and materials.
         verts, faces_idx, _ = load_obj(self.obj_path)
         faces = faces_idx.verts_idx
+
+        # Sample points
+        trg_mesh = Meshes(verts=[verts.to(self.device)], faces=[faces.to(self.device)])
+        self.points = sample_points_from_meshes(trg_mesh, 5000)
 
         # Initialize each vertex to be white in color.
         #verts_rgb = torch.ones_like(verts[0][None,:,:])

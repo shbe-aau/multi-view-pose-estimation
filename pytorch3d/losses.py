@@ -9,6 +9,10 @@ from pytorch3d.renderer import look_at_view_transform
 from pytorch3d.renderer import look_at_rotation
 from scipy.spatial.transform import Rotation as scipyR
 
+from pytorch3d.loss import chamfer_distance
+from chamfer_bootstrap import chamfer_bootstrap
+from pytorch3d.transforms import Transform3d, Rotate
+
 # Required to backpropagate when thresholding (torch.where)
 # See: https://discuss.pytorch.org/t/how-do-i-pass-grad-through-torch-where/74671
 # And: https://discuss.pytorch.org/t/torch-where-function-blocks-gradient/72570/6
@@ -257,6 +261,17 @@ def Loss(predicted_poses, gt_poses, renderer, ts, mean, std, loss_method="diff",
         diff = torch.clamp(diff, 0.0, loss_params)/loss_params
         loss = torch.mean(diff)
         batch_loss = torch.mean(diff, dim=1)
+        return loss, batch_loss, gt_imgs, predicted_imgs
+
+    elif(loss_method=="chamfer"):
+        #print(Rs_gt)
+        gt_t = Rotate(Rs_gt).to(renderer.device)
+        gt_points = gt_t.transform_points(renderer.points)
+        predicted_t = Rotate(Rs_predicted).to(renderer.device)
+        predicted_points = predicted_t.transform_points(renderer.points)
+        batch_loss,_ = chamfer_bootstrap(gt_points, predicted_points,
+                                         bootstrap_ratio=16, batch_reduction=None)
+        loss = torch.mean(batch_loss)
         return loss, batch_loss, gt_imgs, predicted_imgs
 
     elif(loss_method=="vsd"):
