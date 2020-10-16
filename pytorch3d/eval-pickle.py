@@ -134,9 +134,19 @@ def main():
 
             # Run through model
             predicted_poses = model(norm_code.cuda())
-            Rs_predicted = compute_rotation_matrix_from_ortho6d(predicted_poses)
+            poses = predicted_poses #[:,2:8]
+            Rs_predicted = compute_rotation_matrix_from_ortho6d(poses)
 
             R_predicted = Rs_predicted.detach().cpu().numpy()[0]
+
+            # Rotate 180 degrees around x?
+            # if(predicted_poses[0][1] > predicted_poses[0][0]):
+            #     R_predicted = R_predicted.transpose()
+            #     rot_mat = np.array([1.0, 0.0, 0.0,
+            #                         0.0, -1.0, -0.0,
+            #                         0.0, 0.0, -1.0]).reshape(3,3)
+            #     R_predicted = np.dot(R_predicted, rot_mat)
+            #     R_predicted = R_predicted.transpose()
 
             # Invert xy axes
             xy_flip = np.eye(3, dtype=np.float)

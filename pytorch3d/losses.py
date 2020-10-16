@@ -264,14 +264,45 @@ def Loss(predicted_poses, gt_poses, renderer, ts, mean, std, loss_method="diff",
         return loss, batch_loss, gt_imgs, predicted_imgs
 
     elif(loss_method=="chamfer"):
-        #print(Rs_gt)
+        confs = predicted_poses[:,:2]
+        Rs_predicted = compute_rotation_matrix_from_ortho6d(predicted_poses[:,2:8])
+
+        # First view
         gt_t = Rotate(Rs_gt).to(renderer.device)
         gt_points = gt_t.transform_points(renderer.points)
         predicted_t = Rotate(Rs_predicted).to(renderer.device)
         predicted_points = predicted_t.transform_points(renderer.points)
-        batch_loss,_ = chamfer_bootstrap(gt_points, predicted_points,
-                                         bootstrap_ratio=16, batch_reduction=None)
-        loss = torch.mean(batch_loss)
+        batch_loss_v1,_ = chamfer_bootstrap(gt_points, predicted_points,
+                                           bootstrap_ratio=0, batch_reduction=None)
+        batch_loss_v1 = batch_loss_v1*confs[:,0]
+        loss_v1 = torch.mean(batch_loss_v1)
+
+        # Second view
+        #gt_t = Rotate(Rs_gt).to(renderer.device)
+        #gt_points = gt_t.transform_points(renderer.points)
+
+        # Prepare rotation matrix
+        rot_mat = np.array([1.0, 0.0, 0.0,
+                            0.0, -1.0, -0.0,
+                            0.0, 0.0, -1.0]).reshape(3,3)
+        rot_mat = torch.tensor(rot_mat, dtype=torch.float32).to(renderer.device)
+
+        # Apply rotation matrix
+        Rs_predicted = Rs_predicted.permute(0,2,1)
+        Rs_predicted = torch.matmul(Rs_predicted, rot_mat)
+        Rs_predicted = Rs_predicted.permute(0,2,1)
+
+        predicted_t = Rotate(Rs_predicted).to(renderer.device)
+        predicted_points = predicted_t.transform_points(renderer.points)
+        batch_loss_v2,_ = chamfer_bootstrap(gt_points, predicted_points,
+                                            bootstrap_ratio=0, batch_reduction=None)
+        batch_loss_v2 = batch_loss_v2*confs[:,1]
+        loss_v2 = torch.mean(batch_loss_v2)
+
+        # Add losses together
+        batch_loss = batch_loss_v1 + batch_loss_v2
+        loss = loss_v1 + loss_v2
+
         return loss, batch_loss, gt_imgs, predicted_imgs
 
     elif(loss_method=="vsd"):

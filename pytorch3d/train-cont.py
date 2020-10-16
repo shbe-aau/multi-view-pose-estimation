@@ -444,7 +444,7 @@ def trainEpoch(mean, std, br, data, model,
              'epoch': epoch}
     torch.save(state, os.path.join(model_dir,"model-epoch{0}.pt".format(epoch)))
     dbg("After train memory: {}".format(torch.cuda.memory_summary(device=device, abbreviated=False)), dbg_memory)
-    lr_reducer.step()
+    #lr_reducer.step()
     gc.collect()
     return np.mean(losses)
 

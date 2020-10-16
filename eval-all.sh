@@ -21,11 +21,9 @@
 # wait
 
 # Eval object 1-20, depth only
-for OBJ_ID in 05 #11 15 17 19 20 #01 02 03 04 05 06 07 08 09 10 11 12 13 14 15 16 17 18 19 20
+for OBJ_ID in 05 #09 19 #11 15 17 19 20 #01 02 03 04 05 06 07 08 09 10 11 12 13 14 15 16 17 18 19 20
 do
-    bash run-eval.sh ${OBJ_ID} "chamfer" "pytorch3d/output/depth/obj05-chamfer-no-bootstrap/models/model-epoch59.pt"
-    wait
-    bash run-eval.sh ${OBJ_ID} "chamfer-bootstrap" "pytorch3d/output/depth/obj05-chamfer-bootstrap/models/model-epoch59.pt"
+    bash run-eval.sh ${OBJ_ID} "chamfer-800-half" "pytorch3d/output/depth/chamfer-800/obj${OBJ_ID}/models/model-epoch800.pt"
     wait
 done
 

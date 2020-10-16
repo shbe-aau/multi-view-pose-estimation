@@ -9,7 +9,7 @@ class Model(nn.Module):
     def __init__(self, output_size=4):
         super(Model, self).__init__()
 
-        output_size = 6 #4*(1+6)
+        output_size = 6 #2+6
         self.l1 = nn.Linear(128,128)
         self.l2 = nn.Linear(128,64)
         self.l3 = nn.Linear(64,output_size)
@@ -26,4 +26,7 @@ class Model(nn.Module):
         x = F.relu(self.bn2(self.l2(x)))
         #y = self.tanh(self.l3(x))
         y = self.l3(x)
-        return y
+
+        #confs = F.softmax(y[:,:2], dim=1)
+
+        return y # torch.cat([confs, y[:,2:2+6]], dim=1)
