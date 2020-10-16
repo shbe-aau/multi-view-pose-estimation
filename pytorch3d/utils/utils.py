@@ -111,7 +111,7 @@ def plotView(currView, numViews, vmin, vmax, input_images, groundtruth, predicte
     loss_contrib = np.abs((groundtruth[0]).detach().cpu().numpy() - (predicted[0]).detach().cpu().numpy())
     plt.subplot(1, 4, 4)
     plt.imshow(loss_contrib)#, vmin=0.0, vmax=20.0)
-    plt.title("Loss: {:02f}".format((loss[0]).detach().cpu().numpy()))
+    plt.title("Loss: \n " + np.array2string((loss[0]).detach().cpu().numpy()))
 
 # Convert quaternion to rotation matrix
 # from: https://github.com/ClementPinard/SfmLearner-Pytorch/blob/master/inverse_warp.py

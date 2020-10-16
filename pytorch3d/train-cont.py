@@ -29,57 +29,6 @@ dataset_gen = None
 
 dbg_memory = False
 
-
-from utils.utils import *
-from utils.tools import *
-from pytorch3d.transforms.transform3d import Rotate
-from pytorch3d.loss import chamfer_distance
-
-def ChamferLoss(Rs_gt, prediction, points, device):
-    # Convert prediction to rotation matrix
-    Rs_predicted = compute_rotation_matrix_from_ortho6d(prediction)
-
-    # Apply gt to mesh points
-    R = Rotate(Rs_gt).to(device)
-    points_gt = R.transform_points(points)
-
-    # Apply prediction to mesh points
-    R = Rotate(Rs_predicted).to(device)
-    points_pred = R.transform_points(points)
-
-    # Calc chamfer loss
-    loss_chamfer, _ = chamfer_distance(points_gt, points_pred, batch_reduction=None)
-
-    return torch.mean(loss_chamfer), loss_chamfer
-
-from pytorch3d.ops import sample_points_from_meshes
-from pytorch3d.io import load_obj, save_obj
-from pytorch3d.structures import Meshes
-def get_points(path, device):
-    # We read the target 3D model using load_obj
-    verts, faces, _ = load_obj(path)
-
-    # verts is a FloatTensor of shape (V, 3) where V is the number of vertices in the mesh
-    # faces is an object which contains the following LongTensors: verts_idx, normals_idx and textures_idx
-    # For this tutorial, normals and textures are ignored.
-    faces_idx = faces.verts_idx.to(device)
-    verts = verts.to(device)
-
-    # We scale normalize and center the target mesh to fit in a sphere of radius 1 centered at (0,0,0).
-    # (scale, center) will be used to bring the predicted mesh to its original center and scale
-    # Note that normalizing the target mesh, speeds up the optimization but is not necessary!
-    center = verts.mean(0)
-    verts = verts - center
-    scale = max(verts.abs().max(0)[0])
-    verts = verts / scale
-
-    # We construct a Meshes structure for the target mesh
-    trg_mesh = Meshes(verts=[verts], faces=[faces_idx])
-
-    return sample_points_from_meshes(trg_mesh, 2000)
-
-
-
 def dbg(message, flag):
     if flag:
         print(message)
@@ -389,11 +338,7 @@ def trainEpoch(mean, std, br, data, model,
         loss, batch_loss, gt_images, predicted_images = Loss(predicted_poses, Rs, br, ts,
                                                              mean, std, loss_method=loss_method, pose_rep=pose_rep, views=views, loss_params=loss_params)
 
-        points = get_points(br.obj_path, device)
-
         Rs = torch.tensor(np.stack(Rs), device=device, dtype=torch.float32)
-
-        loss, batch_loss = ChamferLoss(Rs, predicted_poses, points, device)
 
         loss.backward()
         optimizer.step()
