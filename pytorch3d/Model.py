@@ -9,7 +9,9 @@ class Model(nn.Module):
     def __init__(self, output_size=4):
         super(Model, self).__init__()
 
-        output_size = 4*7
+        self.num_views = 2
+        
+        output_size = self.num_views*(6+1)
         self.l1 = nn.Linear(128,128)
         self.l2 = nn.Linear(128,64)
         self.l3 = nn.Linear(64,output_size)
@@ -27,6 +29,6 @@ class Model(nn.Module):
         #y = self.tanh(self.l3(x))
         y = self.l3(x)
 
-        confs = F.softmax(y[:,:4], dim=1)
+        confs = F.softmax(y[:,:self.num_views], dim=1)
 
-        return torch.cat([confs, y[:,4:]], dim=1)
+        return torch.cat([confs, y[:,self.num_views:]], dim=1)

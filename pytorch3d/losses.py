@@ -263,66 +263,8 @@ def Loss(predicted_poses, gt_poses, renderer, ts, mean, std, loss_method="diff",
         batch_loss = torch.mean(diff, dim=1)
         return loss, batch_loss, gt_imgs, predicted_imgs
 
-    elif(loss_method=="chamfer-old"):
-        confs = predicted_poses[:,:2]
-        Rs_predicted = compute_rotation_matrix_from_ortho6d(predicted_poses[:,2:8])
-
-        gt_images = []
-        predicted_images = []
-
-        imgs = renderer.renderBatch(Rs_gt, ts)
-        gt_images.append(imgs)
-        gt_images.append(imgs)
-
-        # First view
-        gt_t = Rotate(Rs_gt).to(renderer.device)
-        gt_points = gt_t.transform_points(renderer.points)
-        predicted_t = Rotate(Rs_predicted).to(renderer.device)
-        predicted_points = predicted_t.transform_points(renderer.points)
-        batch_loss_v1,_ = chamfer_bootstrap(gt_points, predicted_points,
-                                           bootstrap_ratio=0, batch_reduction=None)
-        batch_loss_v1 = batch_loss_v1*confs[:,0]
-        loss_v1 = torch.mean(batch_loss_v1)
-
-        imgs = renderer.renderBatch(Rs_predicted, ts)
-        predicted_images.append(imgs)
-
-        # Second view
-        #gt_t = Rotate(Rs_gt).to(renderer.device)
-        #gt_points = gt_t.transform_points(renderer.points)
-
-        # Prepare rotation matrix
-        rot_mat = np.array([1.0, 0.0, 0.0,
-                            0.0, -1.0, -0.0,
-                            0.0, 0.0, -1.0]).reshape(3,3)
-        rot_mat = torch.tensor(rot_mat, dtype=torch.float32).to(renderer.device)
-
-        # Apply rotation matrix
-        Rs_predicted = Rs_predicted.permute(0,2,1)
-        Rs_predicted = torch.matmul(Rs_predicted, rot_mat)
-        Rs_predicted = Rs_predicted.permute(0,2,1)
-
-        predicted_t = Rotate(Rs_predicted).to(renderer.device)
-        predicted_points = predicted_t.transform_points(renderer.points)
-        batch_loss_v2,_ = chamfer_bootstrap(gt_points, predicted_points,
-                                            bootstrap_ratio=0, batch_reduction=None)
-        batch_loss_v2 = batch_loss_v2*confs[:,1]
-        loss_v2 = torch.mean(batch_loss_v2)
-
-        imgs = renderer.renderBatch(Rs_predicted, ts)
-        predicted_images.append(imgs)
-
-        # Add losses together
-        batch_loss = batch_loss_v1 + batch_loss_v2
-        loss = loss_v1 + loss_v2
-
-        gt_imgs = torch.cat(gt_images, dim=1)
-        predicted_imgs = torch.cat(predicted_images, dim=1)
-
-        return loss, batch_loss, gt_imgs, predicted_imgs
-
     elif(loss_method=="chamfer"):
-        num_views = 4
+        num_views = 2
         pose_start = num_views
         pose_end = pose_start + 6
 
@@ -337,12 +279,26 @@ def Loss(predicted_poses, gt_poses, renderer, ts, mean, std, loss_method="diff",
 
         losses = []
         confs = predicted_poses[:,:num_views]
-        for i in np.arange(4):
+        prev_pose = None
+        for i in np.arange(num_views):
             # Extract current pose and move to next one
             curr_pose = predicted_poses[:,pose_start:pose_end]
             Rs_predicted = compute_rotation_matrix_from_ortho6d(curr_pose)
             pose_start = pose_end
             pose_end = pose_start + 6
+
+            if(i == 1):
+                # Prepare rotation matrix
+                rot_mat = np.array([1.0, 0.0, 0.0,
+                                    0.0, -1.0, -0.0,
+                                    0.0, 0.0, -1.0]).reshape(3,3)
+                rot_mat = torch.tensor(rot_mat, dtype=torch.float32).to(renderer.device)
+
+                # Apply rotation matrix
+                Rs_predicted = prev_pose
+                Rs_predicted = Rs_predicted.permute(0,2,1)
+                Rs_predicted = torch.matmul(Rs_predicted, rot_mat)
+                Rs_predicted = Rs_predicted.permute(0,2,1)
 
             # Apply predicted pose to point cloud
             predicted_t = Rotate(Rs_predicted).to(renderer.device)
@@ -350,7 +306,8 @@ def Loss(predicted_poses, gt_poses, renderer, ts, mean, std, loss_method="diff",
 
             # Calculate loss
             batch_loss,_ = chamfer_bootstrap(gt_points, predicted_points,
-                                                bootstrap_ratio=0, batch_reduction=None)
+                                             bootstrap_ratio=loss_params,
+                                             batch_reduction=None)
             batch_loss = batch_loss*confs[:,i]
             losses.append(batch_loss.unsqueeze(-1))
 
@@ -358,6 +315,8 @@ def Loss(predicted_poses, gt_poses, renderer, ts, mean, std, loss_method="diff",
             imgs = renderer.renderBatch(Rs_predicted, ts)
             predicted_images.append(imgs)
             gt_images.append(gt_imgs)
+
+            prev_pose = Rs_predicted
 
         # Concat different views
         gt_imgs = torch.cat(gt_images, dim=1)
