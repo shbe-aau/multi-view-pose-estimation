@@ -124,7 +124,6 @@ for scene_id in scene_ids_curr:
   if p['im_ids']:
     im_ids = set(im_ids).intersection(p['im_ids'])
 
-
   # Save scene data in a dict
   data={"images":[],
         "Rs":[],
@@ -137,7 +136,6 @@ for scene_id in scene_ids_curr:
 
   # Loops through the images
   for im_counter, im_id in enumerate(im_ids):
-
     # List of considered ground-truth poses.
     gt_ids_curr = range(len(scene_gt[im_id]))
     if p['gt_ids']:
@@ -192,7 +190,8 @@ for scene_id in scene_ids_curr:
     continue
 
   if(p["dataset_split"] == "train"):
-    output_path = "./tless-train-obj{:02d}.p".format(scene_id)
+    output_path = "./tless-train-obj{:02d}.p".format(data["obj_ids"][0])
   else:
-    output_path = "./tless-test-scene{:02d}.p".format(scene_id)
+    output_path = "./tless-test-obj{:02d}.p".format(data["obj_ids"][0])
+  print(output_path)
   pickle.dump(data, open(output_path, "wb"), protocol=2)
