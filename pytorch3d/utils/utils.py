@@ -81,7 +81,7 @@ def calcMeanVar(br, data, device, t):
     print(torch.std(result))
     return torch.mean(result), torch.std(result)
 
-def plotView(currView, numViews, vmin, vmax, input_images, groundtruth, predicted, predicted_pose, loss, batch_size):
+def plotView(currView, numViews, vmin, vmax, input_images, groundtruth, predicted, predicted_pose, loss, batch_size, threshold=9999):
     # Plot AE input
     plt.subplot(1, 4, 1)
     plt.imshow((input_images[0]*255).astype(np.uint8))
@@ -109,6 +109,7 @@ def plotView(currView, numViews, vmin, vmax, input_images, groundtruth, predicte
 
     # Plot difference between depth maps
     loss_contrib = np.abs((groundtruth[0]).detach().cpu().numpy() - (predicted[0]).detach().cpu().numpy())
+    loss_contrib[loss_contrib > threshold] = threshold
     plt.subplot(1, 4, 4)
     plt.imshow(loss_contrib)#, vmin=0.0, vmax=20.0)
     plt.title("Loss: \n " + np.array2string((loss[0]).detach().cpu().numpy()))

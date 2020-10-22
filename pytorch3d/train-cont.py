@@ -283,7 +283,7 @@ def testEpoch(mean, std, br, val_data, model,
                 fig = plt.figure(figsize=(12,3+len(views)*2))
                 #for viewNum in np.arange(len(views)):
                 plotView(0, len(views), vmin, vmax, input_images, gt_images, predicted_images,
-                         predicted_poses, batch_loss, batch_size)
+                         predicted_poses, batch_loss, batch_size, threshold=loss_params)
                 fig.tight_layout()
 
                 #plt.hist(gt_img,bins=20)
@@ -369,7 +369,7 @@ def trainEpoch(mean, std, br, data, model,
             fig = plt.figure(figsize=(12,3+len(views)*2))
             for viewNum in np.arange(len(views)):
                 plotView(viewNum, len(views), vmin, vmax, input_images, gt_images, predicted_images,
-                         predicted_poses, batch_loss, batch_size)
+                         predicted_poses, batch_loss, batch_size, threshold=loss_params)
             fig.tight_layout()
 
             #plt.hist(gt_img,bins=20)
