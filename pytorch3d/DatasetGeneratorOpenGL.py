@@ -71,13 +71,20 @@ class DatasetGenerator():
             self.encoder = None
 
         self.renderer = Renderer(self.model, (self.img_size,self.img_size),
-                                 self.K, surf_color=(1, 1, 1), mode='rgb',
+                                 self.K, surf_color=(1, 1, 1), mode='rgb',                                 
                                  random_light=random_light)
 
         self.pose_reuse = False
         if(sampling_method.split("-")[-1] == "reuse"):
             self.pose_reuse = True
         sampling_method = sampling_method.replace("-reuse","")
+
+        self.hard_samples = []
+        self.hard_mining = False
+        if(sampling_method.split("-")[-1] == "hard"):
+            self.hard_mining = True
+        sampling_method = sampling_method.replace("-hard","")
+        self.hard_sample_ratio = 0.3
 
         self.simple_pose_sampling = False
         if(sampling_method == "tless"):
@@ -336,7 +343,7 @@ class DatasetGenerator():
 
     # Truely random
     # Based on: https://www.cmu.edu/biolphys/deserno/pdf/sphere_equi.pdf
-    def sphere_sampling(self):
+    def sphere_sampling(self):       
         #z = np.random.uniform(low=-self.dist, high=self.dist, size=1)[0]
         z = np.random.uniform(low=-self.dist, high=self.dist, size=1)[0]
         theta_sample = np.random.uniform(low=0.0, high=2.0*np.pi, size=1)[0]
@@ -369,6 +376,15 @@ class DatasetGenerator():
         for k in np.arange(self.batch_size):
             R, t = self.pose_sampling()
 
+            if(self.hard_mining == True):
+                #print("num hard samples: ", len(self.hard_samples))
+                if(len(self.hard_samples) > 0):
+                    rand = np.random.uniform(low=0.0, high=1.0, size=1)[0]
+                    if(rand <= self.hard_sample_ratio):
+                        rani = np.random.uniform(low=0, high=len(self.hard_samples)-1, size=1)[0]
+                        random.shuffle(self.hard_samples)
+                        R = self.hard_samples.pop()
+
             R = R.detach().cpu().numpy()
             t = t.detach().cpu().numpy()
 
@@ -379,11 +395,8 @@ class DatasetGenerator():
             xy_flip[1,1] = -1.0
             R_opengl = np.dot(R,xy_flip)
             R_opengl = np.transpose(R_opengl)
-
+            
             # Render images
-            #ren_rgb = renderer.render(self.model, (self.img_size,self.img_size),
-            #                          self.K, R_opengl, t, surf_color=(1, 1, 1), mode='rgb')
-
             ren_rgb = self.renderer.render(R_opengl, t)
 
             curr_Rs.append(R)

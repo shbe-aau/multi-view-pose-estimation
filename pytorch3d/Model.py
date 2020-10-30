@@ -9,9 +9,10 @@ class Model(nn.Module):
     def __init__(self, output_size=4):
         super(Model, self).__init__()
 
-        self.num_views = 2
+        self.num_views = 4
         
-        output_size = self.num_views+6 #self.num_views*(6+1)
+        #output_size = self.num_views+6
+        output_size = self.num_views*(6+1)
         self.l1 = nn.Linear(128,128)
         self.l2 = nn.Linear(128,64)
         self.l3 = nn.Linear(64,output_size)

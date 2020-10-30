@@ -316,6 +316,7 @@ def trainEpoch(mean, std, br, data, model,
     print("Epoch: {0} - current learning rate: {1}".format(epoch, lr_reducer.get_last_lr()))
 
     np.random.shuffle(data_indeces)
+    dataset_gen.hard_samples = []
     for i,curr_batch in enumerate(batch(data_indeces, batch_size)):
         optimizer.zero_grad()
         codes = []
@@ -343,8 +344,16 @@ def trainEpoch(mean, std, br, data, model,
         loss.backward()
         optimizer.step()
 
-        #print("model weights: ", model.l3.weight[0][:5])
-        #print("encoder weights: ", dataset_gen.encoder.autoencoder_dense_MatMul.weight[:5])
+        # Save difficult samples        
+        k = int(len(curr_batch)*(dataset_gen.hard_sample_ratio+0.1))
+        top_val, top_ind = torch.topk(torch.mean(batch_loss, dim=1), k)
+        hard_samples = Rs[top_ind]
+
+        # Convert to a list
+        hard_list = []
+        for h in np.arange(hard_samples.shape[0]):
+            hard_list.append(hard_samples[h])
+        dataset_gen.hard_samples = dataset_gen.hard_samples + hard_list
 
         #detach all from gpu
         batch_codes.detach().cpu().numpy()

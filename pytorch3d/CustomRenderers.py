@@ -9,9 +9,24 @@ class HardDepthShader(nn.Module):
 
     def forward(self, fragments, meshes, **kwargs) -> torch.Tensor:
         image = fragments.zbuf[..., 0]
-        #mask = image > 0
-        #image = image - mask*1000.0
+        #mask = image <= 0.0
+        #image = image + mask*1000.0
         return image
+        
+        # zdist = torch.abs(fragments.zbuf - fragments.zbuf[..., 0].unsqueeze(-1))
+        # zweight = (1.0 / (zdist + 10e-1))
+        # gamma = 0.1
+        # zweight = torch.exp(zweight / gamma)
+        
+        # colors = torch.stack([fragments.zbuf]).permute(1,2,3,4,0)
+        # sigma = 1
+        # weights_num = torch.sigmoid(-fragments.dists / sigma) * zweight
+
+        # weighted_colors = (weights_num[..., None] * colors).sum(dim=-2)
+        # denom = weights_num.sum(dim=-1)[..., None] + 1e-10
+        # pixel_colors = (weighted_colors) / denom
+        # print(pixel_colors.shape)
+        # return pixel_colors[..., 0]
 
 
 class DepthShader(nn.Module):
@@ -21,11 +36,15 @@ class DepthShader(nn.Module):
 
 
     def forward(self, fragments, meshes, **kwargs) -> torch.Tensor:
+        mask = fragments.zbuf > 0
+        test = fragments.zbuf - mask*1000
+        
+        
         # Z buffer as color
-        colors = torch.stack([fragments.zbuf]).permute(1,2,3,4,0)
+        colors = torch.stack([test]).permute(1,2,3,4,0)
 
-        mask = colors > 0
-        colors = colors - mask*700
+        #mask = colors > 0
+        #colors = colors - mask*700
 
         N, H, W, K = fragments.pix_to_face.shape
         device = fragments.pix_to_face.device
@@ -54,7 +73,7 @@ class DepthShader(nn.Module):
         
         znear = -10000.0
         zfar = 10000.0
-        z_inv = (zfar - fragments.zbuf) / (zfar - znear) * mask
+        z_inv = (zfar - test) / (zfar - znear) * mask
         # pyre-fixme[16]: `Tuple` has no attribute `values`.
         # pyre-fixme[6]: Expected `Tensor` for 1st param but got `float`.
         z_inv_max = torch.max(z_inv, dim=-1).values[..., None].clamp(min=eps)
