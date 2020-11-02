@@ -577,6 +577,8 @@ def Loss(predicted_poses, gt_poses, renderer, ts, mean, std, loss_method="diff",
             diff = torch.abs(gt_imgs - imgs).flatten(start_dim=1)
             diff = torch.clamp(diff, 0.0, loss_params)/loss_params
             batch_loss = torch.mean(diff, dim=1)
+            print("weighted: ", torch.mean(batch_loss*confs[:,i]))
+            print("averaged: ", torch.mean((1.0/num_views)*batch_loss))
             batch_loss = batch_loss*confs[:,i] + (1.0/num_views)*batch_loss
             losses.append(batch_loss.unsqueeze(-1))
 
@@ -584,7 +586,7 @@ def Loss(predicted_poses, gt_poses, renderer, ts, mean, std, loss_method="diff",
             for k,p in enumerate(prev_poses):
                 mseLoss = nn.MSELoss(reduction='none')
                 pose_diff = torch.abs(p - Rs_predicted).flatten(start_dim=1)
-                pose_max = 0.4
+                pose_max = 0.25
                 pose_diff = 1.0 - (torch.clamp(pose_diff, 0.0, pose_max)/pose_max)                        
                 pose_batch_loss = torch.mean(pose_diff, dim=1)
                 pose_losses.append(pose_batch_loss.unsqueeze(-1))
@@ -597,11 +599,14 @@ def Loss(predicted_poses, gt_poses, renderer, ts, mean, std, loss_method="diff",
         gt_imgs = torch.cat(gt_images, dim=1)
         predicted_imgs = torch.cat(predicted_images, dim=1)
         losses = torch.cat(losses, dim=1)
-        pose_losses = torch.cat(pose_losses, dim=1)
+        pose_losses = torch.cat(pose_losses, dim=1)**2
 
+        print("depth loss ", torch.mean(losses, dim=1))
+        print("pose loss ", torch.mean(pose_losses, dim=1))
+        
         batch_loss = torch.mean(losses, dim=1) + torch.mean(pose_losses, dim=1)
         batch_loss = batch_loss.unsqueeze(-1)
-        loss = torch.mean(losses)+torch.mean(pose_losses)**2
+        loss = torch.mean(losses)+torch.mean(pose_losses)
         return loss, batch_loss, gt_imgs, predicted_imgs
 
     elif(loss_method=="depth-clamped-predicted-view2"):

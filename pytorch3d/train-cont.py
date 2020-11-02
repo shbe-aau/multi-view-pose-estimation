@@ -190,13 +190,13 @@ def main():
                           visualize=args.getboolean('Training', 'SAVE_IMAGES'),
                           loss_params=args.getfloat('Training', 'LOSS_PARAMS'))
         append2file([loss], os.path.join(output_path, "train-loss.csv"))
-        # val_loss = testEpoch(mean, std, br, val_data, model, device, output_path,
-        #                      loss_method=args.get('Training', 'LOSS'),
-        #                      pose_rep=args.get('Training', 'POSE_REPRESENTATION'),
-        #                      t=json.loads(args.get('Rendering', 'T')),
-        #                      visualize=args.getboolean('Training', 'SAVE_IMAGES'),
-        #                      loss_params=args.getfloat('Training', 'LOSS_PARAMS'))
-        val_loss = loss
+        val_loss = testEpoch(mean, std, br, val_data, model, device, output_path,
+                             loss_method=args.get('Training', 'LOSS'),
+                             pose_rep=args.get('Training', 'POSE_REPRESENTATION'),
+                             t=json.loads(args.get('Rendering', 'T')),
+                             visualize=args.getboolean('Training', 'SAVE_IMAGES'),
+                             loss_params=args.getfloat('Training', 'LOSS_PARAMS'))
+        #val_loss = loss
         append2file([val_loss], os.path.join(output_path, "validation-loss.csv"))
         val_losses = plotLoss(os.path.join(output_path, "train-loss.csv"),
                  os.path.join(output_path, "train-loss.png"),
