@@ -50,6 +50,14 @@ class BatchRender:
         else:
             batch_T = ts
 
+        # Convert R matrix from opengl to pytorch format
+        # xy_flip = np.eye(3, dtype=np.float)
+        # xy_flip[0,0] = -1.0
+        # xy_flip[1,1] = -1.0
+        # xy_flip = torch.tensor(xy_flip, device=self.device, dtype=torch.float32)
+        # batch_R = batch_R.permute(0,2,1)
+        # batch_R = torch.matmul(batch_R, xy_flip)        
+
         # Re-adjust to match current batch size
         curr_batch_size = batch_R.shape[0]
         mesh = Meshes(
@@ -71,9 +79,9 @@ class BatchRender:
         elif(self.method == "soft-phong"):
             images = images[..., :3]
         elif(self.method == "soft-depth"):
-            images = images[..., 0] #torch.mean(images, dim=3)
+            images = images #[..., 0] #torch.mean(images, dim=3)
         elif(self.method == "hard-depth"):
-            images = images[..., 0] #torch.mean(images, dim=3)
+            images = images #torch.mean(images, dim=3)
         elif(self.method == "blurry-depth"):
             images = torch.mean(images, dim=3)
         return images
@@ -83,12 +91,21 @@ class BatchRender:
         verts, faces_idx, _ = load_obj(self.obj_path)
         faces = faces_idx.verts_idx
 
+
+        # Normalize vertices
+        center = verts.mean(0)
+        verts_normed = verts - center
+        scale = max(verts_normed.abs().max(0)[0])
+        verts_normed = (verts_normed / scale)
+        
         # Sample points
-        trg_mesh = Meshes(verts=[verts.to(self.device)], faces=[faces.to(self.device)])
-        self.points = sample_points_from_meshes(trg_mesh, 5000)
+        trg_mesh = Meshes(verts=[verts_normed.to(self.device)], faces=[faces.to(self.device)])
+        self.points = sample_points_from_meshes(trg_mesh, 10000)
 
         # Initialize each vertex to be white in color.
         #verts_rgb = torch.ones_like(verts[0][None,:,:])
+        verts = verts_normed*100.0
+        
         verts_rgb = torch.ones_like(verts)  # (V, 3)
 
         batch_verts_rgb = list_to_padded([verts_rgb for k in self.batch_indeces])  # B, Vmax, 3
@@ -142,10 +159,12 @@ class BatchRender:
             )
         elif(method=="soft-depth"):
             # Soft Rasterizer - from https://github.com/facebookresearch/pytorch3d/issues/95
-            blend_params = BlendParams(sigma=1e-7, gamma=1e-7)
+            #blend_params = BlendParams(sigma=1e-7, gamma=1e-7)
+            blend_params = BlendParams(sigma=1e-4, gamma=1e-4)
             raster_settings = RasterizationSettings(
                 image_size=image_size,
-                blur_radius= np.log(1. / 1e-7 - 1.) * blend_params.sigma,
+                #blur_radius= np.log(1. / 1e-7 - 1.) * blend_params.sigma,
+                blur_radius= np.log(1. / blend_params.sigma - 1.) * blend_params.sigma,
                 faces_per_pixel=self.faces_per_pixel
             )
 
@@ -168,7 +187,7 @@ class BatchRender:
                     cameras=cameras,
                     raster_settings=raster_settings
                 ),
-                shader=DepthShader()
+                shader=HardDepthShader()
             )
         elif(method=="blurry-depth"):
             # Soft Rasterizer - from https://github.com/facebookresearch/pytorch3d/issues/95

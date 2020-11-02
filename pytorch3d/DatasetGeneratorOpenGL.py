@@ -71,13 +71,20 @@ class DatasetGenerator():
             self.encoder = None
 
         self.renderer = Renderer(self.model, (self.img_size,self.img_size),
-                                 self.K, surf_color=(1, 1, 1), mode='rgb',
+                                 self.K, surf_color=(1, 1, 1), mode='rgb',                                 
                                  random_light=random_light)
 
         self.pose_reuse = False
         if(sampling_method.split("-")[-1] == "reuse"):
             self.pose_reuse = True
         sampling_method = sampling_method.replace("-reuse","")
+
+        self.hard_samples = []
+        self.hard_mining = False
+        if(sampling_method.split("-")[-1] == "hard"):
+            self.hard_mining = True
+        sampling_method = sampling_method.replace("-hard","")
+        self.hard_sample_ratio = 0.3
 
         self.simple_pose_sampling = False
         if(sampling_method == "tless"):
@@ -180,10 +187,24 @@ class DatasetGenerator():
         #     iaa.Sometimes(0.5, iaa.Multiply((0.6, 1.4))),
         #     iaa.Sometimes(0.5, iaa.ContrastNormalization((0.5, 2.2), per_channel=0.3))],
         #                      random_order=False)
+        # aug = iaa.Sequential([
+        #     #iaa.Sometimes(0.5, iaa.CoarseDropout( p=0.25, size_percent=0.02) ),
+        #     iaa.Sometimes(0.5, iaa.GaussianBlur(1.2*np.random.rand())),
+        #     iaa.Sometimes(0.5, iaa.Add((-60, 60), per_channel=0.3)),
+        #     iaa.Sometimes(0.5, iaa.Multiply((0.6, 1.4), per_channel=0.5)),
+        #     iaa.Sometimes(0.5, iaa.Multiply((0.6, 1.4))),
+        #     iaa.Sometimes(0.5, iaa.ContrastNormalization((0.5, 2.2), per_channel=0.3))],
+        #                      random_order=False)
+
+
         aug = iaa.Sequential([
-            iaa.Sometimes(0.5, iaa.CoarseDropout( p=0.25, size_percent=0.02) ),
+            #iaa.Sometimes(0.5, PerspectiveTransform(0.05)),
+            #iaa.Sometimes(0.5, CropAndPad(percent=(-0.05, 0.1))),
+            iaa.Sometimes(0.5, iaa.Affine(scale=(1.0, 1.2))),
+            iaa.Sometimes(0.5, iaa.CoarseDropout( p=0.2, size_percent=0.05) ),
             iaa.Sometimes(0.5, iaa.GaussianBlur(1.2*np.random.rand())),
-            iaa.Sometimes(0.5, iaa.Add((-60, 60), per_channel=0.3)),
+            iaa.Sometimes(0.5, iaa.Add((-25, 25), per_channel=0.3)),
+            iaa.Sometimes(0.3, iaa.Invert(0.2, per_channel=True)),
             iaa.Sometimes(0.5, iaa.Multiply((0.6, 1.4), per_channel=0.5)),
             iaa.Sometimes(0.5, iaa.Multiply((0.6, 1.4))),
             iaa.Sometimes(0.5, iaa.ContrastNormalization((0.5, 2.2), per_channel=0.3))],
@@ -322,7 +343,7 @@ class DatasetGenerator():
 
     # Truely random
     # Based on: https://www.cmu.edu/biolphys/deserno/pdf/sphere_equi.pdf
-    def sphere_sampling(self):
+    def sphere_sampling(self):       
         #z = np.random.uniform(low=-self.dist, high=self.dist, size=1)[0]
         z = np.random.uniform(low=-self.dist, high=self.dist, size=1)[0]
         theta_sample = np.random.uniform(low=0.0, high=2.0*np.pi, size=1)[0]
@@ -355,6 +376,15 @@ class DatasetGenerator():
         for k in np.arange(self.batch_size):
             R, t = self.pose_sampling()
 
+            if(self.hard_mining == True):
+                #print("num hard samples: ", len(self.hard_samples))
+                if(len(self.hard_samples) > 0):
+                    rand = np.random.uniform(low=0.0, high=1.0, size=1)[0]
+                    if(rand <= self.hard_sample_ratio):
+                        rani = np.random.uniform(low=0, high=len(self.hard_samples)-1, size=1)[0]
+                        random.shuffle(self.hard_samples)
+                        R = self.hard_samples.pop()
+
             R = R.detach().cpu().numpy()
             t = t.detach().cpu().numpy()
 
@@ -365,11 +395,8 @@ class DatasetGenerator():
             xy_flip[1,1] = -1.0
             R_opengl = np.dot(R,xy_flip)
             R_opengl = np.transpose(R_opengl)
-
+            
             # Render images
-            #ren_rgb = renderer.render(self.model, (self.img_size,self.img_size),
-            #                          self.K, R_opengl, t, surf_color=(1, 1, 1), mode='rgb')
-
             ren_rgb = self.renderer.render(R_opengl, t)
 
             curr_Rs.append(R)
@@ -395,14 +422,6 @@ class DatasetGenerator():
             else:
                 image_base = image_base[:, :, 0:3]
 
-            # Augment data
-            image_aug = np.array([image_base])
-            image_aug = self.aug(images=image_aug)
-
-            # Convert to float and clip
-            image_aug = image_aug[0].astype(np.float)/np.max(image_aug[0])
-            image_ref = np.clip(image_aug, 0.0, 1.0)
-
             org_img = image_renders[k]
             ys, xs = np.nonzero(org_img[:,:,0] > 0)
             obj_bb = calc_2d_bbox(xs,ys,[self.img_size,self.img_size])
@@ -410,17 +429,27 @@ class DatasetGenerator():
             # Add relative offset when cropping - like Sundermeyer
             x, y, w, h = obj_bb
 
-            rand_trans_w = np.random.uniform(-self.max_rel_offset, 0) * w
-            rand_trans_h = np.random.uniform(-self.max_rel_offset, 0) * h
+            #rand_trans_w = np.random.uniform(-self.max_rel_offset, 0) * w
+            #rand_trans_h = np.random.uniform(-self.max_rel_offset, 0) * h
 
             rand_trans_x = np.random.uniform(-self.max_rel_offset, self.max_rel_offset) * w
             rand_trans_y = np.random.uniform(-self.max_rel_offset, self.max_rel_offset) * h
-            obj_bb_off = obj_bb + np.array([rand_trans_x,rand_trans_y,
-                                            rand_trans_w,rand_trans_h])
+            obj_bb_off = obj_bb + np.array([rand_trans_x,rand_trans_y,0,0])
 
-            cropped = extract_square_patch(image_ref, obj_bb_off)
+            cropped = extract_square_patch(image_base, obj_bb_off)
             cropped_org = extract_square_patch(org_img, obj_bb)
-            images.append(cropped[:,:,:3])
+
+            # Augment data
+            image_aug = np.array([cropped])
+            image_aug = self.aug(images=image_aug)
+
+            # Convert to float and clip
+            image_aug = image_aug[0].astype(np.float)/np.max(image_aug[0])
+            image_aug = np.clip(image_aug, 0.0, 1.0)
+
+            images.append(image_aug[:,:,:3])
+
+            #def extract_square_patch(scene_img, bb_xywh, pad_factor=1.2,resize=(128,128),
 
         data = {"images":images,
                 "Rs":curr_Rs}

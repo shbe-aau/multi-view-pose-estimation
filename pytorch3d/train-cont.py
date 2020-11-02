@@ -190,13 +190,13 @@ def main():
                           visualize=args.getboolean('Training', 'SAVE_IMAGES'),
                           loss_params=args.getfloat('Training', 'LOSS_PARAMS'))
         append2file([loss], os.path.join(output_path, "train-loss.csv"))
-        # val_loss = testEpoch(mean, std, br, val_data, model, device, output_path,
-        #                      loss_method=args.get('Training', 'LOSS'),
-        #                      pose_rep=args.get('Training', 'POSE_REPRESENTATION'),
-        #                      t=json.loads(args.get('Rendering', 'T')),
-        #                      visualize=args.getboolean('Training', 'SAVE_IMAGES'),
-        #                      loss_params=args.getfloat('Training', 'LOSS_PARAMS'))
-        val_loss = loss
+        val_loss = testEpoch(mean, std, br, val_data, model, device, output_path,
+                             loss_method=args.get('Training', 'LOSS'),
+                             pose_rep=args.get('Training', 'POSE_REPRESENTATION'),
+                             t=json.loads(args.get('Rendering', 'T')),
+                             visualize=args.getboolean('Training', 'SAVE_IMAGES'),
+                             loss_params=args.getfloat('Training', 'LOSS_PARAMS'))
+        #val_loss = loss
         append2file([val_loss], os.path.join(output_path, "validation-loss.csv"))
         val_losses = plotLoss(os.path.join(output_path, "train-loss.csv"),
                  os.path.join(output_path, "train-loss.png"),
@@ -283,7 +283,7 @@ def testEpoch(mean, std, br, val_data, model,
                 fig = plt.figure(figsize=(12,3+len(views)*2))
                 #for viewNum in np.arange(len(views)):
                 plotView(0, len(views), vmin, vmax, input_images, gt_images, predicted_images,
-                         predicted_poses, batch_loss, batch_size)
+                         predicted_poses, batch_loss, batch_size, threshold=loss_params)
                 fig.tight_layout()
 
                 #plt.hist(gt_img,bins=20)
@@ -316,6 +316,7 @@ def trainEpoch(mean, std, br, data, model,
     print("Epoch: {0} - current learning rate: {1}".format(epoch, lr_reducer.get_last_lr()))
 
     np.random.shuffle(data_indeces)
+    dataset_gen.hard_samples = []
     for i,curr_batch in enumerate(batch(data_indeces, batch_size)):
         optimizer.zero_grad()
         codes = []
@@ -343,8 +344,16 @@ def trainEpoch(mean, std, br, data, model,
         loss.backward()
         optimizer.step()
 
-        #print("model weights: ", model.l3.weight[0][:5])
-        #print("encoder weights: ", dataset_gen.encoder.autoencoder_dense_MatMul.weight[:5])
+        # Save difficult samples        
+        k = int(len(curr_batch)*(dataset_gen.hard_sample_ratio+0.1))
+        top_val, top_ind = torch.topk(torch.mean(batch_loss, dim=1), k)
+        hard_samples = Rs[top_ind]
+
+        # Convert to a list
+        hard_list = []
+        for h in np.arange(hard_samples.shape[0]):
+            hard_list.append(hard_samples[h])
+        dataset_gen.hard_samples = dataset_gen.hard_samples + hard_list
 
         #detach all from gpu
         batch_codes.detach().cpu().numpy()
@@ -369,7 +378,7 @@ def trainEpoch(mean, std, br, data, model,
             fig = plt.figure(figsize=(12,3+len(views)*2))
             for viewNum in np.arange(len(views)):
                 plotView(viewNum, len(views), vmin, vmax, input_images, gt_images, predicted_images,
-                         predicted_poses, batch_loss, batch_size)
+                         predicted_poses, batch_loss, batch_size, threshold=loss_params)
             fig.tight_layout()
 
             #plt.hist(gt_img,bins=20)
