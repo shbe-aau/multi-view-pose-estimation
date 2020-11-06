@@ -206,18 +206,21 @@ class BatchRender:
                 shader=DepthShader(blend_params=blend_params)
             )
         elif(method=="soft-phong"):
-            blend_params = BlendParams(sigma=1e-9, gamma=1e-9)
+            blend_params = BlendParams(sigma=1e-3, gamma=1e-3)
 
             raster_settings = RasterizationSettings(
                 image_size=image_size,
-                blur_radius= np.log(1. / 1e-9 - 1.) * blend_params.sigma,
+                blur_radius= np.log(1. / 1e-3 - 1.) * blend_params.sigma,
                 faces_per_pixel=self.faces_per_pixel
             )
 
+            # lights = DirectionalLights(device=self.device,
+            #                            ambient_color=[[0.25, 0.25, 0.25]],
+            #                            diffuse_color=[[0.6, 0.6, 0.6]],
+            #                            specular_color=[[0.15, 0.15, 0.15]],
+            #                            direction=[[0.0, 1.0, 0.0]])
+
             lights = DirectionalLights(device=self.device,
-                                       ambient_color=[[0.25, 0.25, 0.25]],
-                                       diffuse_color=[[0.6, 0.6, 0.6]],
-                                       specular_color=[[0.15, 0.15, 0.15]],
                                        direction=[[0.0, 1.0, 0.0]])
 
             renderer = MeshRenderer(
