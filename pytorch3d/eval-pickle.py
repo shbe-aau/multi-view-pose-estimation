@@ -134,12 +134,14 @@ def main():
 
             # Run through model
             predicted_poses = model(norm_code.cuda())
-            poses = predicted_poses #[:,2:8]
-            Rs_predicted = compute_rotation_matrix_from_ortho6d(poses)
 
-            R_predicted = Rs_predicted.detach().cpu().numpy()[0]
 
-            # Rotate 180 degrees around x?
+            #poses = predicted_poses[:,2:8]
+            #Rs_predicted = compute_rotation_matrix_from_ortho6d(poses)
+
+            #R_predicted = Rs_predicted.detach().cpu().numpy()[0]
+
+            # # Rotate 180 degrees around x?
             # if(predicted_poses[0][1] > predicted_poses[0][0]):
             #     R_predicted = R_predicted.transpose()
             #     rot_mat = np.array([1.0, 0.0, 0.0,
@@ -147,6 +149,26 @@ def main():
             #                         0.0, 0.0, -1.0]).reshape(3,3)
             #     R_predicted = np.dot(R_predicted, rot_mat)
             #     R_predicted = R_predicted.transpose()
+
+            # Find best pose
+            num_views = 4
+            pose_start = num_views
+            pose_end = pose_start + 6
+            best_pose = 0.0
+            R_predicted = None
+
+            for k in range(num_views):
+                # Extract current pose and move to next one
+                curr_pose = predicted_poses[:,pose_start:pose_end]
+                Rs_predicted = compute_rotation_matrix_from_ortho6d(curr_pose)
+                Rs_predicted = Rs_predicted.detach().cpu().numpy()[0]
+                pose_start = pose_end
+                pose_end = pose_start + 6
+
+                conf = predicted_poses[:,k].detach().cpu().numpy()[0]
+                if(conf > best_pose):
+                    R_predicted = Rs_predicted
+                    best_pose = conf
 
             # Invert xy axes
             xy_flip = np.eye(3, dtype=np.float)
