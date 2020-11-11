@@ -16,7 +16,7 @@ class Model(nn.Module):
         self.l1 = nn.Linear(128,128)
         self.l2 = nn.Linear(128,64)
         self.l3 = nn.Linear(64,output_size)
-        self.l4 = nn.Linear(64+output_size, self.num_views)
+        #self.l4 = nn.Linear(64+output_size, self.num_views)
 
         self.bn1 = nn.BatchNorm1d(128)
         self.bn2 = nn.BatchNorm1d(64)
@@ -32,8 +32,14 @@ class Model(nn.Module):
         x = F.relu(self.bn2(self.l2(x)))
         y = self.l3(x)
 
-        confs = F.softmax(self.l4(torch.cat([x, y], dim=1)), dim=1)
-        return torch.cat([confs, y], dim=1)
+        #confs = F.softmax(self.l4(torch.cat([x, y], dim=1)), dim=1)
+        #confs = self.l4(torch.cat([x, y], dim=1))
+        #print(confs)
+        #print(confs.shape)
+        #print(torch.sum(confs, dim=1, keepdim=True))
+        #confs = confs/torch.sum(torch.abs(confs), dim=1, keepdim=True)
+        #confs = F.sigmoid(confs)
+        #return torch.cat([confs, y], dim=1)
 
-        #confs = F.softmax(y[:,:self.num_views], dim=1)
-        #return torch.cat([confs, y[:,self.num_views:]], dim=1)
+        confs = F.softmax(y[:,:self.num_views], dim=1)
+        return torch.cat([confs, y[:,self.num_views:]], dim=1)

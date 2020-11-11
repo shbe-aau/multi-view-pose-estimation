@@ -377,7 +377,7 @@ class DatasetGenerator():
             R, t = self.pose_sampling()
 
             if(self.hard_mining == True):
-                #print("num hard samples: ", len(self.hard_samples))
+                print("num hard samples: ", len(self.hard_samples))
                 if(len(self.hard_samples) > 0):
                     rand = np.random.uniform(low=0.0, high=1.0, size=1)[0]
                     if(rand <= self.hard_sample_ratio):
