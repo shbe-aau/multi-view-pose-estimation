@@ -34,7 +34,8 @@ def loadCheckpoint(model_path):
     epoch = checkpoint['epoch'] + 1
 
     # Load model
-    model = Model(output_size=6).cuda()
+    num_views = int(checkpoint['model']['l3.bias'].shape[0]/(6+1))
+    model = Model(num_views=num_views).cuda()
     model.load_state_dict(checkpoint['model'])
 
     # Load optimizer

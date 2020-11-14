@@ -46,8 +46,9 @@ def loadCheckpoint(model_path):
     epoch = checkpoint['epoch'] + 1
 
     # Load model
-    output_size = checkpoint['model']['l3.bias'].shape[0]
-    model = Model(output_size=output_size).cuda()
+    num_views = int(checkpoint['model']['l3.bias'].shape[0]/(6+1))
+    model = Model(num_views=num_views).cuda()
+    
     model.load_state_dict(checkpoint['model'])
 
     # Load optimizer
@@ -113,7 +114,7 @@ def main():
         pose_dim = -1
 
     # Initialize a model using the renderer, mesh and reference image
-    model = Model(output_size=pose_dim)
+    model = Model(num_views=len(views))
     model.to(device)
 
     # Create an optimizer. Here we are using Adam and we pass in the parameters of the model
