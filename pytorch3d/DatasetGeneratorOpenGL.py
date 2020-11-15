@@ -217,10 +217,12 @@ class DatasetGenerator():
         if(len(self.poses) == 0):
             with open(self.pose_path, "rb") as f:
                 self.poses = pickle.load(f, encoding="latin1")["Rs"]
+                print("Read pickle: ", len(self.poses))
 
         # Sample pose randomly
-        random.shuffle(self.poses)
-        R = torch.tensor(self.poses[-1], dtype=torch.float32)
+        #random.shuffle(self.poses)
+        index = random.randint(0,len(self.poses)-1)
+        R = torch.tensor(self.poses[index], dtype=torch.float32)
         t = torch.tensor([0.0, 0.0, self.dist])
         return R,t
 
@@ -331,8 +333,20 @@ class DatasetGenerator():
             [    q[1, 2]+q[3, 0], 1.0-q[1, 1]-q[3, 3],     q[2, 3]-q[1, 0], 0.0],
             [    q[1, 3]-q[2, 0],     q[2, 3]+q[1, 0], 1.0-q[1, 1]-q[2, 2], 0.0],
             [                0.0,                 0.0,                 0.0, 1.0]])
+        R = R[:3,:3]
+        
+        # Convert from OpenGL to Pytorch3D convention
+        # Inverse rotation matrix
+        R = np.transpose(R)
+        
+        # Invert xy axes
+        xy_flip = np.eye(3, dtype=np.float)
+        xy_flip[0,0] = -1.0
+        xy_flip[1,1] = -1.0
+        R = R.dot(xy_flip)
 
-        R = torch.from_numpy(R[:3,:3])
+        # Convert to tensors
+        R = torch.from_numpy(R)
         t = torch.tensor([0.0, 0.0, self.dist])
         return R,t
 
@@ -377,7 +391,7 @@ class DatasetGenerator():
             R, t = self.pose_sampling()
 
             if(self.hard_mining == True):
-                #print("num hard samples: ", len(self.hard_samples))
+                print("num hard samples: ", len(self.hard_samples))
                 if(len(self.hard_samples) > 0):
                     rand = np.random.uniform(low=0.0, high=1.0, size=1)[0]
                     if(rand <= self.hard_sample_ratio):
