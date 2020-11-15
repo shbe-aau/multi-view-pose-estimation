@@ -151,7 +151,7 @@ def main():
             #     R_predicted = R_predicted.transpose()
 
             # Find best pose
-            num_views = 4
+            num_views = int(predicted_poses.shape[1]/(6+1))
             pose_start = num_views
             pose_end = pose_start + 6
             best_pose = 0.0
