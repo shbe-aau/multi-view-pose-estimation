@@ -51,6 +51,8 @@ class DatasetGenerator():
     def __init__(self, background_path, obj_path, obj_distance, batch_size,
                  encoder_weights, device, sampling_method="sphere", random_light=True,
                  num_bgs=10000):
+        self.curr_samples = 0
+        self.max_samples = 1000
         self.device = device
         self.poses = []
         self.obj_path = obj_path
@@ -107,6 +109,9 @@ class DatasetGenerator():
             self.simple_pose_sampling = False
         elif(sampling_method == "fixed"): # Mainly for debugging purposes
             self.pose_sampling = self.fixed_sampling
+            self.simple_pose_sampling = False
+        elif(sampling_method == "hinter-simple"):
+            self.pose_sampling = self.hinter_poses
             self.simple_pose_sampling = False
         elif(sampling_method == "sundermeyer-random"):
             self.pose_sampling = self.sm_quat_random
@@ -355,6 +360,76 @@ class DatasetGenerator():
         t = torch.tensor([0.0, 0.0, self.dist])
         return R,t
 
+    # def hinter_poses(self):       
+    #     if(len(self.poses) == 0):
+    #         print("SAMPLING NEW POSES!")
+    #         pts, _ = hinter_sampling(100)
+    #         print(len(pts))
+
+    #         rot_degrees = np.random.uniform(low=-180.0, high=180.0, size=3)
+    #         rot_x = scipyR.from_euler('x', rot_degrees[0], degrees=True)
+    #         rot_x = np.array(rot_x.as_matrix())
+    #         rot_y = scipyR.from_euler('y', rot_degrees[1], degrees=True)
+    #         rot_y = np.array(rot_y.as_matrix())
+    #         rot_mat = np.dot(rot_x, rot_y)
+
+    #         self.rot_z_offset = np.array([90.0]) # np.arange(0,361,(360/10)) + rot_degrees[2]
+            
+    #         for p in pts:
+    #             cam_position = torch.tensor([p[0], p[1], p[2]]).unsqueeze(0)
+    #             cam_position = torch.matmul(cam_position, torch.from_numpy(rot_mat).float())
+    #             R = look_at_rotation(cam_position, up=((0, 0, 1),)).squeeze()
+    #             if(np.linalg.det(R) > 0):
+    #                 R = R.numpy()
+                    
+    #                 self.poses.append(R)
+                    
+    #                 flip = np.eye(3)
+    #                 flip[1,1] = -1.0
+    #                 flip[2,2] = -1.0
+    #                 R = np.dot(R,flip)
+    #                 self.poses.append(R)
+    #         #random.shuffle(self.poses)
+
+    #     R = torch.from_numpy(self.poses.pop(0)).float()
+    #     if(True):
+    #         rot_degrees = self.rot_z_offset[len(self.poses) % len(self.rot_z_offset)]
+    #         rot = scipyR.from_euler('z', rot_degrees, degrees=True)
+    #         rot_mat = torch.tensor(rot.as_matrix(), dtype=torch.float32)
+    #         #R = R.permute(1,0)
+    #         R = torch.matmul(R, rot_mat)
+    #         #R = R.permute(1,0)
+    #         R = R.squeeze()
+   
+    #     t = torch.tensor([0.0, 0.0, self.dist])
+    #     #R = torch.from_numpy(self.poses.pop(0))
+    #     return R,t                
+    
+    def hinter_poses(self):       
+        if(len(self.poses) == 0):
+            print("SAMPLING NEW POSES!")
+            pts, _ = hinter_sampling(1000)
+            print(len(pts))
+            
+            for p in pts:
+                cam_position = torch.tensor([p[0], p[1], p[2]]).unsqueeze(0)
+                R = look_at_rotation(cam_position, up=((0, 0, 1),)).squeeze()
+                if(np.linalg.det(R) > 0):
+                    R = R.numpy()
+                    
+                    self.poses.append(R)
+                    
+                    flip = np.eye(3)
+                    flip[1,1] = -1.0
+                    flip[2,2] = -1.0
+                    R = np.dot(R,flip)
+                    self.poses.append(R)
+            random.shuffle(self.poses)
+
+        t = torch.tensor([0.0, 0.0, self.dist])
+        R = torch.from_numpy(self.poses.pop(0))
+        return R,t                
+    
     # Truely random
     # Based on: https://www.cmu.edu/biolphys/deserno/pdf/sphere_equi.pdf
     def sphere_sampling(self):
@@ -481,6 +556,17 @@ class DatasetGenerator():
         data["Rs"] = data["Rs"][:num_samples]
         return data
 
+    def __iter__(self):
+        self.curr_samples = 0
+        return self
+    
+    def __next__(self):
+        if(self.curr_samples < self.max_samples):
+            self.curr_samples += self.batch_size
+            return self.generate_samples(self.batch_size)
+        else:
+            raise StopIteration
+    
     def generate_samples(self, num_samples):
         data = self.generate_images(num_samples)
 
