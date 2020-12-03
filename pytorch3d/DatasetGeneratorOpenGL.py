@@ -73,7 +73,7 @@ class DatasetGenerator():
             self.encoder = None
 
         self.renderer = Renderer(self.model, (self.img_size,self.img_size),
-                                 self.K, surf_color=(1, 1, 1), mode='rgb',                                 
+                                 self.K, surf_color=(1, 1, 1), mode='rgb',
                                  random_light=random_light)
 
         self.pose_reuse = False
@@ -407,7 +407,7 @@ class DatasetGenerator():
             [    q[1, 3]-q[2, 0],     q[2, 3]+q[1, 0], 1.0-q[1, 1]-q[2, 2], 0.0],
             [                0.0,                 0.0,                 0.0, 1.0]])
         R = R[:3,:3]
-        
+
         # Convert from OpenGL to Pytorch3D convention
         # Inverse rotation matrix
         #R = np.transpose(R)
@@ -782,7 +782,7 @@ class DatasetGenerator():
             xy_flip[1,1] = -1.0
             R_opengl = np.dot(R,xy_flip)
             R_opengl = np.transpose(R_opengl)
-            
+
             # Render images
             ren_rgb = self.renderer.render(R_opengl, t)
 

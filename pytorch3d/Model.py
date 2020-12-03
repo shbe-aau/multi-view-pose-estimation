@@ -8,7 +8,7 @@ import torch.nn.functional as F
 class Model(nn.Module):
     def __init__(self, num_views=4):
         super(Model, self).__init__()
-            
+
         self.num_views = num_views
         self.output_size = self.num_views*(6+1)
 
@@ -29,6 +29,5 @@ class Model(nn.Module):
         x = F.relu(self.bn1(self.l1(x)))
         x = F.relu(self.bn2(self.l2(x)))
         y = self.l3(x)
-
         confs = F.softmax(y[:,:self.num_views], dim=1)
         return torch.cat([confs, y[:,self.num_views:]], dim=1)
