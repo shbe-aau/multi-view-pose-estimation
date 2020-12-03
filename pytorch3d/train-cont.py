@@ -306,25 +306,31 @@ def trainEpoch(mean, std, br, data, model,
     dbg("Before train memory: {}".format(torch.cuda.memory_summary(device=device, abbreviated=False)), dbg_memory)
 
     # Generate training data
-    data = dataset_gen.generate_samples(num_samples)
-    print("Generated {0} samples!".format(len(data["codes"])))
+    #data = dataset_gen.generate_samples(num_samples)
+    dataset_gen.max_samples = num_samples
+    #print("Generated {0} samples!".format(len(data["codes"])))
 
     model.train()
     losses = []
     batch_size = br.batch_size
-    data_indeces = np.arange(num_samples)
+    #data_indeces = np.arange(num_samples)
 
     print("Epoch: {0} - current learning rate: {1}".format(epoch, lr_reducer.get_last_lr()))
 
-    np.random.shuffle(data_indeces)
+    #np.random.shuffle(data_indeces)
     dataset_gen.hard_samples = []
-    for i,curr_batch in enumerate(batch(data_indeces, batch_size)):
+    #for i,curr_batch in enumerate(batch(data_indeces, batch_size)):
+    for i,curr_batch in enumerate(dataset_gen):
         optimizer.zero_grad()
         codes = []
         input_images = []
-        for b in curr_batch:
-            codes.append(data["codes"][b])
-            input_images.append(data["images"][b])
+        
+        # for b in curr_batch:
+        #     codes.append(data["codes"][b])
+        #     input_images.append(data["images"][b])
+        input_images = curr_batch["images"]
+        codes = curr_batch["codes"]
+            
         batch_codes = torch.tensor(np.stack(codes), device=device, dtype=torch.float32) # Bx128
 
         predicted_poses = model(batch_codes)
@@ -333,9 +339,12 @@ def trainEpoch(mean, std, br, data, model,
         T = np.array(t, dtype=np.float32)
         Rs = []
         ts = []
-        for b in curr_batch:
-            Rs.append(data["Rs"][b])
-            ts.append(T.copy())
+        #for b in curr_batch:
+            #Rs.append(data["Rs"][b])
+            #ts.append(T.copy())
+        Rs = curr_batch["Rs"]
+        ts = [T.copy() for t in Rs]
+        
 
         loss, batch_loss, gt_images, predicted_images = Loss(predicted_poses, Rs, br, ts,
                                                              mean, std, loss_method=loss_method, pose_rep=pose_rep, views=views, loss_params=loss_params)

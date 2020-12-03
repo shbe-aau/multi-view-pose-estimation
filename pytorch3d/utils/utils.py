@@ -12,6 +12,36 @@ import torch
 from torch import nn
 from torch.nn import functional as F
 
+from pytorch3d.renderer.utils import convert_to_tensors_and_broadcast
+
+def look_at_rotation_fixed(camera_position, at=((0, 0, 0),), up=((0, 1, 0),), device: str = "cpu") -> torch.Tensor:
+    # Format input and broadcast
+    broadcasted_args = convert_to_tensors_and_broadcast(
+        camera_position, at, up, device=device
+    )
+    camera_position, at, up = broadcasted_args
+    for t, n in zip([camera_position, at, up], ["camera_position", "at", "up"]):
+        if t.shape[-1] != 3:
+            msg = "Expected arg %s to have shape (N, 3); got %r"
+            raise ValueError(msg % (n, t.shape))
+    z_axis = F.normalize(at - camera_position, eps=1e-5)
+    x_axis = F.normalize(torch.cross(up, z_axis, dim=1), eps=1e-5)
+    is_close = torch.isclose(x_axis, torch.tensor(0.0), atol=5e-3).all(
+        dim=1, keepdim=True
+    )
+    if is_close.any():
+        #replacement = F.normalize(torch.cross(y_axis, z_axis, dim=1), eps=1e-5)
+        #x_axis = torch.where(is_close, replacement, x_axis)
+        x_axis = F.normalize(torch.cross(up + 5e-3, z_axis, dim=1), eps=1e-5)
+    y_axis = F.normalize(torch.cross(z_axis, x_axis, dim=1), eps=1e-5)
+    R = torch.cat((x_axis[:, None, :], y_axis[:, None, :], z_axis[:, None, :]), dim=1)
+
+    if torch.norm(x_axis) <= 0 or torch.norm(y_axis) <= 0 or torch.norm(z_axis) <= 0:
+        raise ValueError("look_at_rotation: x, y or z axis is zero!")
+    return R.transpose(1, 2)
+                                                                                                        
+
+
 def hinter_sampling(min_n_pts, radius=1):
     '''
     Sphere sampling based on refining icosahedron as described in:
@@ -253,26 +283,26 @@ def calcMeanVar(br, data, device, t):
     print(torch.std(result))
     return torch.mean(result), torch.std(result)
 
-def plotView(currView, numViews, vmin, vmax, input_images, groundtruth, predicted, predicted_pose, loss, batch_size, threshold=9999):
+def plotView(currView, numViews, vmin, vmax, input_images, groundtruth, predicted, predicted_pose, loss, batch_size, threshold=9999, img_num=0):
     # Plot AE input
     plt.subplot(1, 4, 1)
-    plt.imshow((input_images[0]*255).astype(np.uint8))
+    plt.imshow((input_images[img_num]*255).astype(np.uint8))
     plt.title("Input to AE")
 
     # Plot depth map render from ground truth
     plt.subplot(1, 4, 2)
-    plt.imshow(groundtruth[0].detach().cpu().numpy())#,
+    plt.imshow(groundtruth[img_num].detach().cpu().numpy())#,
                #vmin=vmin, vmax=vmax)
     plt.title("Depth Render - GT")
 
     # Plot depth map render from prediction
     plt.subplot(1, 4, 3)
-    plt.imshow(predicted[0].detach().cpu().numpy())#,
+    plt.imshow(predicted[img_num].detach().cpu().numpy())#,
                #vmin=vmin, vmax=vmax)
 
     np.set_printoptions(suppress=True)
     np.set_printoptions(linewidth=30)
-    plt.title("Predicted: \n " + np.array2string((predicted_pose[0]).detach().cpu().numpy(),precision=2))
+    plt.title("Predicted: \n " + np.array2string((predicted_pose[img_num]).detach().cpu().numpy(),precision=2))
 
     # if(currView == 0):
     #     plt.title("Predicted: \n " + np.array2string((predicted_pose[currView*batch_size]).detach().cpu().numpy(),precision=2))
@@ -280,11 +310,11 @@ def plotView(currView, numViews, vmin, vmax, input_images, groundtruth, predicte
     #     plt.title("Predicted")
 
     # Plot difference between depth maps
-    loss_contrib = np.abs((groundtruth[0]).detach().cpu().numpy() - (predicted[0]).detach().cpu().numpy())
+    loss_contrib = np.abs((groundtruth[img_num]).detach().cpu().numpy() - (predicted[img_num]).detach().cpu().numpy())
     loss_contrib[loss_contrib > threshold] = threshold
     plt.subplot(1, 4, 4)
     plt.imshow(loss_contrib)#, vmin=0.0, vmax=20.0)
-    plt.title("Loss: \n " + np.array2string((loss[0]).detach().cpu().numpy()))
+    plt.title("Loss: \n " + np.array2string((loss[img_num]).detach().cpu().numpy()))
 
 # Convert quaternion to rotation matrix
 # from: https://github.com/ClementPinard/SfmLearner-Pytorch/blob/master/inverse_warp.py

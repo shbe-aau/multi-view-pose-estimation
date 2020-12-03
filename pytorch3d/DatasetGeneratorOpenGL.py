@@ -86,7 +86,7 @@ class DatasetGenerator():
         if(sampling_method.split("-")[-1] == "hard"):
             self.hard_mining = True
         sampling_method = sampling_method.replace("-hard","")
-        self.hard_sample_ratio = 0.3
+        self.hard_sample_ratio = 0.5
 
         self.simple_pose_sampling = False
         if(sampling_method == "tless"):
@@ -98,6 +98,28 @@ class DatasetGenerator():
         elif(sampling_method == "sphere"):
             self.pose_sampling = self.sphere_sampling
             self.simple_pose_sampling = False
+        elif(sampling_method == "sphere-fixed"):
+            self.pose_sampling = self.sphere_sampling_fixed
+            self.simple_pose_sampling = False
+        elif(sampling_method == "sphere-wolfram-fixed"):
+            self.pose_sampling = self.sphere_wolfram_sampling_fixed
+            self.simple_pose_sampling = False
+        elif(sampling_method == "sphere-wolfram"):
+            self.pose_sampling = self.sphere_wolfram_sampling
+            self.simple_pose_sampling = False
+        elif(sampling_method == "sphere-mixed"):
+            self.pose_sampling = self.sphere_mixed
+            self.simple_pose_sampling = False
+        elif(sampling_method == "sphere-wolfram-new-fixed"):
+            self.pose_sampling = self.sphere_wolfram_sampling_new_fixed
+        elif(sampling_method == "sphere-wolfram-new"):
+            self.pose_sampling = self.sphere_wolfram_sampling_new
+        elif(sampling_method == "sphere-wolfram-y"):
+            self.pose_sampling = self.sphere_wolfram_sampling_y
+        elif(sampling_method == "sphere-wolfram-z"):
+            self.pose_sampling = self.sphere_wolfram_sampling_z
+        elif(sampling_method == "sphere-wolfram-yz"):
+            self.pose_sampling = self.sphere_wolfram_sampling_yz
         elif(sampling_method == "tless-simple"):
             self.pose_sampling = self.tless_sampling
             self.simple_pose_sampling = True
@@ -112,7 +134,13 @@ class DatasetGenerator():
             self.simple_pose_sampling = False
         elif(sampling_method == "hinter-simple"):
             self.pose_sampling = self.hinter_poses
+            self.simple_pose_sampling = True
+        elif(sampling_method == "hinter"):
+            self.pose_sampling = self.hinter_poses
             self.simple_pose_sampling = False
+        elif(sampling_method == "viewsphere"):
+            self.pose_sampling = self.viewsphere_sampling
+            self.simple_pose_sampling = False            
         elif(sampling_method == "sundermeyer-random"):
             self.pose_sampling = self.sm_quat_random
             self.simple_pose_sampling = False
@@ -231,6 +259,21 @@ class DatasetGenerator():
         t = torch.tensor([0.0, 0.0, self.dist])
         return R,t
 
+    # Randomly sample poses from SM view sphere
+    def viewsphere_sampling(self):
+        # Load poses from .p file
+        pose_path = './data/view-sphere.p'
+        if(len(self.poses) == 0):
+            with open(pose_path, "rb") as f:
+                self.poses = pickle.load(f, encoding="latin1")["Rs"]
+                print("Read pickle: ", len(self.poses))
+                random.shuffle(self.poses)
+
+        # Sample pose randomly
+        R = torch.tensor(self.poses.pop(-1), dtype=torch.float32)
+        t = torch.tensor([0.0, 0.0, self.dist])
+        return R,t
+    
     # From: https://docs.scipy.org/doc/scipy/reference/generated/scipy.stats.special_ortho_group.html
     def haar_sampling(self):
         R = torch.tensor(special_ortho_group.rvs(3), dtype=torch.float32)
@@ -239,6 +282,31 @@ class DatasetGenerator():
 
     # Fixed pose - mainly for debugging purposes
     def fixed_sampling(self):
+        z = np.random.uniform(low=-self.dist, high=self.dist, size=1)[0]
+        z = -0.01
+        theta_sample = np.random.uniform(low=0.0, high=2.0*np.pi, size=1)[0]
+        theta_sample = -0.07*np.pi
+        x = np.sqrt((self.dist**2 - z**2))*np.cos(theta_sample)
+        y = np.sqrt((self.dist**2 - z**2))*np.sin(theta_sample)
+
+        cam_position = torch.tensor([x, y, z]).unsqueeze(0)
+        if(z < 0):
+            R = look_at_rotation(cam_position, up=((0, 0, -1),)).squeeze()
+        else:
+            R = look_at_rotation(cam_position, up=((0, 0, 1),)).squeeze()
+
+        # Rotate in-plane
+        if(False): #not self.simple_pose_sampling):
+            rot_degrees = np.random.uniform(low=-90.0, high=90.0, size=1)
+            rot = scipyR.from_euler('z', rot_degrees, degrees=True)
+            rot_mat = torch.tensor(rot.as_matrix(), dtype=torch.float32)
+            R = torch.matmul(R, rot_mat)
+            R = R.squeeze()
+
+        t = torch.tensor([0.0, 0.0, self.dist])
+        return R,t
+
+        
         # Generate random pose for the batch
         # All images in the batch will share pose but different augmentations
         R, t = look_at_view_transform(self.dist, elev=0, azim=0, up=((0, 1, 0),))
@@ -342,13 +410,13 @@ class DatasetGenerator():
         
         # Convert from OpenGL to Pytorch3D convention
         # Inverse rotation matrix
-        R = np.transpose(R)
+        #R = np.transpose(R)
         
         # Invert xy axes
         xy_flip = np.eye(3, dtype=np.float)
         xy_flip[0,0] = -1.0
         xy_flip[1,1] = -1.0
-        R = R.dot(xy_flip)
+        #R = R.dot(xy_flip)
 
         # Convert to tensors
         R = torch.from_numpy(R)
@@ -360,59 +428,20 @@ class DatasetGenerator():
         t = torch.tensor([0.0, 0.0, self.dist])
         return R,t
 
-    # def hinter_poses(self):       
-    #     if(len(self.poses) == 0):
-    #         print("SAMPLING NEW POSES!")
-    #         pts, _ = hinter_sampling(100)
-    #         print(len(pts))
-
-    #         rot_degrees = np.random.uniform(low=-180.0, high=180.0, size=3)
-    #         rot_x = scipyR.from_euler('x', rot_degrees[0], degrees=True)
-    #         rot_x = np.array(rot_x.as_matrix())
-    #         rot_y = scipyR.from_euler('y', rot_degrees[1], degrees=True)
-    #         rot_y = np.array(rot_y.as_matrix())
-    #         rot_mat = np.dot(rot_x, rot_y)
-
-    #         self.rot_z_offset = np.array([90.0]) # np.arange(0,361,(360/10)) + rot_degrees[2]
-            
-    #         for p in pts:
-    #             cam_position = torch.tensor([p[0], p[1], p[2]]).unsqueeze(0)
-    #             cam_position = torch.matmul(cam_position, torch.from_numpy(rot_mat).float())
-    #             R = look_at_rotation(cam_position, up=((0, 0, 1),)).squeeze()
-    #             if(np.linalg.det(R) > 0):
-    #                 R = R.numpy()
-                    
-    #                 self.poses.append(R)
-                    
-    #                 flip = np.eye(3)
-    #                 flip[1,1] = -1.0
-    #                 flip[2,2] = -1.0
-    #                 R = np.dot(R,flip)
-    #                 self.poses.append(R)
-    #         #random.shuffle(self.poses)
-
-    #     R = torch.from_numpy(self.poses.pop(0)).float()
-    #     if(True):
-    #         rot_degrees = self.rot_z_offset[len(self.poses) % len(self.rot_z_offset)]
-    #         rot = scipyR.from_euler('z', rot_degrees, degrees=True)
-    #         rot_mat = torch.tensor(rot.as_matrix(), dtype=torch.float32)
-    #         #R = R.permute(1,0)
-    #         R = torch.matmul(R, rot_mat)
-    #         #R = R.permute(1,0)
-    #         R = R.squeeze()
-   
-    #     t = torch.tensor([0.0, 0.0, self.dist])
-    #     #R = torch.from_numpy(self.poses.pop(0))
-    #     return R,t                
-    
     def hinter_poses(self):       
         if(len(self.poses) == 0):
-            print("SAMPLING NEW POSES!")
-            pts, _ = hinter_sampling(1000)
-            print(len(pts))
+            pts, _ = hinter_sampling(100)
+
+            rot_degrees = np.random.uniform(low=-180.0, high=180.0, size=2)
+            rot_x = scipyR.from_euler('x', rot_degrees[0], degrees=True)
+            rot_x = np.array(rot_x.as_matrix())
+            rot_y = scipyR.from_euler('y', rot_degrees[1], degrees=True)
+            rot_y = np.array(rot_y.as_matrix())
+            rot_mat = np.dot(rot_x, rot_y)
             
             for p in pts:
                 cam_position = torch.tensor([p[0], p[1], p[2]]).unsqueeze(0)
+                cam_position = torch.matmul(cam_position, torch.from_numpy(rot_mat).float())
                 R = look_at_rotation(cam_position, up=((0, 0, 1),)).squeeze()
                 if(np.linalg.det(R) > 0):
                     R = R.numpy()
@@ -426,18 +455,33 @@ class DatasetGenerator():
                     self.poses.append(R)
             random.shuffle(self.poses)
 
+        R = torch.from_numpy(self.poses.pop(0)).float()
+        if(not self.simple_pose_sampling):
+            #rot_degrees = self.rot_z_offset[len(self.poses) % len(self.rot_z_offset)]
+            rot_degrees = np.random.uniform(low=-180.0, high=180.0, size=1)[0]
+            rot = scipyR.from_euler('z', rot_degrees, degrees=True)
+            rot_mat = torch.tensor(rot.as_matrix(), dtype=torch.float32)
+            R = torch.matmul(R, rot_mat)
+            R = R.squeeze()
+   
         t = torch.tensor([0.0, 0.0, self.dist])
-        R = torch.from_numpy(self.poses.pop(0))
         return R,t                
-    
+
     # Truely random
-    # Based on: https://www.cmu.edu/biolphys/deserno/pdf/sphere_equi.pdf
-    def sphere_sampling(self):       
-        #z = np.random.uniform(low=-self.dist, high=self.dist, size=1)[0]
-        z = np.random.uniform(low=-self.dist, high=self.dist, size=1)[0]
-        theta_sample = np.random.uniform(low=0.0, high=2.0*np.pi, size=1)[0]
-        x = np.sqrt((self.dist**2 - z**2))*np.cos(theta_sample)
-        y = np.sqrt((self.dist**2 - z**2))*np.sin(theta_sample)
+    # Based on: https://mathworld.wolfram.com/SpherePointPicking.html
+    def sphere_wolfram_sampling(self):       
+        x1 = np.random.uniform(low=-1.0, high=1.0, size=1)[0]
+        x2 = np.random.uniform(low=-1.0, high=1.0, size=1)[0]
+        test = x1**2 + x2**2
+        
+        while(test >= 1.0):
+                x1 = np.random.uniform(low=-1.0, high=1.0, size=1)[0]
+                x2 = np.random.uniform(low=-1.0, high=1.0, size=1)[0]
+                test = x1**2 + x2**2
+
+        x = 2.0*x1*(1.0 -x1**2 - x2**2)**(0.5)
+        y = 2.0*x2*(1.0 -x1**2 - x2**2)**(0.5)
+        z = 1.0 - 2.0*(x1**2 + x2**2)
 
         cam_position = torch.tensor([x, y, z]).unsqueeze(0)
         if(z < 0):
@@ -456,23 +500,277 @@ class DatasetGenerator():
         t = torch.tensor([0.0, 0.0, self.dist])
         return R,t
 
+
+    def sphere_wolfram_sampling_yz(self):
+        x1 = np.random.uniform(low=-1.0, high=1.0, size=1)[0]
+        x2 = np.random.uniform(low=-1.0, high=1.0, size=1)[0]
+        test = x1**2 + x2**2
+        
+        while(test >= 1.0):
+                x1 = np.random.uniform(low=-1.0, high=1.0, size=1)[0]
+                x2 = np.random.uniform(low=-1.0, high=1.0, size=1)[0]
+                test = x1**2 + x2**2
+
+        x = 2.0*x1*(1.0 -x1**2 - x2**2)**(0.5)
+        y = 2.0*x2*(1.0 -x1**2 - x2**2)**(0.5)
+        z = 1.0 - 2.0*(x1**2 + x2**2)
+        cam_position = torch.tensor([x, y, z]).unsqueeze(0)
+        
+        pos_check = np.array([x, y, z])        
+        y_axis = np.array([0, 1, 0])
+        z_axis = np.array([0, 0, 1])
+
+        if(abs(np.dot(pos_check,y_axis)) < abs(np.dot(pos_check,z_axis))):
+            R = look_at_rotation(cam_position, up=((0, 1, 0),)).squeeze()
+        else:
+            R = look_at_rotation(cam_position, up=((0, 0, 1),)).squeeze()
+
+        rot_degrees = np.random.uniform(low=0.0, high=360.0, size=1)
+        rot = scipyR.from_euler('z', rot_degrees, degrees=True)
+        rot_mat = torch.tensor(rot.as_matrix(), dtype=torch.float32)
+        R = torch.matmul(R, rot_mat)
+        R = R.squeeze()
+
+        t = torch.tensor([0.0, 0.0, self.dist])
+        return R,t
+
+
+        
+        
+        test = np.random.uniform(low=0.0, high=100.0, size=1)[0]
+        if(test > 50.0):
+            R,t = self.sphere_wolfram_sampling_y()
+        else:
+            R,t = self.sphere_wolfram_sampling_z()
+        return R,t
+    
+    # Truely random
+    # Based on: https://mathworld.wolfram.com/SpherePointPicking.html
+    def sphere_wolfram_sampling_y(self):       
+        x1 = np.random.uniform(low=-1.0, high=1.0, size=1)[0]
+        x2 = np.random.uniform(low=-1.0, high=1.0, size=1)[0]
+        test = x1**2 + x2**2
+        
+        while(test >= 1.0):
+                x1 = np.random.uniform(low=-1.0, high=1.0, size=1)[0]
+                x2 = np.random.uniform(low=-1.0, high=1.0, size=1)[0]
+                test = x1**2 + x2**2
+
+        x = 2.0*x1*(1.0 -x1**2 - x2**2)**(0.5)
+        y = 2.0*x2*(1.0 -x1**2 - x2**2)**(0.5)
+        z = 1.0 - 2.0*(x1**2 + x2**2)
+
+        cam_position = torch.tensor([x, y, z]).unsqueeze(0)
+        R = look_at_rotation(cam_position, up=((0, 1, 0),)).squeeze()
+
+        rot_degrees = np.random.uniform(low=0.0, high=360.0, size=1)
+        rot = scipyR.from_euler('z', rot_degrees, degrees=True)
+        rot_mat = torch.tensor(rot.as_matrix(), dtype=torch.float32)
+        R = torch.matmul(R, rot_mat)
+        R = R.squeeze()
+
+        t = torch.tensor([0.0, 0.0, self.dist])
+        return R,t
+
+    
+    # Truely random
+    # Based on: https://mathworld.wolfram.com/SpherePointPicking.html
+    def sphere_wolfram_sampling_z(self):       
+        x1 = np.random.uniform(low=-1.0, high=1.0, size=1)[0]
+        x2 = np.random.uniform(low=-1.0, high=1.0, size=1)[0]
+        test = x1**2 + x2**2
+        
+        while(test >= 1.0):
+                x1 = np.random.uniform(low=-1.0, high=1.0, size=1)[0]
+                x2 = np.random.uniform(low=-1.0, high=1.0, size=1)[0]
+                test = x1**2 + x2**2
+
+        x = 2.0*x1*(1.0 -x1**2 - x2**2)**(0.5)
+        y = 2.0*x2*(1.0 -x1**2 - x2**2)**(0.5)
+        z = 1.0 - 2.0*(x1**2 + x2**2)
+
+        cam_position = torch.tensor([x, y, z]).unsqueeze(0)
+        R = look_at_rotation(cam_position, up=((0, 0, 1),)).squeeze()
+
+        rot_degrees = np.random.uniform(low=0.0, high=360.0, size=1)
+        rot = scipyR.from_euler('z', rot_degrees, degrees=True)
+        rot_mat = torch.tensor(rot.as_matrix(), dtype=torch.float32)
+        R = torch.matmul(R, rot_mat)
+        R = R.squeeze()
+
+        t = torch.tensor([0.0, 0.0, self.dist])
+        return R,t
+
+    
+    
+
+    # Truely random
+    # Based on: https://mathworld.wolfram.com/SpherePointPicking.html
+    def sphere_wolfram_sampling_new_fixed(self):       
+        x1 = np.random.uniform(low=-1.0, high=1.0, size=1)[0]
+        x2 = np.random.uniform(low=-1.0, high=1.0, size=1)[0]
+        test = x1**2 + x2**2
+        
+        while(test >= 1.0):
+                x1 = np.random.uniform(low=-1.0, high=1.0, size=1)[0]
+                x2 = np.random.uniform(low=-1.0, high=1.0, size=1)[0]
+                test = x1**2 + x2**2
+
+        x = 2.0*x1*(1.0 -x1**2 - x2**2)**(0.5)
+        y = 2.0*x2*(1.0 -x1**2 - x2**2)**(0.5)
+        z = 1.0 - 2.0*(x1**2 + x2**2)
+
+        cam_position = torch.tensor([x, y, z]).unsqueeze(0)
+        R = look_at_rotation_fixed(cam_position).squeeze()
+
+        rot_degrees = np.random.uniform(low=0.0, high=360.0, size=1)
+        rot = scipyR.from_euler('z', rot_degrees, degrees=True)
+        rot_mat = torch.tensor(rot.as_matrix(), dtype=torch.float32)
+        R = torch.matmul(R, rot_mat)
+        R = R.squeeze()
+
+        t = torch.tensor([0.0, 0.0, self.dist])
+        return R,t
+
+    # Simplified version
+    def sphere_wolfram_sampling_new(self):       
+        x1 = np.random.uniform(low=-1.0, high=1.0, size=1)[0]
+        x2 = np.random.uniform(low=-1.0, high=1.0, size=1)[0]
+        test = x1**2 + x2**2
+        
+        while(test >= 1.0):
+                x1 = np.random.uniform(low=-1.0, high=1.0, size=1)[0]
+                x2 = np.random.uniform(low=-1.0, high=1.0, size=1)[0]
+                test = x1**2 + x2**2
+
+        x = 2.0*x1*(1.0 -x1**2 - x2**2)**(0.5)
+        y = 2.0*x2*(1.0 -x1**2 - x2**2)**(0.5)
+        z = 1.0 - 2.0*(x1**2 + x2**2)
+
+        cam_position = torch.tensor([x, y, z]).unsqueeze(0)
+        R = look_at_rotation(cam_position).squeeze()
+
+        rot_degrees = np.random.uniform(low=0.0, high=360.0, size=1)
+        rot = scipyR.from_euler('z', rot_degrees, degrees=True)
+        rot_mat = torch.tensor(rot.as_matrix(), dtype=torch.float32)
+        R = torch.matmul(R, rot_mat)
+        R = R.squeeze()
+
+        t = torch.tensor([0.0, 0.0, self.dist])
+        return R,t
+
+
+    def sphere_mixed(self):
+        test = np.random.uniform(low=0.0, high=100.0, size=1)[0]
+        if(test > 50.0):
+            R,t = self.sm_quat_random()
+        else:
+            R,t = self.sphere_wolfram_sampling()
+        return R,t
+
+    
+    # Truely random
+    # Based on: https://mathworld.wolfram.com/SpherePointPicking.html
+    def sphere_wolfram_sampling_fixed(self):       
+        x1 = np.random.uniform(low=-1.0, high=1.0, size=1)[0]
+        x2 = np.random.uniform(low=-1.0, high=1.0, size=1)[0]
+        test = x1**2 + x2**2
+        
+        while(test >= 1.0):
+                x1 = np.random.uniform(low=-1.0, high=1.0, size=1)[0]
+                x2 = np.random.uniform(low=-1.0, high=1.0, size=1)[0]
+                test = x1**2 + x2**2
+
+        x = 2.0*x1*(1.0 -x1**2 - x2**2)**(0.5)
+        y = 2.0*x2*(1.0 -x1**2 - x2**2)**(0.5)
+        z = 1.0 - 2.0*(x1**2 + x2**2)
+
+        cam_position = torch.tensor([x, y, z]).unsqueeze(0)
+        if(z < 0):
+            R = look_at_rotation_fixed(cam_position, up=((0, 0, -1),)).squeeze()
+        else:
+            R = look_at_rotation_fixed(cam_position, up=((0, 0, 1),)).squeeze()
+
+        # Rotate in-plane
+        if(not self.simple_pose_sampling):
+            rot_degrees = np.random.uniform(low=-90.0, high=90.0, size=1)
+            rot = scipyR.from_euler('z', rot_degrees, degrees=True)
+            rot_mat = torch.tensor(rot.as_matrix(), dtype=torch.float32)
+            R = torch.matmul(R, rot_mat)
+            R = R.squeeze()
+
+        t = torch.tensor([0.0, 0.0, self.dist])
+        return R,t
+    
+    
+    # Truely random
+    # Based on: https://www.cmu.edu/biolphys/deserno/pdf/sphere_equi.pdf
+    def sphere_sampling(self):       
+        z = np.random.uniform(low=-self.dist, high=self.dist, size=1)[0]
+        theta_sample = np.random.uniform(low=0.0, high=2.0*np.pi, size=1)[0]
+        x = np.sqrt((self.dist**2 - z**2))*np.cos(theta_sample)
+        y = np.sqrt((self.dist**2 - z**2))*np.sin(theta_sample)
+
+        cam_position = torch.tensor([x, y, z]).unsqueeze(0)
+        if(z < 0):
+            R = look_at_rotation(cam_position, up=((0, 0, -1),)).squeeze()
+        else:
+            R = look_at_rotation(cam_position, up=((0, 0, 1),)).squeeze()
+
+        # Rotate in-plane
+        if(not self.simple_pose_sampling):
+            rot_degrees = np.random.uniform(low=-90.0, high=90.0, size=1)
+            rot = scipyR.from_euler('z', rot_degrees, degrees=True)
+            rot_mat = torch.tensor(rot.as_matrix(), dtype=torch.float32)
+            R = torch.matmul(R, rot_mat)
+            R = R.squeeze()
+        t = torch.tensor([0.0, 0.0, self.dist])
+        return R,t
+
+    # Truely random
+    # Based on: https://www.cmu.edu/biolphys/deserno/pdf/sphere_equi.pdf
+    def sphere_sampling_fixed(self):       
+        z = np.random.uniform(low=-self.dist, high=self.dist, size=1)[0]
+        theta_sample = np.random.uniform(low=0.0, high=2.0*np.pi, size=1)[0]
+        x = np.sqrt((self.dist**2 - z**2))*np.cos(theta_sample)
+        y = np.sqrt((self.dist**2 - z**2))*np.sin(theta_sample)
+
+        cam_position = torch.tensor([x, y, z]).unsqueeze(0)
+        if(z < 0):
+            R = look_at_rotation_fixed(cam_position, up=((0, 0, -1),)).squeeze()
+        else:
+            R = look_at_rotation_fixed(cam_position, up=((0, 0, 1),)).squeeze()
+
+        # Rotate in-plane
+        if(not self.simple_pose_sampling):
+            rot_degrees = np.random.uniform(low=-90.0, high=90.0, size=1)
+            rot = scipyR.from_euler('z', rot_degrees, degrees=True)
+            rot_mat = torch.tensor(rot.as_matrix(), dtype=torch.float32)
+            R = torch.matmul(R, rot_mat)
+            R = R.squeeze()
+        t = torch.tensor([0.0, 0.0, self.dist])
+        return R,t
+    
     def generate_image_batch(self):
         # Generate random poses
         curr_Rs = []
         curr_ts = []
 
         image_renders = []
+
+        if(self.hard_mining == True):
+            print("num hard samples: ", len(self.hard_samples))
+        
         for k in np.arange(self.batch_size):
             R, t = self.pose_sampling()
 
             if(self.hard_mining == True):
-                print("num hard samples: ", len(self.hard_samples))
                 if(len(self.hard_samples) > 0):
                     rand = np.random.uniform(low=0.0, high=1.0, size=1)[0]
                     if(rand <= self.hard_sample_ratio):
                         rani = np.random.uniform(low=0, high=len(self.hard_samples)-1, size=1)[0]
-                        random.shuffle(self.hard_samples)
-                        R = self.hard_samples.pop()
+                        #random.shuffle(self.hard_samples)
+                        R = self.hard_samples.pop(int(rani))
 
             R = R.detach().cpu().numpy()
             t = t.detach().cpu().numpy()

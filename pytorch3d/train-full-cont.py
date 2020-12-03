@@ -17,7 +17,7 @@ from utils.utils import *
 from ModelEncoder import ModelEncoder
 from BatchRender import BatchRender
 from losses import Loss
-from DatasetGeneratorOpenGLFull import DatasetGenerator
+from DatasetGeneratorOpenGL import DatasetGenerator
 #from DatasetGeneratorSM import DatasetGenerator
 #from DatasetGeneratorPytorch import DatasetGenerator
 
@@ -45,7 +45,10 @@ def loadCheckpoint(model, model_path):
     checkpoint = torch.load(model_path)
     epoch = checkpoint['epoch'] + 1
 
-    # Load model
+    # # Load model
+    # num_views = int(checkpoint['model']['l3.bias'].shape[0]/(6+1))
+    # model = ModelEncoder(num_views=num_views).cuda()
+    
     model.load_state_dict(checkpoint['model'])
 
     # Load optimizer
@@ -111,8 +114,7 @@ def main():
         pose_dim = -1
 
     # Initialize a model using the renderer, mesh and reference image
-    model = ModelEncoder(weight_file=args.get('Dataset', 'ENCODER_WEIGHTS'),
-                  output_size=pose_dim)
+    model = ModelEncoder(weight_file=args.get('Dataset', 'ENCODER_WEIGHTS'), num_views=len(views))
     model.to(device)
 
     # Create an optimizer. Here we are using Adam and we pass in the parameters of the model
@@ -174,6 +176,8 @@ def main():
                                    args.get('Dataset', 'CAD_PATH'),
                                    json.loads(args.get('Rendering', 'T'))[-1],
                                    args.getint('Training', 'BATCH_SIZE'),
+                                   args.get('Dataset', 'ENCODER_WEIGHTS'),
+                                   device,
                                    args.get('Training', 'VIEW_SAMPLING'))
 
 
@@ -193,6 +197,7 @@ def main():
                              t=json.loads(args.get('Rendering', 'T')),
                              visualize=args.getboolean('Training', 'SAVE_IMAGES'),
                              loss_params=args.getfloat('Training', 'LOSS_PARAMS'))
+        #val_loss = loss
         append2file([val_loss], os.path.join(output_path, "validation-loss.csv"))
         val_losses = plotLoss(os.path.join(output_path, "train-loss.csv"),
                  os.path.join(output_path, "train-loss.png"),
@@ -258,7 +263,7 @@ def testEpoch(mean, std, br, val_data, model,
                                                                      mean, std, loss_method=loss_method, pose_rep=pose_rep, views=views, loss_params=loss_params)
 
             #detach all from gpu
-            batch_images.detach().cpu().numpy()
+            #batch_codes.detach().cpu().numpy()
             loss.detach().cpu().numpy()
             gt_images.detach().cpu().numpy()
             predicted_images.detach().cpu().numpy()
@@ -279,7 +284,7 @@ def testEpoch(mean, std, br, val_data, model,
                 fig = plt.figure(figsize=(12,3+len(views)*2))
                 #for viewNum in np.arange(len(views)):
                 plotView(0, len(views), vmin, vmax, input_images, gt_images, predicted_images,
-                         predicted_poses, batch_loss, batch_size)
+                         predicted_poses, batch_loss, batch_size, threshold=loss_params)
                 fig.tight_layout()
 
                 #plt.hist(gt_img,bins=20)
@@ -301,22 +306,31 @@ def trainEpoch(mean, std, br, data, model,
     dbg("Before train memory: {}".format(torch.cuda.memory_summary(device=device, abbreviated=False)), dbg_memory)
 
     # Generate training data
-    data = dataset_gen.generate_samples(num_samples)
-    print("Generated {0} samples!".format(len(data["images"])))
+    #data = dataset_gen.generate_samples(num_samples)
+    dataset_gen.max_samples = num_samples
+    #print("Generated {0} samples!".format(len(data["codes"])))
 
     model.train()
     losses = []
     batch_size = br.batch_size
-    data_indeces = np.arange(num_samples)
+    #data_indeces = np.arange(num_samples)
 
     print("Epoch: {0} - current learning rate: {1}".format(epoch, lr_reducer.get_last_lr()))
 
-    np.random.shuffle(data_indeces)
-    for i,curr_batch in enumerate(batch(data_indeces, batch_size)):
+    #np.random.shuffle(data_indeces)
+    dataset_gen.hard_samples = []
+    #for i,curr_batch in enumerate(batch(data_indeces, batch_size)):
+    for i,curr_batch in enumerate(dataset_gen):
         optimizer.zero_grad()
+        codes = []
         input_images = []
-        for b in curr_batch:
-            input_images.append(data["images"][b])
+        
+        # for b in curr_batch:
+        #     codes.append(data["codes"][b])
+        #     input_images.append(data["images"][b])
+        input_images = curr_batch["images"]
+        codes = curr_batch["codes"]
+            
         batch_images = torch.tensor(np.stack(input_images), device=device, dtype=torch.float32) # Bx128
 
         predicted_poses = model(batch_images)
@@ -325,20 +339,36 @@ def trainEpoch(mean, std, br, data, model,
         T = np.array(t, dtype=np.float32)
         Rs = []
         ts = []
-        for b in curr_batch:
-            Rs.append(data["Rs"][b])
-            ts.append(T.copy())
+        #for b in curr_batch:
+            #Rs.append(data["Rs"][b])
+            #ts.append(T.copy())
+        Rs = curr_batch["Rs"]
+        ts = [T.copy() for t in Rs]
+        
 
         loss, batch_loss, gt_images, predicted_images = Loss(predicted_poses, Rs, br, ts,
                                                              mean, std, loss_method=loss_method, pose_rep=pose_rep, views=views, loss_params=loss_params)
+
+        Rs = torch.tensor(np.stack(Rs), device=device, dtype=torch.float32)
+
         loss.backward()
         optimizer.step()
 
-        #print("model weights: ", model.l3.weight[0][:5])
-        #print("encoder weights: ", dataset_gen.encoder.autoencoder_dense_MatMul.weight[:5])
+        # Save difficult samples        
+        k = int(len(curr_batch["images"])*(dataset_gen.hard_sample_ratio))
+        batch_loss = batch_loss.squeeze()
+        top_val, top_ind = torch.topk(batch_loss, k)        
+        hard_samples = Rs[top_ind]
+        #print("{0} hard samples saved!".format(len(top_ind)))       
+
+        # Convert to a list
+        hard_list = []
+        for h in np.arange(hard_samples.shape[0]):
+            hard_list.append(hard_samples[h])
+        dataset_gen.hard_samples = hard_list
 
         #detach all from gpu
-        batch_images.detach().cpu().numpy()
+        #batch_codes.detach().cpu().numpy()
         loss.detach().cpu().numpy()
         gt_images.detach().cpu().numpy()
         predicted_images.detach().cpu().numpy()
@@ -360,28 +390,41 @@ def trainEpoch(mean, std, br, data, model,
             fig = plt.figure(figsize=(12,3+len(views)*2))
             for viewNum in np.arange(len(views)):
                 plotView(viewNum, len(views), vmin, vmax, input_images, gt_images, predicted_images,
-                         predicted_poses, batch_loss, batch_size)
+                         predicted_poses, batch_loss, batch_size, threshold=loss_params)
             fig.tight_layout()
 
             #plt.hist(gt_img,bins=20)
             fig.savefig(os.path.join(batch_img_dir, "epoch{0}-batch{1}.png".format(epoch,i)), dpi=fig.dpi)
             plt.close()
 
-            # fig = plt.figure(figsize=(4,4))
-            # plt.imshow(data["images"][curr_batch[0]])
-            # fig.savefig(os.path.join(batch_img_dir, "epoch{0}-batch{1}-gt.png".format(epoch,i)), dpi=fig.dpi)
-            # plt.close()
+            gt_img = (gt_images[top_ind[0]]).detach().cpu().numpy()
+            predicted_img = (predicted_images[top_ind[0]]).detach().cpu().numpy()
+            input_img = input_images[top_ind[0]]*255
+            
+            vmin = np.linalg.norm(T)*0.9
+            vmax = max(np.max(gt_img), np.max(predicted_img))
 
-    if(epoch % 5 == 0):
-        model_dir = os.path.join(output_path, "models/")
-        prepareDir(model_dir)
-        state = {'model': model.state_dict(),
-                 'optimizer': optimizer.state_dict(),
-                 'lr_reducer': lr_reducer.state_dict(),
-                 'epoch': epoch}
-        torch.save(state, os.path.join(model_dir,"model-epoch{0}.pt".format(epoch)))
+            batch_img_dir = os.path.join(output_path, "images/epoch{0}/hardest".format(epoch))
+            prepareDir(batch_img_dir)
+            fig = plt.figure(figsize=(12,3+len(views)*2))
+            for viewNum in np.arange(len(views)):
+                plotView(viewNum, len(views), vmin, vmax, input_images, gt_images, predicted_images,
+                             predicted_poses, batch_loss, batch_size, threshold=loss_params, img_num=top_ind[0])
+            fig.tight_layout()
+
+            fig.savefig(os.path.join(batch_img_dir, "epoch{0}-batch{1}-hardest.png".format(epoch,i,h)), dpi=fig.dpi)
+            plt.close()
+                
+            
+    model_dir = os.path.join(output_path, "models/")
+    prepareDir(model_dir)
+    state = {'model': model.state_dict(),
+             'optimizer': optimizer.state_dict(),
+             'lr_reducer': lr_reducer.state_dict(),
+             'epoch': epoch}
+    torch.save(state, os.path.join(model_dir,"model-epoch{0}.pt".format(epoch)))
     dbg("After train memory: {}".format(torch.cuda.memory_summary(device=device, abbreviated=False)), dbg_memory)
-    lr_reducer.step()
+    #lr_reducer.step()
     gc.collect()
     return np.mean(losses)
 
