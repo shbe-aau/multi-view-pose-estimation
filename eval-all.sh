@@ -1,11 +1,51 @@
-#Eval object 1-20 on test split
-for OBJ_ID in 02 05 08 09 10 12 17 19 #01 02 03 04 05 06 07 08 09 10 11 12 13 14 15 16 17 18 19 20
+#bash run-eval.sh 09 "med-model-log-wolfram-70epochs" "pytorch3d/output/depth/vsd-predicted-view-degrees/med-model-log-fixed-wolfram/obj09/models/model-epoch70.pt" "train"
+
+# #Eval object 1-20 on test split
+# for OBJ_ID in 09 10 19 #02 05 08 09 10 12 17 19 #01 02 03 04 05 06 07 08 09 10 11 12 13 14 15 16 17 18 19 20
+# do
+#     bash run-eval.sh ${OBJ_ID} "med-model-log-wolfram-60epochs" "pytorch3d/output/depth/vsd-predicted-view-degrees/med-model-log-fixed-wolfram/obj${OBJ_ID}/models/model-epoch60.pt" "train"
+#     wait
+
+#     bash run-eval.sh ${OBJ_ID} "med-model-log-fixed-sampling-wolfram-60epochs" "pytorch3d/output/depth/vsd-predicted-view-degrees/med-model-log-fixed-wolfram/obj${OBJ_ID}-fixed/models/model-epoch60.pt" "train"
+#     wait
+
+#     bash run-eval.sh ${OBJ_ID} "med-model-log-quat-sampling-wolfram-60epochs" "pytorch3d/output/depth/vsd-predicted-view-degrees/med-model-log-fixed-wolfram/obj${OBJ_ID}-quat/models/model-epoch60.pt" "train"
+#     wait
+
+#     bash run-eval.sh ${OBJ_ID} "med-model-log-mixed-sampling-wolfram-60epochs" "pytorch3d/output/depth/vsd-predicted-view-degrees/med-model-log-fixed-wolfram/obj${OBJ_ID}-mixed/models/model-epoch60.pt" "train"
+#     wait
+
+#     bash run-eval.sh ${OBJ_ID} "sundermeyer" "" "train"
+#     wait
+# done
+
+#bash run-eval.sh 07 "test-med-model-log-fixed-wolfram-70epochs" "pytorch3d/output/depth/vsd-predicted-view-degrees/med-model-log-fixed-wolfram/obj07/models/model-epoch70.pt" "train"
+#wait
+
+
+#Eval object 1-20 on train split
+for OBJ_ID in 06 11 #01 02 03 04 05 06 07 08 09 10 11 12 13 14 15 16 17 18 19 20 #02 04 05 06 07 08 09 10 11 12 14 15 17 18 19 20
 do
-    bash run-eval.sh ${OBJ_ID} "med-model-log-fixed-wolfram-70epochs" "pytorch3d/output/depth/vsd-predicted-view-degrees/med-model-log-fixed-wolfram/obj${OBJ_ID}/models/model-epoch70.pt" "test"
+    bash run-eval.sh ${OBJ_ID} "test-meshes-uni-50epochs" "pytorch3d/output/depth/test-meshes/obj${OBJ_ID}-uni/models/model-epoch50.pt" "train"
     wait
-    bash run-eval.sh ${OBJ_ID} "sundermeyer" "" "test"
+    bash run-eval.sh ${OBJ_ID} "test-meshes-org-50epochs" "pytorch3d/output/depth/test-meshes/obj${OBJ_ID}-org/models/model-epoch50.pt" "train"
     wait
+    # bash run-eval.sh ${OBJ_ID} "sundermeyer" "" "train"
+    #wait
 done
+
+# #Eval object 1-20 on test split
+# for OBJ_ID in 11 #09 10 #02 04 05 06 07 08 09 10 11 12 14 15 17 18 19 20
+# do
+#     # bash run-eval.sh ${OBJ_ID} "med-model-log-fixed-wolfram-70epochs" "pytorch3d/output/depth/vsd-predicted-view-degrees/med-model-log-fixed-wolfram/obj${OBJ_ID}/models/model-epoch70.pt" "test"
+#     # wait
+#     #bash run-eval.sh ${OBJ_ID} "sundermeyer" "" "test"
+#      wait
+#     # bash run-eval.sh ${OBJ_ID} "posemax40-6views-140epochs" "pytorch3d/output/depth/vsd-predicted-view-degrees/posemax40-6views/obj${OBJ_ID}/models/model-epoch140.pt" "test"
+#     # wait
+#     #bash run-eval.sh ${OBJ_ID} "med-model-log-fixed-sampling-wolfram-70epochs" "pytorch3d/output/depth/vsd-predicted-view-degrees/med-model-log-fixed-wolfram/obj${OBJ_ID}-fixed/models/model-epoch70.pt" "train"
+#     #wait
+# done
 
 
 ## Eval object 17

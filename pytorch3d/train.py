@@ -14,7 +14,7 @@ import gc
 
 from utils.utils import *
 
-from Model import Model
+from ModelMed import Model
 from BatchRender import BatchRender
 from losses import Loss
 from DatasetGeneratorOpenGL import DatasetGenerator
@@ -240,9 +240,21 @@ def testEpoch(mean, std, br, val_data, model,
             codes = []
             input_images = []
             for b in curr_batch:
-                norm_code = val_data["codes"][b] / np.linalg.norm(val_data["codes"][b])
+                curr_img = val_data["images"][b]
+
+                # Normalize image
+                img_max = np.max(curr_img)
+                img_min = np.min(curr_img)
+                curr_img = (curr_img - img_min)/(img_max - img_min)
+                
+                input_images.append(curr_img)
+
+                img = torch.from_numpy(curr_img).unsqueeze(0).permute(0,3,1,2).to(device)
+                code = dataset_gen.encoder(img.float())
+                code = code.detach().cpu().numpy()[0]
+                norm_code = code / np.linalg.norm(code)
                 codes.append(norm_code)
-                input_images.append(val_data["images"][b])
+                
             batch_codes = torch.tensor(np.stack(codes), device=device, dtype=torch.float32) # Bx128
 
             predicted_poses = model(batch_codes)
@@ -313,21 +325,15 @@ def trainEpoch(mean, std, br, data, model,
     model.train()
     losses = []
     batch_size = br.batch_size
-    #data_indeces = np.arange(num_samples)
 
     print("Epoch: {0} - current learning rate: {1}".format(epoch, lr_reducer.get_last_lr()))
 
-    #np.random.shuffle(data_indeces)
     dataset_gen.hard_samples = []
-    #for i,curr_batch in enumerate(batch(data_indeces, batch_size)):
     for i,curr_batch in enumerate(dataset_gen):
         optimizer.zero_grad()
         codes = []
         input_images = []
         
-        # for b in curr_batch:
-        #     codes.append(data["codes"][b])
-        #     input_images.append(data["images"][b])
         input_images = curr_batch["images"]
         codes = curr_batch["codes"]
             
@@ -337,11 +343,6 @@ def trainEpoch(mean, std, br, data, model,
 
         # Prepare ground truth poses for the loss function
         T = np.array(t, dtype=np.float32)
-        Rs = []
-        ts = []
-        #for b in curr_batch:
-            #Rs.append(data["Rs"][b])
-            #ts.append(T.copy())
         Rs = curr_batch["Rs"]
         ts = [T.copy() for t in Rs]
         
@@ -355,15 +356,17 @@ def trainEpoch(mean, std, br, data, model,
         optimizer.step()
 
         # Save difficult samples        
-        k = int(len(curr_batch)*(dataset_gen.hard_sample_ratio+0.1))
-        top_val, top_ind = torch.topk(torch.mean(batch_loss, dim=1), k)
+        k = int(len(curr_batch["images"])*(dataset_gen.hard_sample_ratio))
+        batch_loss = batch_loss.squeeze()
+        top_val, top_ind = torch.topk(batch_loss, k)        
         hard_samples = Rs[top_ind]
+        #print("{0} hard samples saved!".format(len(top_ind)))       
 
         # Convert to a list
         hard_list = []
         for h in np.arange(hard_samples.shape[0]):
             hard_list.append(hard_samples[h])
-        dataset_gen.hard_samples = dataset_gen.hard_samples + hard_list
+        dataset_gen.hard_samples = hard_list
 
         #detach all from gpu
         batch_codes.detach().cpu().numpy()
@@ -395,11 +398,25 @@ def trainEpoch(mean, std, br, data, model,
             fig.savefig(os.path.join(batch_img_dir, "epoch{0}-batch{1}.png".format(epoch,i)), dpi=fig.dpi)
             plt.close()
 
-            # fig = plt.figure(figsize=(4,4))
-            # plt.imshow(data["images"][curr_batch[0]])
-            # fig.savefig(os.path.join(batch_img_dir, "epoch{0}-batch{1}-gt.png".format(epoch,i)), dpi=fig.dpi)
-            # plt.close()
+            gt_img = (gt_images[top_ind[0]]).detach().cpu().numpy()
+            predicted_img = (predicted_images[top_ind[0]]).detach().cpu().numpy()
+            input_img = input_images[top_ind[0]]*255
+            
+            vmin = np.linalg.norm(T)*0.9
+            vmax = max(np.max(gt_img), np.max(predicted_img))
 
+            batch_img_dir = os.path.join(output_path, "images/epoch{0}/hardest".format(epoch))
+            prepareDir(batch_img_dir)
+            fig = plt.figure(figsize=(12,3+len(views)*2))
+            for viewNum in np.arange(len(views)):
+                plotView(viewNum, len(views), vmin, vmax, input_images, gt_images, predicted_images,
+                             predicted_poses, batch_loss, batch_size, threshold=loss_params, img_num=top_ind[0])
+            fig.tight_layout()
+
+            fig.savefig(os.path.join(batch_img_dir, "epoch{0}-batch{1}-hardest.png".format(epoch,i,h)), dpi=fig.dpi)
+            plt.close()
+                
+            
     model_dir = os.path.join(output_path, "models/")
     prepareDir(model_dir)
     state = {'model': model.state_dict(),
