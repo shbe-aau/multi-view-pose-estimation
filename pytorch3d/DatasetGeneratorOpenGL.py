@@ -521,27 +521,26 @@ class DatasetGenerator():
         z_axis = np.array([0, 0, 1])
 
         if(abs(np.dot(pos_check,y_axis)) < abs(np.dot(pos_check,z_axis))):
-            R = look_at_rotation(cam_position, up=((0, 1, 0),)).squeeze()
+            #R = look_at_rotation(cam_position, up=((0, 1, 0),)).squeeze()
+            up_axis = y_axis
         else:
-            R = look_at_rotation(cam_position, up=((0, 0, 1),)).squeeze()
+            #R = look_at_rotation(cam_position, up=((0, 0, 1),)).squeeze()
+            up_axis = z_axis
 
-        rot_degrees = np.random.uniform(low=0.0, high=360.0, size=1)
+        if(z < 0):
+            up_axis = -1.0*up_axis
+            
+        R = look_at_rotation(cam_position, up=((up_axis[0],
+                                                up_axis[1],
+                                                up_axis[2]),)).squeeze()        
+
+        rot_degrees = np.random.uniform(low=-90.0, high=90.0, size=1)
         rot = scipyR.from_euler('z', rot_degrees, degrees=True)
         rot_mat = torch.tensor(rot.as_matrix(), dtype=torch.float32)
         R = torch.matmul(R, rot_mat)
         R = R.squeeze()
 
         t = torch.tensor([0.0, 0.0, self.dist])
-        return R,t
-
-
-        
-        
-        test = np.random.uniform(low=0.0, high=100.0, size=1)[0]
-        if(test > 50.0):
-            R,t = self.sphere_wolfram_sampling_y()
-        else:
-            R,t = self.sphere_wolfram_sampling_z()
         return R,t
     
     # Truely random
@@ -561,9 +560,13 @@ class DatasetGenerator():
         z = 1.0 - 2.0*(x1**2 + x2**2)
 
         cam_position = torch.tensor([x, y, z]).unsqueeze(0)
-        R = look_at_rotation(cam_position, up=((0, 1, 0),)).squeeze()
 
-        rot_degrees = np.random.uniform(low=0.0, high=360.0, size=1)
+        if(z < 0):
+             R = look_at_rotation(cam_position, up=((0, -1, 0),)).squeeze()
+        else:
+             R = look_at_rotation(cam_position, up=((0, 1, 0),)).squeeze()
+             
+        rot_degrees = np.random.uniform(low=-90.0, high=90.0, size=1)
         rot = scipyR.from_euler('z', rot_degrees, degrees=True)
         rot_mat = torch.tensor(rot.as_matrix(), dtype=torch.float32)
         R = torch.matmul(R, rot_mat)
@@ -590,19 +593,20 @@ class DatasetGenerator():
         z = 1.0 - 2.0*(x1**2 + x2**2)
 
         cam_position = torch.tensor([x, y, z]).unsqueeze(0)
-        R = look_at_rotation(cam_position, up=((0, 0, 1),)).squeeze()
 
-        rot_degrees = np.random.uniform(low=0.0, high=360.0, size=1)
+        if(z < 0):
+             R = look_at_rotation(cam_position, up=((0, 0, -1),)).squeeze()
+        else:
+             R = look_at_rotation(cam_position, up=((0, 0, 1),)).squeeze()
+             
+        rot_degrees = np.random.uniform(low=-90.0, high=90.0, size=1)
         rot = scipyR.from_euler('z', rot_degrees, degrees=True)
         rot_mat = torch.tensor(rot.as_matrix(), dtype=torch.float32)
         R = torch.matmul(R, rot_mat)
         R = R.squeeze()
 
         t = torch.tensor([0.0, 0.0, self.dist])
-        return R,t
-
-    
-    
+        return R,t    
 
     # Truely random
     # Based on: https://mathworld.wolfram.com/SpherePointPicking.html
@@ -830,13 +834,12 @@ class DatasetGenerator():
             image_aug = np.array([cropped])
             image_aug = self.aug(images=image_aug)
 
-            # Convert to float and clip
-            image_aug = image_aug[0].astype(np.float)/np.max(image_aug[0])
-            image_aug = np.clip(image_aug, 0.0, 1.0)
+            ## Convert to float and clip
+            #image_aug = image_aug[0].astype(np.float)/np.max(image_aug[0])
+            #image_aug = np.clip(image_aug, 0.0, 1.0)
 
+            image_aug = image_aug[0].astype(np.float)
             images.append(image_aug[:,:,:3])
-
-            #def extract_square_patch(scene_img, bb_xywh, pad_factor=1.2,resize=(128,128),
 
         data = {"images":images,
                 "Rs":curr_Rs}
@@ -871,6 +874,10 @@ class DatasetGenerator():
         if(self.encoder is not None):
             codes = []
             for img in data["images"]:
+                img_max = np.max(img)
+                img_min = np.min(img)
+                img = (img - img_min)/(img_max - img_min)
+                
                 img = torch.from_numpy(img).unsqueeze(0).permute(0,3,1,2).to(self.device)
                 code = self.encoder(img.float())
                 code = code.detach().cpu().numpy()[0]
