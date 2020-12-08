@@ -23,7 +23,6 @@ optimizer = None
 lr_reducer = None
 views = []
 epoch = 0
-dataset_gen = None
 
 dbg_memory = False
 
@@ -59,16 +58,22 @@ def loadCheckpoint(model_path):
     print("Loaded the checkpoint: \n" + model_path)
     return model, optimizer, epoch, lr_reducer
 
-def loadDataset(file_list):
+def loadDataset(file_list, batch_size=2):
     #data = {"codes":[],"Rs":[],"images":[]}
     data = []
     for f in file_list:
         print("Loading dataset: {0}".format(f))
         with open(f, "rb") as f:
             curr_data = pickle.load(f, encoding="latin1")
-            data.append({"codes":curr_data["codes"].copy(),
-                         "Rs":curr_data["Rs"].copy(),
-                         "images":curr_data["images"].copy()})
+            curr_batch = {"codes":[],"Rs":[],"images":[]}
+            for i in range(len(curr_data["codes"])):
+                curr_batch["codes"].append(curr_data["codes"][i])
+                curr_batch["Rs"].append(curr_data["Rs"][i])
+                curr_batch["images"].append(curr_data["images"][i])
+                if(len(curr_batch["codes"]) >= batch_size):
+                    data.append(curr_batch)
+                    curr_batch = {"codes":[],"Rs":[],"images":[]}
+            data.append(curr_batch)
     return data
 
 def main():
@@ -171,10 +176,12 @@ def main():
                                      args.get('Dataset', 'ENCODER_WEIGHTS'),
                                      device,
                                      args.get('Training', 'VIEW_SAMPLING'))
+    training_data.max_samples = args.getint('Training', 'NUM_SAMPLES')
 
     # Load the validationset
-    validation_data = loadDataset(json.loads(args.get('Dataset', 'VALID_DATA_PATH')))
-    print("Loaded validation set with {0} samples!".format(len(validation_data)))
+    validation_data = loadDataset(json.loads(args.get('Dataset', 'VALID_DATA_PATH')),
+                                  args.getint('Training', 'BATCH_SIZE'))
+    print("Loaded validation set!")
 
     # Start training
     np.random.seed(seed=args.getint('Training', 'RANDOM_SEED'))
@@ -226,8 +233,7 @@ def main():
 def testEpoch(mean, std, br, dataset, model,
                device, output_path, loss_method, pose_rep, t,
                visualize=False, loss_params=0.5):
-    model.eval()
-    return runEpoch(mean, std, br, dataset, model,
+    return runEpoch(mean, std, br, dataset, model.eval(),
                device, output_path, loss_method, pose_rep, t,
                visualize, loss_params)
 
@@ -235,8 +241,7 @@ def testEpoch(mean, std, br, dataset, model,
 def trainEpoch(mean, std, br, dataset, model,
                device, output_path, loss_method, pose_rep, t,
                visualize=False, loss_params=0.5):
-    model.train()
-    return runEpoch(mean, std, br, dataset, model,
+    return runEpoch(mean, std, br, dataset, model.train(),
                device, output_path, loss_method, pose_rep, t,
                visualize, loss_params)
 
@@ -252,7 +257,8 @@ def runEpoch(mean, std, br, dataset, model,
 
     losses = []
     batch_size = br.batch_size
-    dataset.hard_samples = [] # Reset hard samples
+    if(model.training):
+        dataset.hard_samples = [] # Reset hard samples
     for i,curr_batch in enumerate(dataset):
         if(model.training):
             optimizer.zero_grad()
@@ -299,13 +305,16 @@ def runEpoch(mean, std, br, dataset, model,
         predicted_images.detach().cpu().numpy()
 
         if(model.training):
-            print("Batch: {0}/{1} (size: {2}) - loss: {3}".format(i+1,round(num_samples/batch_size), len(Rs),torch.mean(batch_loss)))
+            print("Batch: {0}/{1} (size: {2}) - loss: {3}".format(i+1,round(dataset.max_samples/batch_size), len(Rs),torch.mean(batch_loss)))
         else:
-            print("Test batch: {0}/{1} (size: {2}) - loss: {3}".format(i+1,round(num_samples/batch_size), len(Rs),torch.mean(batch_loss)))
+            print("Test batch: {0}/{1} (size: {2}) - loss: {3}".format(i+1,len(dataset), len(Rs),torch.mean(batch_loss)))
         losses = losses + batch_loss.data.detach().cpu().numpy().tolist()
 
         if(visualize):
-            batch_img_dir = os.path.join(output_path, "val-images/epoch{0}".format(epoch))
+            if(model.training):
+                batch_img_dir = os.path.join(output_path, "images/epoch{0}".format(epoch))
+            else:
+                batch_img_dir = os.path.join(output_path, "val-images/epoch{0}".format(epoch))
             prepareDir(batch_img_dir)
             gt_img = (gt_images[0]).detach().cpu().numpy()
             predicted_img = (predicted_images[0]).detach().cpu().numpy()

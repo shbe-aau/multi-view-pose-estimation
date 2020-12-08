@@ -575,7 +575,7 @@ class DatasetGenerator():
         data = {"images":[],
                 "Rs":[]}
         while(len(data["images"]) < num_samples):
-            print("Generating images: {0}/{1}".format(len(data["images"]), num_samples))
+            #print("Generating images: {0}/{1}".format(len(data["images"]), num_samples))
             curr_data = self.generate_image_batch()
             data["images"] = data["images"] + curr_data["images"]
             data["Rs"] = data["Rs"] + curr_data["Rs"]
