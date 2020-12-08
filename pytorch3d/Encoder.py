@@ -33,6 +33,17 @@ class Encoder(nn.Module):
         self.autoencoder_dense_MatMul = self.__dense(name=base_name+'/dense/MatMul', in_features = 32768, out_features = 128, bias = True)
 
     def forward(self, x):
+        # Normalize images
+        #img_mean = torch.mean(torch.flatten(x, start_dim=2), 2).unsqueeze(-1).unsqueeze(-1)
+        #img_std = torch.std(torch.flatten(x, start_dim=2), 2).unsqueeze(-1).unsqueeze(-1)
+        #x = (x - img_mean) / img_std
+
+        # img_max, _ = torch.max(torch.flatten(x, start_dim=2), 2)
+        # img_max = img_max.unsqueeze(-1).unsqueeze(-1)
+        # img_min, _ = torch.min(torch.flatten(x, start_dim=2), 2)
+        # img_min = img_min.unsqueeze(-1).unsqueeze(-1)
+        # x = (x - img_min) / (img_max - img_min)
+        
         autoencoder_Flatten_flatten_Reshape_shape_1 = torch.tensor(-1, dtype=torch.int32)
         autoencoder_conv2d_Conv2D_pad = F.pad(x, (1, 2, 1, 2))
         autoencoder_conv2d_Conv2D = self.autoencoder_conv2d_Conv2D(autoencoder_conv2d_Conv2D_pad)
