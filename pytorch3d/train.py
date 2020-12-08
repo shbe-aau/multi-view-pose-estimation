@@ -14,7 +14,7 @@ import gc
 
 from utils.utils import *
 
-from ModelMed import Model
+from Model import Model
 from BatchRender import BatchRender
 from losses import Loss
 from DatasetGeneratorOpenGL import DatasetGenerator

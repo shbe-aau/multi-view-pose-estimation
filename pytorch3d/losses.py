@@ -9,8 +9,6 @@ from pytorch3d.renderer import look_at_view_transform
 from pytorch3d.renderer import look_at_rotation
 from scipy.spatial.transform import Rotation as scipyR
 
-from pytorch3d.loss import chamfer_distance
-from chamfer_bootstrap import chamfer_bootstrap
 from pytorch3d.transforms import Transform3d, Rotate
 
 # Required to backpropagate when thresholding (torch.where)
@@ -283,122 +281,6 @@ def Loss(predicted_poses, gt_poses, renderer, ts, mean, std, loss_method="diff",
         return loss, batch_loss, gt_imgs, predicted_imgs
 
 
-    elif(loss_method=="chamfer"):
-        num_views = len(views)
-        pose_start = num_views
-        pose_end = pose_start + 6
-
-        #Prepare gt point cloud
-        gt_t = Rotate(Rs_gt).to(renderer.device)
-        gt_points = gt_t.transform_points(renderer.points)
-
-        # Prepare gt images
-        gt_images = []
-        predicted_images = []
-        gt_imgs = renderer.renderBatch(Rs_gt, ts)
-
-        losses = []
-        confs = predicted_poses[:,:num_views]
-        prev_pose = None
-        for i,v in enumerate(views):
-            # Extract current pose and move to next one
-            curr_pose = predicted_poses[:,pose_start:pose_end]
-            Rs_predicted = compute_rotation_matrix_from_ortho6d(curr_pose)
-
-            # Prepare rotation matrix
-            Rs_predicted = Rs_predicted.permute(0,2,1)
-            Rs_predicted = torch.matmul(Rs_predicted, v.to(renderer.device))
-            Rs_predicted = Rs_predicted.permute(0,2,1)
-
-            # Apply predicted pose to point cloud
-            predicted_t = Rotate(Rs_predicted).to(renderer.device)
-            predicted_points = predicted_t.transform_points(renderer.points)
-
-            # Render predicted images
-            imgs = renderer.renderBatch(Rs_predicted, ts)
-            predicted_images.append(imgs)
-            gt_images.append(gt_imgs)
-
-            # Calculate loss
-            batch_loss,_ = chamfer_bootstrap(gt_points, predicted_points,
-                                             bootstrap_ratio=int(loss_params),
-                                             batch_reduction=None)
-            batch_loss = batch_loss*confs[:,i]
-            losses.append(batch_loss.unsqueeze(-1))
-
-        # Concat different views
-        gt_imgs = torch.cat(gt_images, dim=1)
-        predicted_imgs = torch.cat(predicted_images, dim=1)
-        losses = torch.cat(losses, dim=1)
-
-        batch_loss = losses #torch.mean(losses, dim=1)
-        loss = torch.mean(losses)
-        return loss, batch_loss, gt_imgs, predicted_imgs
-
-
-    elif(loss_method=="chamfer-fixed-view"):
-        num_views = 2
-        pose_start = num_views
-        pose_end = pose_start + 6
-
-        #Prepare gt point cloud
-        gt_t = Rotate(Rs_gt).to(renderer.device)
-        gt_points = gt_t.transform_points(renderer.points)
-
-        # Prepare gt images
-        gt_images = []
-        predicted_images = []
-        gt_imgs = renderer.renderBatch(Rs_gt, ts)
-
-        losses = []
-        confs = predicted_poses[:,:num_views]
-        prev_pose = None
-        for i in np.arange(num_views):
-            # Extract current pose and move to next one
-            curr_pose = predicted_poses[:,pose_start:pose_end]
-            Rs_predicted = compute_rotation_matrix_from_ortho6d(curr_pose)
-            pose_start = pose_end
-            pose_end = pose_start + 6
-
-            if(i == 1):
-                # Prepare rotation matrix
-                rot_mat = np.array([1.0, 0.0, 0.0,
-                                    0.0, -1.0, -0.0,
-                                    0.0, 0.0, -1.0]).reshape(3,3)
-                rot_mat = torch.tensor(rot_mat, dtype=torch.float32).to(renderer.device)
-
-                # Apply rotation matrix
-                Rs_predicted = prev_pose
-                Rs_predicted = Rs_predicted.permute(0,2,1)
-                Rs_predicted = torch.matmul(Rs_predicted, rot_mat)
-                Rs_predicted = Rs_predicted.permute(0,2,1)
-
-            # Apply predicted pose to point cloud
-            predicted_t = Rotate(Rs_predicted).to(renderer.device)
-            predicted_points = predicted_t.transform_points(renderer.points)
-
-            # Calculate loss
-            batch_loss,_ = chamfer_bootstrap(gt_points, predicted_points,
-                                             bootstrap_ratio=int(loss_params),
-                                             batch_reduction=None)
-            batch_loss = batch_loss*confs[:,i]
-            losses.append(batch_loss.unsqueeze(-1))
-
-            # Render images
-            imgs = renderer.renderBatch(Rs_predicted, ts)
-            predicted_images.append(imgs)
-            gt_images.append(gt_imgs)
-
-            prev_pose = Rs_predicted
-
-        # Concat different views
-        gt_imgs = torch.cat(gt_images, dim=1)
-        predicted_imgs = torch.cat(predicted_images, dim=1)
-        losses = torch.cat(losses, dim=1)*1000.0 # meter to milimeters?
-
-        batch_loss = losses #torch.mean(losses, dim=1)
-        loss = torch.mean(losses)
-        return loss, batch_loss, gt_imgs, predicted_imgs
 
     elif(loss_method=="depth-fixed-view"):
         num_views = len(views)
@@ -478,17 +360,17 @@ def Loss(predicted_poses, gt_poses, renderer, ts, mean, std, loss_method="diff",
 
             # Calculate VSD depth loss
             diff = torch.abs(gt_imgs - imgs)
-            non_zero = torch.clamp(gt_imgs, 0, 1)            
-            inliers = torch.clamp(diff, 0, 20.0)/20.0 * non_zero            
+            non_zero = torch.clamp(gt_imgs, 0, 1)
+            inliers = torch.clamp(diff, 0, 20.0)/20.0 * non_zero
             inliers = inliers * non_zero
             inliers = torch.sum(inliers, dim=(1,2))
             total_gt = torch.sum(non_zero, dim=(1,2))
             batch_loss = (inliers/total_gt)
-            
+
             #batch_loss = batch_loss*confs[:,i] + (1.0/num_views)*batch_loss
             batch_loss = batch_loss*confs[:,i] # + (1.0/num_views)*batch_loss
             losses.append(batch_loss.unsqueeze(-1))
-            
+
         # Concat different views
         gt_imgs = torch.cat(gt_images, dim=1)
         predicted_imgs = torch.cat(predicted_images, dim=1)
@@ -497,7 +379,7 @@ def Loss(predicted_poses, gt_poses, renderer, ts, mean, std, loss_method="diff",
         batch_loss = torch.mean(losses, dim=1)
         batch_loss = batch_loss.unsqueeze(-1)
         loss = torch.mean(batch_loss) #losses) #+torch.mean(pose_losses)
-        return loss, batch_loss, gt_imgs, predicted_imgs   
+        return loss, batch_loss, gt_imgs, predicted_imgs
 
     elif(loss_method=="depth-clamped-predicted-view"):
         num_views = len(views)
@@ -560,7 +442,7 @@ def Loss(predicted_poses, gt_poses, renderer, ts, mean, std, loss_method="diff",
         batch_loss = batch_loss.unsqueeze(-1)
         #batch_loss = losses
         loss = torch.mean(losses)+torch.mean(pose_losses)
-        return loss, batch_loss, gt_imgs, predicted_imgs    
+        return loss, batch_loss, gt_imgs, predicted_imgs
 
     elif(loss_method=="vsd-predicted-view"):
         num_views = len(views)
@@ -586,12 +468,12 @@ def Loss(predicted_poses, gt_poses, renderer, ts, mean, std, loss_method="diff",
             # Render predicted images
             imgs = renderer.renderBatch(Rs_predicted, ts)
             predicted_images.append(imgs)
-            gt_images.append(gt_imgs)            
-            
+            gt_images.append(gt_imgs)
+
             # Calculate VSD depth loss
             diff = torch.abs(gt_imgs - imgs)
-            non_zero = torch.clamp(gt_imgs, 0, 1)            
-            inliers = torch.clamp(diff, 0, loss_params)/loss_params * non_zero            
+            non_zero = torch.clamp(gt_imgs, 0, 1)
+            inliers = torch.clamp(diff, 0, loss_params)/loss_params * non_zero
 
             inliers = inliers * non_zero
             inliers = torch.sum(inliers, dim=(1,2))
@@ -608,7 +490,7 @@ def Loss(predicted_poses, gt_poses, renderer, ts, mean, std, loss_method="diff",
             for k,p in enumerate(prev_poses):
                 pose_diff = torch.abs(p - Rs_predicted).flatten(start_dim=1)
                 pose_max = 0.6
-                pose_diff = 1.0 - (torch.clamp(pose_diff, 0.0, pose_max)/pose_max)                        
+                pose_diff = 1.0 - (torch.clamp(pose_diff, 0.0, pose_max)/pose_max)
                 pose_batch_loss = torch.mean(pose_diff, dim=1)
                 pose_losses.append(pose_batch_loss.unsqueeze(-1))
 
@@ -632,7 +514,7 @@ def Loss(predicted_poses, gt_poses, renderer, ts, mean, std, loss_method="diff",
         #print("VSD: ", losses)
         #print("Pose: ", pose_losses)
         #losses = losses + conf_loss
-        
+
         batch_loss = torch.mean(losses, dim=1) + torch.mean(pose_losses, dim=1)
         batch_loss = batch_loss.unsqueeze(-1)
         loss = torch.mean(losses) +torch.mean(pose_losses)
@@ -643,12 +525,12 @@ def Loss(predicted_poses, gt_poses, renderer, ts, mean, std, loss_method="diff",
         num_views = len(views)
         pose_start = num_views
         pose_end = pose_start + 6
-        
+
         # Prepare gt images
         gt_images = []
         predicted_images = []
         gt_imgs = renderer.renderBatch(Rs_gt, ts)
-        
+
         losses = []
         confs = predicted_poses[:,:num_views]
         prev_poses = []
@@ -659,12 +541,12 @@ def Loss(predicted_poses, gt_poses, renderer, ts, mean, std, loss_method="diff",
             Rs_predicted = compute_rotation_matrix_from_ortho6d(curr_pose)
             pose_start = pose_end
             pose_end = pose_start + 6
-            
+
             # Render predicted images
             imgs = renderer.renderBatch(Rs_predicted, ts)
             predicted_images.append(imgs)
             gt_images.append(gt_imgs)
-            
+
             # Calculate VSD depth loss - old
             depth_max = 20.0
             diff = torch.abs(gt_imgs - imgs)
@@ -685,10 +567,10 @@ def Loss(predicted_poses, gt_poses, renderer, ts, mean, std, loss_method="diff",
             # non_zero_gt = torch.clamp(gt_imgs, 0, 1) # Non zero in gt only
             # total_gt = torch.sum(non_zero_gt, dim=(1,2))
             # batch_loss = (inliers/total_gt)
-            
+
             batch_loss = batch_loss*confs[:,i] + (1.0/num_views)*batch_loss
             losses.append(batch_loss.unsqueeze(-1))
-            
+
             # Calculate pose loss
             for k,p in enumerate(prev_poses):
                 R = torch.matmul(p, torch.transpose(Rs_predicted, 1, 2))
@@ -700,23 +582,23 @@ def Loss(predicted_poses, gt_poses, renderer, ts, mean, std, loss_method="diff",
 
                 pose_max = loss_params
                 pose_diff = 1.0 - (torch.clamp(degree, 0.0, pose_max)/pose_max)
-                
+
                 pose_batch_loss = pose_diff
                 pose_losses.append(pose_batch_loss.unsqueeze(-1))
-                
+
             # Add current predicted poses to list of previous ones
             prev_poses.append(Rs_predicted)
-                
+
 
         # Concat different views
         gt_imgs = torch.cat(gt_images, dim=1)
         predicted_imgs = torch.cat(predicted_images, dim=1)
         losses = torch.cat(losses, dim=1)
         pose_losses = torch.cat(pose_losses, dim=1)
-    
+
         #print("depth loss ", torch.mean(losses, dim=1))
         #print("pose loss ", torch.mean(pose_losses, dim=1))
-        
+
         batch_loss = torch.mean(losses, dim=1)
         batch_loss = batch_loss + batch_loss * (torch.mean(pose_losses, dim=1)-0.5)/2.0
         #print("VSD: ", torch.mean(losses, dim=1))
@@ -730,12 +612,12 @@ def Loss(predicted_poses, gt_poses, renderer, ts, mean, std, loss_method="diff",
         num_views = len(views)
         pose_start = num_views
         pose_end = pose_start + 6
-        
+
         # Prepare gt images
         gt_images = []
         predicted_images = []
         gt_imgs = renderer.renderBatch(Rs_gt, ts)
-        
+
         losses = []
         confs = predicted_poses[:,:num_views]
         prev_poses = []
@@ -746,12 +628,12 @@ def Loss(predicted_poses, gt_poses, renderer, ts, mean, std, loss_method="diff",
             Rs_predicted = compute_rotation_matrix_from_ortho6d(curr_pose)
             pose_start = pose_end
             pose_end = pose_start + 6
-            
+
             # Render predicted images
             imgs = renderer.renderBatch(Rs_predicted, ts)
             predicted_images.append(imgs)
             gt_images.append(gt_imgs)
-            
+
             # Calculate VSD depth loss - old
             depth_max = 20.0
             diff = torch.abs(gt_imgs - imgs)
@@ -772,10 +654,10 @@ def Loss(predicted_poses, gt_poses, renderer, ts, mean, std, loss_method="diff",
             # non_zero_gt = torch.clamp(gt_imgs, 0, 1) # Non zero in gt only
             # total_gt = torch.sum(non_zero_gt, dim=(1,2))
             # batch_loss = (inliers/total_gt)
-            
+
             batch_loss = batch_loss*confs[:,i] + (1.0/num_views)*batch_loss
             losses.append(batch_loss.unsqueeze(-1))
-            
+
             # Calculate pose loss
             for k,p in enumerate(prev_poses):
                 R = torch.matmul(p, torch.transpose(Rs_predicted, 1, 2))
@@ -787,23 +669,23 @@ def Loss(predicted_poses, gt_poses, renderer, ts, mean, std, loss_method="diff",
 
                 pose_max = loss_params
                 pose_diff = 1.0 - (torch.clamp(degree, 0.0, pose_max)/pose_max)
-                
+
                 pose_batch_loss = pose_diff
                 pose_losses.append(pose_batch_loss.unsqueeze(-1))
-                
+
             # Add current predicted poses to list of previous ones
             prev_poses.append(Rs_predicted)
-                
+
 
         # Concat different views
         gt_imgs = torch.cat(gt_images, dim=1)
         predicted_imgs = torch.cat(predicted_images, dim=1)
         losses = torch.cat(losses, dim=1)
         pose_losses = torch.cat(pose_losses, dim=1)
-    
+
         #print("depth loss ", torch.mean(losses, dim=1))
         #print("pose loss ", torch.mean(pose_losses, dim=1))
-        
+
         batch_loss = torch.mean(losses, dim=1)
         batch_loss = batch_loss + batch_loss * (torch.mean(pose_losses, dim=1)-0.5)/2.0
         #print("VSD: ", torch.mean(losses, dim=1))
@@ -822,22 +704,22 @@ def Loss(predicted_poses, gt_poses, renderer, ts, mean, std, loss_method="diff",
             print("images: ", predicted_imgs.shape)
             print("gt images: ", gt_imgs.shape)
             print("Only using the {0} hardest samples!".format(batch_loss.shape[0]))
-        
+
         batch_loss = batch_loss.unsqueeze(-1)
         loss = torch.mean(batch_loss) #losses) #+torch.mean(pose_losses)
         return loss, batch_loss, gt_imgs, predicted_imgs, top_ind
-    
+
 
     elif(loss_method=="vsd-predicted-view-fixed"):
         num_views = len(views)
         pose_start = num_views
         pose_end = pose_start + 6
-        
+
         # Prepare gt images
         gt_images = []
         predicted_images = []
         gt_imgs = renderer.renderBatch(Rs_gt, ts)
-        
+
         losses = []
         confs = predicted_poses[:,:num_views]
         prev_poses = []
@@ -848,12 +730,12 @@ def Loss(predicted_poses, gt_poses, renderer, ts, mean, std, loss_method="diff",
             Rs_predicted = compute_rotation_matrix_from_ortho6d(curr_pose)
             pose_start = pose_end
             pose_end = pose_start + 6
-            
+
             # Render predicted images
             imgs = renderer.renderBatch(Rs_predicted, ts)
             predicted_images.append(imgs)
             gt_images.append(gt_imgs)
-            
+
             # Calculate VSD depth loss - new, better for obj 10 and 12?
             depth_max = 20.0
             diff = torch.abs(gt_imgs - imgs)
@@ -865,10 +747,10 @@ def Loss(predicted_poses, gt_poses, renderer, ts, mean, std, loss_method="diff",
             non_zero_both = torch.mul(non_zero_gt,non_zero_pred) # Non zero in both gt and prediction
             total_gt = torch.sum(non_zero_both, dim=(1,2))
             batch_loss = (inliers/total_gt)
-            
+
             batch_loss = batch_loss*confs[:,i] + (1.0/num_views)*batch_loss
             losses.append(batch_loss.unsqueeze(-1))
-            
+
             # Calculate pose loss
             for k,p in enumerate(prev_poses):
                 R = torch.matmul(p, torch.transpose(Rs_predicted, 1, 2))
@@ -880,23 +762,23 @@ def Loss(predicted_poses, gt_poses, renderer, ts, mean, std, loss_method="diff",
 
                 pose_max = loss_params
                 pose_diff = 1.0 - (torch.clamp(degree, 0.0, pose_max)/pose_max)
-                
+
                 pose_batch_loss = pose_diff
                 pose_losses.append(pose_batch_loss.unsqueeze(-1))
-                
+
             # Add current predicted poses to list of previous ones
             prev_poses.append(Rs_predicted)
-                
+
 
         # Concat different views
         gt_imgs = torch.cat(gt_images, dim=1)
         predicted_imgs = torch.cat(predicted_images, dim=1)
         losses = torch.cat(losses, dim=1)
         pose_losses = torch.cat(pose_losses, dim=1)
-    
+
         #print("depth loss ", torch.mean(losses, dim=1))
         #print("pose loss ", torch.mean(pose_losses, dim=1))
-        
+
         batch_loss = torch.mean(losses, dim=1)
         batch_loss = batch_loss + batch_loss * (torch.mean(pose_losses, dim=1)-0.5)/2.0
         #print("VSD: ", torch.mean(losses, dim=1))
@@ -905,17 +787,17 @@ def Loss(predicted_poses, gt_poses, renderer, ts, mean, std, loss_method="diff",
         loss = torch.mean(batch_loss) #losses) #+torch.mean(pose_losses)
         return loss, batch_loss, gt_imgs, predicted_imgs
 
-    
+
     elif(loss_method=="vsd-predicted-view-log"):
         num_views = len(views)
         pose_start = num_views
         pose_end = pose_start + 6
-        
+
         # Prepare gt images
         gt_images = []
         predicted_images = []
         gt_imgs = renderer.renderBatch(Rs_gt, ts)
-        
+
         losses = []
         confs = predicted_poses[:,:num_views]
         prev_poses = []
@@ -926,12 +808,12 @@ def Loss(predicted_poses, gt_poses, renderer, ts, mean, std, loss_method="diff",
             Rs_predicted = compute_rotation_matrix_from_ortho6d(curr_pose)
             pose_start = pose_end
             pose_end = pose_start + 6
-            
+
             # Render predicted images
             imgs = renderer.renderBatch(Rs_predicted, ts)
             predicted_images.append(imgs)
             gt_images.append(gt_imgs)
-            
+
             # Calculate VSD depth loss
             diff = torch.abs(gt_imgs - imgs)
             #non_zero = torch.clamp(gt_imgs, 0, 1) # Non zero in gt only
@@ -941,10 +823,10 @@ def Loss(predicted_poses, gt_poses, renderer, ts, mean, std, loss_method="diff",
             inliers = torch.sum(inliers, dim=(1,2))
             total_gt = torch.sum(non_zero, dim=(1,2))
             batch_loss = (inliers/total_gt)
-            
+
             batch_loss = batch_loss*confs[:,i] + (1.0/num_views)*batch_loss
             losses.append(batch_loss.unsqueeze(-1))
-            
+
             # Calculate pose loss
             for k,p in enumerate(prev_poses):
                 R = torch.matmul(p, torch.transpose(Rs_predicted, 1, 2))
@@ -956,23 +838,23 @@ def Loss(predicted_poses, gt_poses, renderer, ts, mean, std, loss_method="diff",
 
                 pose_max = loss_params
                 pose_diff = 1.0 - (torch.clamp(degree, 0.0, pose_max)/pose_max)
-                
+
                 pose_batch_loss = pose_diff
                 pose_losses.append(pose_batch_loss.unsqueeze(-1))
-                
+
             # Add current predicted poses to list of previous ones
             prev_poses.append(Rs_predicted)
-                
+
 
         # Concat different views
         gt_imgs = torch.cat(gt_images, dim=1)
         predicted_imgs = torch.cat(predicted_images, dim=1)
         losses = torch.cat(losses, dim=1)
         pose_losses = torch.cat(pose_losses, dim=1)
-    
+
         #print("depth loss ", torch.mean(losses, dim=1))
         #print("pose loss ", torch.mean(pose_losses, dim=1))
-        
+
         batch_loss = torch.mean(losses, dim=1)
         batch_loss = batch_loss + batch_loss * (torch.mean(pose_losses, dim=1)-0.5)/2.0
         #print("VSD: ", torch.mean(losses, dim=1))
@@ -981,17 +863,17 @@ def Loss(predicted_poses, gt_poses, renderer, ts, mean, std, loss_method="diff",
         loss = torch.mean(batch_loss) #losses) #+torch.mean(pose_losses)
         return loss, batch_loss, gt_imgs, predicted_imgs
 
-    
+
     elif(loss_method=="vsd-predicted-view-log-fixed"):
         num_views = len(views)
         pose_start = num_views
         pose_end = pose_start + 6
-        
+
         # Prepare gt images
         gt_images = []
         predicted_images = []
         gt_imgs = renderer.renderBatch(Rs_gt, ts)
-        
+
         losses = []
         confs = predicted_poses[:,:num_views]
         prev_poses = []
@@ -1002,12 +884,12 @@ def Loss(predicted_poses, gt_poses, renderer, ts, mean, std, loss_method="diff",
             Rs_predicted = compute_rotation_matrix_from_ortho6d(curr_pose)
             pose_start = pose_end
             pose_end = pose_start + 6
-            
+
             # Render predicted images
             imgs = renderer.renderBatch(Rs_predicted, ts)
             predicted_images.append(imgs)
             gt_images.append(gt_imgs)
-            
+
             # Calculate VSD depth loss
             diff = torch.abs(gt_imgs - imgs)
             #non_zero = torch.clamp(gt_imgs, 0, 1) # Non zero in gt only
@@ -1019,10 +901,10 @@ def Loss(predicted_poses, gt_poses, renderer, ts, mean, std, loss_method="diff",
             non_zero_both = torch.mul(non_zero_gt,non_zero_pred) # Non zero in both gt and predict
             total_gt = torch.sum(non_zero_both, dim=(1,2))
             batch_loss = (inliers/total_gt)
-            
+
             batch_loss = batch_loss*confs[:,i] + (1.0/num_views)*batch_loss
             losses.append(batch_loss.unsqueeze(-1))
-            
+
             # Calculate pose loss
             for k,p in enumerate(prev_poses):
                 R = torch.matmul(p, torch.transpose(Rs_predicted, 1, 2))
@@ -1034,23 +916,23 @@ def Loss(predicted_poses, gt_poses, renderer, ts, mean, std, loss_method="diff",
 
                 pose_max = loss_params
                 pose_diff = 1.0 - (torch.clamp(degree, 0.0, pose_max)/pose_max)
-                
+
                 pose_batch_loss = pose_diff
                 pose_losses.append(pose_batch_loss.unsqueeze(-1))
-                
+
             # Add current predicted poses to list of previous ones
             prev_poses.append(Rs_predicted)
-                
+
 
         # Concat different views
         gt_imgs = torch.cat(gt_images, dim=1)
         predicted_imgs = torch.cat(predicted_images, dim=1)
         losses = torch.cat(losses, dim=1)
         pose_losses = torch.cat(pose_losses, dim=1)
-    
+
         #print("depth loss ", torch.mean(losses, dim=1))
         #print("pose loss ", torch.mean(pose_losses, dim=1))
-        
+
         batch_loss = torch.mean(losses, dim=1)
         batch_loss = batch_loss + batch_loss * (torch.mean(pose_losses, dim=1)-0.5)/2.0
         #print("VSD: ", torch.mean(losses, dim=1))
