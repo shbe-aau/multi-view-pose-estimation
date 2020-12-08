@@ -233,17 +233,20 @@ def main():
 def testEpoch(mean, std, br, dataset, model,
                device, output_path, loss_method, pose_rep, t,
                visualize=False, loss_params=0.5):
-    return runEpoch(mean, std, br, dataset, model.eval(),
-               device, output_path, loss_method, pose_rep, t,
-               visualize, loss_params)
+    with torch.no_grad():
+        loss = runEpoch(mean, std, br, dataset, model.eval(),
+                        device, output_path, loss_method, pose_rep, t,
+                        visualize, loss_params)
+    return loss
 
 
 def trainEpoch(mean, std, br, dataset, model,
                device, output_path, loss_method, pose_rep, t,
                visualize=False, loss_params=0.5):
-    return runEpoch(mean, std, br, dataset, model.train(),
-               device, output_path, loss_method, pose_rep, t,
-               visualize, loss_params)
+    loss = runEpoch(mean, std, br, dataset, model.train(),
+                    device, output_path, loss_method, pose_rep, t,
+                    visualize, loss_params)
+    return loss
 
 
 def runEpoch(mean, std, br, dataset, model,
