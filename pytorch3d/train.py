@@ -197,7 +197,7 @@ def main():
 
         # Test on validation data
         val_loss = testEpoch(mean, std, br, validation_data, model, device, output_path,
-                             loss_method=args.get('Training', 'LOSS'),
+                             "vsd-predicted-view-log-fixed",
                              pose_rep=args.get('Training', 'POSE_REPRESENTATION'),
                              t=json.loads(args.get('Rendering', 'T')),
                              visualize=args.getboolean('Training', 'SAVE_IMAGES'),
@@ -314,6 +314,7 @@ def runEpoch(mean, std, br, dataset, model,
             print("Batch: {0}/{1} (size: {2}) - loss: {3}".format(i+1,round(dataset.max_samples/batch_size), len(Rs),torch.mean(batch_loss)))
         else:
             print("Test batch: {0}/{1} (size: {2}) - loss: {3}".format(i+1,len(dataset), len(Rs),torch.mean(batch_loss)))
+            #print("Test batch: {0}/{1} (size: {2}) - loss: {3}".format(i+1, round(dataset.max_samples/batch_size), len(Rs),torch.mean(batch_loss)))
         losses = losses + batch_loss.data.detach().cpu().numpy().tolist()
 
         if(visualize):

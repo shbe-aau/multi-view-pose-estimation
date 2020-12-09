@@ -173,6 +173,7 @@ class _Canvas(app.Canvas):
         self.clip_near = clip_near
         self.clip_far = clip_far
         self.random_light = random_light
+        self.dist = -1.0
 
         self.rgb = np.array([])
         self.depth = np.array([])
@@ -212,6 +213,9 @@ class _Canvas(app.Canvas):
         #app.quit() # Immediately exit the application after the first drawing
 
     def draw_color(self):
+        if(self.dist == -1.0):
+            return
+
         program = gloo.Program(_color_vertex_code, _color_fragment_code)
         program.bind(self.vertex_buffer)
 

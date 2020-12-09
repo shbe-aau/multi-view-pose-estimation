@@ -16,7 +16,7 @@ import copy
 from utils.utils import *
 from utils.tools import *
 
-from ModelMed import Model
+from Model import Model
 from Encoder import Encoder
 from utils.pytless import inout, misc
 from utils.pytless.renderer import Renderer
@@ -124,11 +124,10 @@ def main():
             #if(data["visib_fract"][i] < 0.5):
             #    continue
 
-            # Normalize image
-                # Normalize image
-            img_max = np.max(img)
-            img_min = np.min(img)
-            img = (img - img_min)/(img_max - img_min)
+            # # Normalize image
+            # img_max = np.max(img)
+            # img_min = np.min(img)
+            # img = (img - img_min)/(img_max - img_min)
 
             # Run through encoder
             img_torch = torch.from_numpy(img).unsqueeze(0).permute(0,3,1,2).to(device)

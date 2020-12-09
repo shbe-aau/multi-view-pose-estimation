@@ -58,10 +58,11 @@ class DatasetGenerator():
         self.obj_path = obj_path
         self.batch_size = batch_size
         self.dist = obj_distance
-        self.img_size = 320
+        self.img_size = 128
+        self.render_size = 320
         self.max_rel_offset = 0.2
-        self.K = np.array([1075.65, 0, self.img_size/2,
-                           0, 1073.90, self.img_size/2,
+        self.K = np.array([1075.65, 0, self.render_size/2,
+                           0, 1073.90, self.render_size/2,
                            0, 0, 1]).reshape(3,3)
         self.aug = self.setup_augmentation()
         self.model = inout.load_ply(obj_path.replace(".obj",".ply"))
@@ -72,7 +73,7 @@ class DatasetGenerator():
         else:
             self.encoder = None
 
-        self.renderer = Renderer(self.model, (self.img_size,self.img_size),
+        self.renderer = Renderer(self.model, (self.render_size,self.render_size),
                                  self.K, surf_color=(1, 1, 1), mode='rgb',
                                  random_light=random_light)
 
@@ -254,10 +255,10 @@ class DatasetGenerator():
 
     # Fixed pose - mainly for debugging purposes
     def fixed_sampling(self):
-        z = np.random.uniform(low=-self.dist, high=self.dist, size=1)[0]
+        z = np.random.uniform(low=-0.01, high=0.01, size=1)[0]
         z = -0.01
         theta_sample = np.random.uniform(low=0.0, high=2.0*np.pi, size=1)[0]
-        theta_sample = -0.07*np.pi
+        #theta_sample = -0.07*np.pi
         x = np.sqrt((self.dist**2 - z**2))*np.cos(theta_sample)
         y = np.sqrt((self.dist**2 - z**2))*np.sin(theta_sample)
 
@@ -268,32 +269,13 @@ class DatasetGenerator():
             R = look_at_rotation(cam_position, up=((0, 0, 1),)).squeeze()
 
         # Rotate in-plane
-        if(False): #not self.simple_pose_sampling):
+        if(True): #not self.simple_pose_sampling):
             rot_degrees = np.random.uniform(low=-90.0, high=90.0, size=1)
+            rot_degress = 30.0
             rot = scipyR.from_euler('z', rot_degrees, degrees=True)
             rot_mat = torch.tensor(rot.as_matrix(), dtype=torch.float32)
             R = torch.matmul(R, rot_mat)
             R = R.squeeze()
-
-        t = torch.tensor([0.0, 0.0, self.dist])
-        return R,t
-
-
-        # Generate random pose for the batch
-        # All images in the batch will share pose but different augmentations
-        R, t = look_at_view_transform(self.dist, elev=0, azim=0, up=((0, 1, 0),))
-
-        # Sample azimuth and apply transformation
-        azim = 35.0
-        rot = scipyR.from_euler('z', azim, degrees=True)
-        rot_mat = torch.tensor(rot.as_matrix(), dtype=torch.float32)
-        R = torch.matmul(R, rot_mat)
-
-        # Sample elevation and apply transformation
-        elev = 25.
-        rot = scipyR.from_euler('x', elev, degrees=True)
-        rot_mat = torch.tensor(rot.as_matrix(), dtype=torch.float32)
-        R = torch.matmul(R, rot_mat)
 
         t = torch.tensor([0.0, 0.0, self.dist])
         return R,t
@@ -529,42 +511,41 @@ class DatasetGenerator():
 
         images = []
         for k in np.arange(self.batch_size):
-            image_base = image_renders[k].copy()
 
-            if(len(self.backgrounds) > 0):
-                img_back = self.backgrounds[bg_im_isd[k]]
-                img_back = cv.cvtColor(img_back, cv.COLOR_BGR2RGBA).astype(float)
-                alpha = image_base[:, :, 0:3].astype(float)
-                sum_img = np.sum(image_base[:,:,:3], axis=2)
-                alpha[sum_img > 0] = 1
-
-                image_base[:, :, 0:3] = image_base[:, :, 0:3] * alpha + img_back[:, :, 0:3] * (1 - alpha)
-            else:
-                image_base = image_base[:, :, 0:3]
-
+            # Calc bounding box and crop image
             org_img = image_renders[k]
             ys, xs = np.nonzero(org_img[:,:,0] > 0)
-            obj_bb = calc_2d_bbox(xs,ys,[self.img_size,self.img_size])
+            obj_bb = calc_2d_bbox(xs,ys,[self.render_size,self.render_size])
 
             # Add relative offset when cropping - like Sundermeyer
             x, y, w, h = obj_bb
 
-            #rand_trans_w = np.random.uniform(-self.max_rel_offset, 0) * w
-            #rand_trans_h = np.random.uniform(-self.max_rel_offset, 0) * h
-
             rand_trans_x = np.random.uniform(-self.max_rel_offset, self.max_rel_offset) * w
             rand_trans_y = np.random.uniform(-self.max_rel_offset, self.max_rel_offset) * h
+            #rand_trans_w = np.random.uniform(-self.max_rel_offset, 0) * w
+            #rand_trans_h = np.random.uniform(-self.max_rel_offset, 0) * h
             obj_bb_off = obj_bb + np.array([rand_trans_x,rand_trans_y,0,0])
 
-            cropped = extract_square_patch(image_base, obj_bb_off)
-            cropped_org = extract_square_patch(org_img, obj_bb)
+            cropped = extract_square_patch(org_img, obj_bb_off)
+
+            # Apply background
+            if(len(self.backgrounds) > 0):
+                img_back = self.backgrounds[bg_im_isd[k]]
+                img_back = cv.cvtColor(img_back, cv.COLOR_BGR2RGBA).astype(float)
+                alpha = cropped[:, :, 0:3].astype(float)
+                sum_img = np.sum(cropped[:,:,:3], axis=2)
+                alpha[sum_img > 0] = 1
+
+                cropped[:, :, 0:3] = cropped[:, :, 0:3] * alpha + img_back[:, :, 0:3] * (1 - alpha)
+            else:
+                cropped = cropped[:, :, 0:3]
 
             # Augment data
             image_aug = np.array([cropped])
             image_aug = self.aug(images=image_aug)
 
             ## Convert to float and discard alpha channel
-            image_aug = image_aug[0].astype(np.float)
+            image_aug = image_aug[0].astype(np.float)/255.0
             images.append(image_aug[:,:,:3])
 
         data = {"images":images,

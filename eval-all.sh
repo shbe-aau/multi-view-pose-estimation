@@ -1,3 +1,9 @@
+bash run-eval.sh 09 "new-branch-140epochs" "pytorch3d/output/depth/obj09-test/models/model-epoch140.pt" "train"
+wait
+
+bash run-eval.sh 19 "new-branch-140epochs" "pytorch3d/output/depth/obj19-test/models/model-epoch140.pt" "train"
+wait
+
 #bash run-eval.sh 09 "med-model-log-wolfram-70epochs" "pytorch3d/output/depth/vsd-predicted-view-degrees/med-model-log-fixed-wolfram/obj09/models/model-epoch70.pt" "train"
 
 # #Eval object 1-20 on test split
@@ -23,16 +29,16 @@
 #wait
 
 
-#Eval object 1-20 on train split
-for OBJ_ID in 06 11 #01 02 03 04 05 06 07 08 09 10 11 12 13 14 15 16 17 18 19 20 #02 04 05 06 07 08 09 10 11 12 14 15 17 18 19 20
-do
-    bash run-eval.sh ${OBJ_ID} "test-meshes-uni-50epochs" "pytorch3d/output/depth/test-meshes/obj${OBJ_ID}-uni/models/model-epoch50.pt" "train"
-    wait
-    bash run-eval.sh ${OBJ_ID} "test-meshes-org-50epochs" "pytorch3d/output/depth/test-meshes/obj${OBJ_ID}-org/models/model-epoch50.pt" "train"
-    wait
-    # bash run-eval.sh ${OBJ_ID} "sundermeyer" "" "train"
-    #wait
-done
+# #Eval object 1-20 on train split
+# for OBJ_ID in 06 11 #01 02 03 04 05 06 07 08 09 10 11 12 13 14 15 16 17 18 19 20 #02 04 05 06 07 08 09 10 11 12 14 15 17 18 19 20
+# do
+#     bash run-eval.sh ${OBJ_ID} "test-meshes-uni-50epochs" "pytorch3d/output/depth/test-meshes/obj${OBJ_ID}-uni/models/model-epoch50.pt" "train"
+#     wait
+#     bash run-eval.sh ${OBJ_ID} "test-meshes-org-50epochs" "pytorch3d/output/depth/test-meshes/obj${OBJ_ID}-org/models/model-epoch50.pt" "train"
+#     wait
+#     # bash run-eval.sh ${OBJ_ID} "sundermeyer" "" "train"
+#     #wait
+# done
 
 # #Eval object 1-20 on test split
 # for OBJ_ID in 11 #09 10 #02 04 05 06 07 08 09 10 11 12 14 15 17 18 19 20

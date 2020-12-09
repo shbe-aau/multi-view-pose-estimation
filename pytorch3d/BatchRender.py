@@ -56,7 +56,7 @@ class BatchRender:
         # xy_flip[1,1] = -1.0
         # xy_flip = torch.tensor(xy_flip, device=self.device, dtype=torch.float32)
         # batch_R = batch_R.permute(0,2,1)
-        # batch_R = torch.matmul(batch_R, xy_flip)        
+        # batch_R = torch.matmul(batch_R, xy_flip)
 
         # Re-adjust to match current batch size
         curr_batch_size = batch_R.shape[0]
@@ -97,7 +97,7 @@ class BatchRender:
         verts_normed = verts - center
         scale = max(verts_normed.abs().max(0)[0])
         verts_normed = (verts_normed / scale)
-        
+
         # Sample points
         trg_mesh = Meshes(verts=[verts_normed.to(self.device)], faces=[faces.to(self.device)])
         self.points = sample_points_from_meshes(trg_mesh, 10000)
@@ -105,7 +105,7 @@ class BatchRender:
         # Initialize each vertex to be white in color.
         #verts_rgb = torch.ones_like(verts[0][None,:,:])
         verts = verts_normed*100.0
-        
+
         verts_rgb = torch.ones_like(verts)  # (V, 3)
 
         batch_verts_rgb = list_to_padded([verts_rgb for k in self.batch_indeces])  # B, Vmax, 3

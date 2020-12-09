@@ -802,6 +802,7 @@ def Loss(predicted_poses, gt_poses, renderer, ts, mean, std, loss_method="diff",
         confs = predicted_poses[:,:num_views]
         prev_poses = []
         pose_losses = []
+
         for i,v in enumerate(views):
             # Extract current pose and move to next one
             curr_pose = predicted_poses[:,pose_start:pose_end]
