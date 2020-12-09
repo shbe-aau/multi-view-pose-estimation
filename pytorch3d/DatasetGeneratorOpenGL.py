@@ -50,7 +50,7 @@ class DatasetGenerator():
 
     def __init__(self, background_path, obj_path, obj_distance, batch_size,
                  encoder_weights, device, sampling_method="sphere", random_light=True,
-                 num_bgs=10000):
+                 num_bgs=5000):
         self.curr_samples = 0
         self.max_samples = 1000
         self.device = device
@@ -575,7 +575,6 @@ class DatasetGenerator():
         data = {"images":[],
                 "Rs":[]}
         while(len(data["images"]) < num_samples):
-            #print("Generating images: {0}/{1}".format(len(data["images"]), num_samples))
             curr_data = self.generate_image_batch()
             data["images"] = data["images"] + curr_data["images"]
             data["Rs"] = data["Rs"] + curr_data["Rs"]

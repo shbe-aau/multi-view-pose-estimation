@@ -233,16 +233,17 @@ def main():
 def testEpoch(mean, std, br, dataset, model,
                device, output_path, loss_method, pose_rep, t,
                visualize=False, loss_params=0.5):
-    with torch.no_grad():
-        loss = runEpoch(mean, std, br, dataset, model.eval(),
-                        device, output_path, loss_method, pose_rep, t,
-                        visualize, loss_params)
+    torch.set_grad_enabled(False)
+    loss = runEpoch(mean, std, br, dataset, model.eval(),
+                    device, output_path, loss_method, pose_rep, t,
+                    visualize, loss_params)
     return loss
 
 
 def trainEpoch(mean, std, br, dataset, model,
                device, output_path, loss_method, pose_rep, t,
                visualize=False, loss_params=0.5):
+    torch.set_grad_enabled(True)
     loss = runEpoch(mean, std, br, dataset, model.train(),
                     device, output_path, loss_method, pose_rep, t,
                     visualize, loss_params)
@@ -284,6 +285,8 @@ def runEpoch(mean, std, br, dataset, model,
                                                              mean, std, loss_method=loss_method, pose_rep=pose_rep, views=views, loss_params=loss_params)
 
         Rs = torch.tensor(np.stack(Rs), device=device, dtype=torch.float32)
+
+        print("Grad: ", loss.requires_grad)
 
         if(model.training):
             loss.backward()
