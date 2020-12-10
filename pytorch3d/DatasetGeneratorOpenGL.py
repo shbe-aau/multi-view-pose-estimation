@@ -16,7 +16,6 @@ import pickle
 import random
 from utils.utils import *
 from utils.tools import *
-from Encoder import Encoder
 
 import imgaug as ia
 import imgaug.augmenters as iaa
@@ -49,7 +48,7 @@ from utils.pytless.renderer import Renderer
 class DatasetGenerator():
 
     def __init__(self, background_path, obj_path, obj_distance, batch_size,
-                 encoder_weights, device, sampling_method="sphere", random_light=True,
+                 _, device, sampling_method="sphere", random_light=True,
                  num_bgs=5000):
         self.curr_samples = 0
         self.max_samples = 1000
@@ -68,10 +67,6 @@ class DatasetGenerator():
         self.model = inout.load_ply(obj_path.replace(".obj",".ply"))
         self.backgrounds = self.load_bg_images("backgrounds", background_path, num_bgs,
                                                self.img_size, self.img_size)
-        if(encoder_weights is not None):
-            self.encoder = self.load_encoder(encoder_weights)
-        else:
-            self.encoder = None
 
         self.renderer = Renderer(self.model, (self.render_size,self.render_size),
                                  self.K, surf_color=(1, 1, 1), mode='rgb',
@@ -143,11 +138,6 @@ class DatasetGenerator():
         R = self.poses[-1]
         t = torch.tensor([0.0, 0.0, self.dist])
         return R,t
-
-    def load_encoder(self, weights_path):
-        model = Encoder(weights_path).to(self.device)
-        model.eval()
-        return model
 
     def load_bg_images(self, output_path, background_path, num_bg_images, h, w, c=3):
         if(background_path == ""):
@@ -576,20 +566,6 @@ class DatasetGenerator():
 
     def generate_samples(self, num_samples):
         data = self.generate_images(num_samples)
-
-        if(self.encoder is not None):
-            codes = []
-            for img in data["images"]:
-                img_max = np.max(img)
-                img_min = np.min(img)
-                img = (img - img_min)/(img_max - img_min)
-
-                img = torch.from_numpy(img).unsqueeze(0).permute(0,3,1,2).to(self.device)
-                code = self.encoder(img.float())
-                code = code.detach().cpu().numpy()[0]
-                norm_code = code / np.linalg.norm(code)
-                codes.append(norm_code)
-            data["codes"] = codes
         return data
 
 def str2bool(v):

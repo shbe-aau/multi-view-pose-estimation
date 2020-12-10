@@ -15,12 +15,15 @@ import gc
 from utils.utils import *
 
 from Model import Model
+from Encoder import Encoder
+from Pipeline import Pipeline
 from BatchRender import BatchRender
 from losses import Loss
 from DatasetGeneratorOpenGL import DatasetGenerator
 
 optimizer = None
 lr_reducer = None
+pipeline = None
 views = []
 epoch = 0
 
@@ -77,7 +80,7 @@ def loadDataset(file_list, batch_size=2):
     return data
 
 def main():
-    global optimizer, lr_reducer, views, epoch
+    global optimizer, lr_reducer, views, epoch, pipeline
     # Read configuration file
     parser = argparse.ArgumentParser()
     parser.add_argument("experiment_name")
@@ -167,13 +170,18 @@ def main():
                     timer = 0
 
 
+    # Prepare pipeline
+    encoder = Encoder(args.get('Dataset', 'ENCODER_WEIGHTS')).to(device)
+    encoder.eval()
+    pipeline = Pipeline(encoder, model, device)
+
     # Prepare datasets
     bg_path = "../../autoencoder_ws/data/VOC2012/JPEGImages/"
     training_data = DatasetGenerator(args.get('Dataset', 'BACKGROUND_IMAGES'),
                                      args.get('Dataset', 'CAD_PATH'),
                                      json.loads(args.get('Rendering', 'T'))[-1],
                                      args.getint('Training', 'BATCH_SIZE'),
-                                     args.get('Dataset', 'ENCODER_WEIGHTS'),
+                                     "not_used",
                                      device,
                                      args.get('Training', 'VIEW_SAMPLING'))
     training_data.max_samples = args.getint('Training', 'NUM_SAMPLES')
@@ -267,13 +275,11 @@ def runEpoch(mean, std, br, dataset, model,
         if(model.training):
             optimizer.zero_grad()
 
-        # Fetch images and AE codes
+        # Fetch images
         input_images = curr_batch["images"]
-        codes = curr_batch["codes"]
-        batch_codes = torch.tensor(np.stack(codes), device=device, dtype=torch.float32) # Bx128
 
         # Predict poses
-        predicted_poses = model(batch_codes)
+        predicted_poses = pipeline.process(input_images)
 
         # Prepare ground truth poses for the loss function
         T = np.array(t, dtype=np.float32)
@@ -305,7 +311,6 @@ def runEpoch(mean, std, br, dataset, model,
             dataset.hard_samples = hard_list
 
         #detach all from gpu
-        batch_codes.detach().cpu().numpy()
         loss.detach().cpu().numpy()
         gt_images.detach().cpu().numpy()
         predicted_images.detach().cpu().numpy()
