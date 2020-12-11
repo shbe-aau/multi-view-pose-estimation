@@ -241,8 +241,8 @@ def main():
 def testEpoch(mean, std, br, dataset, model,
                device, output_path, loss_method, pose_rep, t,
                visualize=False, loss_params=0.5):
-    torch.set_grad_enabled(False)
-    loss = runEpoch(mean, std, br, dataset, model.eval(),
+    model = model.eval() # Set model to eval mode
+    loss = runEpoch(mean, std, br, dataset, model,
                     device, output_path, loss_method, pose_rep, t,
                     visualize, loss_params)
     return loss
@@ -251,8 +251,8 @@ def testEpoch(mean, std, br, dataset, model,
 def trainEpoch(mean, std, br, dataset, model,
                device, output_path, loss_method, pose_rep, t,
                visualize=False, loss_params=0.5):
-    torch.set_grad_enabled(True)
-    loss = runEpoch(mean, std, br, dataset, model.train(),
+    model = model.train() # Set model to train mode
+    loss = runEpoch(mean, std, br, dataset, model,
                     device, output_path, loss_method, pose_rep, t,
                     visualize, loss_params)
     return loss
@@ -265,12 +265,16 @@ def runEpoch(mean, std, br, dataset, model,
     dbg("Before train memory: {}".format(torch.cuda.memory_summary(device=device, abbreviated=False)), dbg_memory)
 
     if(model.training):
+        print("Current mode: train!")
         print("Epoch: {0} - current learning rate: {1}".format(epoch, lr_reducer.get_last_lr()))
+        dataset.hard_samples = [] # Reset hard samples
+        torch.set_grad_enabled(True)
+    else:
+        print("Current mode: eval!")
+        torch.set_grad_enabled(False)
 
     losses = []
     batch_size = br.batch_size
-    if(model.training):
-        dataset.hard_samples = [] # Reset hard samples
     for i,curr_batch in enumerate(dataset):
         if(model.training):
             optimizer.zero_grad()
