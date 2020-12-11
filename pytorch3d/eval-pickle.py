@@ -16,6 +16,7 @@ import copy
 from utils.utils import *
 from utils.tools import *
 
+from Pipeline import Pipeline
 from Model import Model
 from Encoder import Encoder
 from utils.pytless import inout, misc
@@ -92,6 +93,9 @@ def main():
         encoder = Encoder(args.ep).to(device)
         encoder.eval()
 
+        # Setup the pipeline
+        pipeline = Pipeline(encoder, model, device)
+
     # Prepare renderer if defined
     obj_path = args.op
     if(obj_path is not None):
@@ -121,40 +125,9 @@ def main():
         if("Rs_predicted" in data):
             R_predicted = data["Rs_predicted"][i]
         else:
-            #if(data["visib_fract"][i] < 0.5):
-            #    continue
-
-            # # Normalize image
-            # img_max = np.max(img)
-            # img_min = np.min(img)
-            # img = (img - img_min)/(img_max - img_min)
-
-            # Run through encoder
-            img_torch = torch.from_numpy(img).unsqueeze(0).permute(0,3,1,2).to(device)
-            code = encoder(img_torch.float())
-
-            # Normalize code
-            code = code.detach().cpu().numpy()[0]
-            norm_code = code / np.linalg.norm(code)
-            norm_code = torch.tensor(norm_code).unsqueeze(0)
 
             # Run through model
-            predicted_poses = model(norm_code.cuda())
-
-
-            #poses = predicted_poses[:,2:8]
-            #Rs_predicted = compute_rotation_matrix_from_ortho6d(poses)
-
-            #R_predicted = Rs_predicted.detach().cpu().numpy()[0]
-
-            # # Rotate 180 degrees around x?
-            # if(predicted_poses[0][1] > predicted_poses[0][0]):
-            #     R_predicted = R_predicted.transpose()
-            #     rot_mat = np.array([1.0, 0.0, 0.0,
-            #                         0.0, -1.0, -0.0,
-            #                         0.0, 0.0, -1.0]).reshape(3,3)
-            #     R_predicted = np.dot(R_predicted, rot_mat)
-            #     R_predicted = R_predicted.transpose()
+            predicted_poses = pipeline.process([img])
 
             # Find best pose
             num_views = int(predicted_poses.shape[1]/(6+1))
