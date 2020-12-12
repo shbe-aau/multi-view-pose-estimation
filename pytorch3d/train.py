@@ -68,14 +68,26 @@ def loadDataset(file_list, batch_size=2):
         print("Loading dataset: {0}".format(f))
         with open(f, "rb") as f:
             curr_data = pickle.load(f, encoding="latin1")
-            curr_batch = {"codes":[],"Rs":[],"images":[]}
-            for i in range(len(curr_data["codes"])):
-                curr_batch["codes"].append(curr_data["codes"][i])
-                curr_batch["Rs"].append(curr_data["Rs"][i])
-                curr_batch["images"].append(curr_data["images"][i])
-                if(len(curr_batch["codes"]) >= batch_size):
+            curr_batch = {"Rs":[],"images":[]}
+            for i in range(len(curr_data["Rs"])):
+                curr_pose = curr_data["Rs"][i]
+
+                # Convert from T-LESS to Pytorch3D format
+                xy_flip = np.eye(3, dtype=np.float)
+                xy_flip[0,0] = -1.0
+                xy_flip[1,1] = -1.0
+                curr_pose = np.transpose(curr_pose)
+                curr_pose = np.dot(curr_pose, xy_flip)
+                curr_batch["Rs"].append(curr_pose)
+
+                # Normalize image
+                curr_image = curr_data["images"][i]                
+                curr_image = curr_image/np.max(curr_image)
+                curr_batch["images"].append(curr_image)
+                
+                if(len(curr_batch["Rs"]) >= batch_size):
                     data.append(curr_batch)
-                    curr_batch = {"codes":[],"Rs":[],"images":[]}
+                    curr_batch = {"Rs":[],"images":[]}
             data.append(curr_batch)
     return data
 
