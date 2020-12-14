@@ -19,14 +19,14 @@ if test -f "$BOP_PICKLE_PATH"; then
     echo " - BOP dataset in pickle format already exists, skipping..."
 else
     if test "$DATA_SPLIT" = "test"; then
-	${MERGED_DOCKER} python -m pytorch3d/utils/bop2pickle.py --datasets_path /shared-folder/bop/bop-tless-dataset/ --obj_ids ${OBJ_ID} --dataset_split ${DATA_SPLIT} #> log.out
+	${MERGED_DOCKER} python pytorch3d/utils/bop2pickle.py --datasets_path /shared-folder/bop/bop-tless-dataset/ --obj_ids ${OBJ_ID} --dataset_split ${DATA_SPLIT} #> log.out
     else
 	${MERGED_DOCKER} python pytorch3d/utils/bop2pickle.py --datasets_path /shared-folder/bop/bop-tless-dataset/ --obj_ids ${OBJ_ID} --dataset_split ${DATA_SPLIT} > log.out
     fi
     wait
     echo "Move pickle to BOP dataset folder"
     mkdir -p ${SHARED_FOLDER}/bop/bop-tless-dataset/tless/pickles/${DATA_SPLIT}/obj${OBJ_ID}
-    mv tless-${DATA_SPLIT}-obj${OBJ_ID}.p ${BOP_PICKLE_PATH}
+    mv ${SHARED_FOLDER}/AugmentedAutoencoder/tless-${DATA_SPLIT}-obj${OBJ_ID}.p ${BOP_PICKLE_PATH}
     wait
 fi
 
