@@ -1,16 +1,11 @@
 
 #Eval object 1-20
-for OBJ_ID in 01 02 03 04 05 06 07 08 09 10 11 12 13 14 15 16 17 18 19 20 21 22 23 24 25 26 27 28 29 30
+for OBJ_ID in 02 #01 02 03 04 05 06 07 08 09 10 11 12 #13 14 15 16 17 18 19 20 21 22 23 24 25 26 27 28 29 30
 do
-    bash run-eval.sh ${OBJ_ID} "new-branch-best-config-50epochs" "pytorch3d/output/depth/best-config/obj${OBJ_ID}/models/model-epoch5000.pt" "train"
+    bash run-eval.sh ${OBJ_ID} "all-objs-99epochs" "pytorch3d/output/depth/all-objs/obj${OBJ_ID}/models/model-epoch99.pt" "train"
     wait
-    # bash run-eval.sh ${OBJ_ID} "new-branch-best-config-50epochs" "pytorch3d/output/depth/best-config/obj${OBJ_ID}/models/model-epoch50.pt" "test"
-    # wait
-
-    # bash run-eval.sh ${OBJ_ID} "new-branch-reconst-50epochs" "pytorch3d/output/depth/reconst/obj${OBJ_ID}/models/model-epoch50.pt" "train"
-    # wait
-    # bash run-eval.sh ${OBJ_ID} "new-branch-reconst-50epochs" "pytorch3d/output/depth/reconst/obj${OBJ_ID}/models/model-epoch50.pt" "test"
-    # wait
+    bash run-eval.sh ${OBJ_ID} "all-objs-99epochs" "pytorch3d/output/depth/all-objs/obj${OBJ_ID}/models/model-epoch99.pt" "test"
+    wait
 done
 
 # #Eval object 1-20 on test split
