@@ -19,9 +19,9 @@ if test -f "$BOP_PICKLE_PATH"; then
     echo " - BOP dataset in pickle format already exists, skipping..."
 else
     if test "$DATA_SPLIT" = "test"; then
-	${MERGED_DOCKER} python bop_toolkit/scripts/bop2pickle.py --datasets_path /shared-folder/bop/bop-tless-dataset/ --obj_ids ${OBJ_ID} --dataset_split ${DATA_SPLIT} #> log.out
+	${MERGED_DOCKER} python pytorch3d/utils/bop2pickle.py --datasets_path /shared-folder/bop/bop-tless-dataset/ --obj_ids ${OBJ_ID} --dataset_split ${DATA_SPLIT} #> log.out
     else
-	${MERGED_DOCKER} python bop_toolkit/scripts/bop2pickle.py --datasets_path /shared-folder/bop/bop-tless-dataset/ --obj_ids ${OBJ_ID} --dataset_split ${DATA_SPLIT} > log.out
+	${MERGED_DOCKER} python pytorch3d/utils/bop2pickle.py --datasets_path /shared-folder/bop/bop-tless-dataset/ --obj_ids ${OBJ_ID} --dataset_split ${DATA_SPLIT} > log.out
     fi
     wait
     echo "Move pickle to BOP dataset folder"
@@ -45,7 +45,7 @@ if test "$APPROACH_NAME" = "sundermeyer"; then
 	if test -f "$SM_CSV_PATH"; then
 	    echo " - CSV with results from Sundermeyers approach already exists, skipping..."
 	else
-	    ${MERGED_DOCKER} python pytorch3d/eval-pickle.py -pi /shared-folder/bop/bop-tless-dataset/tless/pickles/${DATA_SPLIT}/obj${OBJ_ID}/${APPROACH_NAME}-result-${DATA_SPLIT}-obj${OBJ_ID}.p -o /shared-folder/bop/bop-tless-dataset/tless/pickles/${DATA_SPLIT}/obj${OBJ_ID}/sundermeyer-obj${OBJ_ID}_tless-${DATA_SPLIT}-primesense.csv > log.out #-op pytorch3d/data/t-less-obj${OBJ_ID}/cad/obj_${OBJ_ID}.ply
+	    ${MERGED_DOCKER} python pytorch3d/utils/eval-pickle.py -pi /shared-folder/bop/bop-tless-dataset/tless/pickles/${DATA_SPLIT}/obj${OBJ_ID}/${APPROACH_NAME}-result-${DATA_SPLIT}-obj${OBJ_ID}.p -o /shared-folder/bop/bop-tless-dataset/tless/pickles/${DATA_SPLIT}/obj${OBJ_ID}/sundermeyer-obj${OBJ_ID}_tless-${DATA_SPLIT}-primesense.csv > log.out #-op pytorch3d/data/t-less-obj${OBJ_ID}/cad/obj_${OBJ_ID}.ply
 	    wait
 	fi
     fi
@@ -55,7 +55,7 @@ else
 	echo " - CSV with results already exists, skipping..."
     else
 	ENCODER_WEIGHTS="pytorch3d/data/t-less-obj${OBJ_ID}/obj${OBJ_ID}-encoder.npy"
-	${MERGED_DOCKER} python pytorch3d/eval-pickle.py -pi /shared-folder/bop/bop-tless-dataset/tless/pickles/${DATA_SPLIT}/obj${OBJ_ID}/tless-${DATA_SPLIT}-obj${OBJ_ID}.p -o /shared-folder/bop/bop-tless-dataset/tless/pickles/${DATA_SPLIT}/obj${OBJ_ID}/${APPROACH_NAME}-obj${OBJ_ID}_tless-${DATA_SPLIT}-primesense.csv -ep ${ENCODER_WEIGHTS} -mp ${TRAINED_MODEL} > log.out #-op pytorch3d/data/t-less-obj${OBJ_ID}/cad/obj_${OBJ_ID}.ply
+	${MERGED_DOCKER} python pytorch3d/utils/eval-pickle.py -pi /shared-folder/bop/bop-tless-dataset/tless/pickles/${DATA_SPLIT}/obj${OBJ_ID}/tless-${DATA_SPLIT}-obj${OBJ_ID}.p -o /shared-folder/bop/bop-tless-dataset/tless/pickles/${DATA_SPLIT}/obj${OBJ_ID}/${APPROACH_NAME}-obj${OBJ_ID}_tless-${DATA_SPLIT}-primesense.csv -ep ${ENCODER_WEIGHTS} -mp ${TRAINED_MODEL} > log.out #-op pytorch3d/data/t-less-obj${OBJ_ID}/cad/obj_${OBJ_ID}.ply
 	wait
     fi
 
