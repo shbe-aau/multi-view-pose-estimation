@@ -64,7 +64,7 @@ class DatasetGenerator():
                            0, 1073.90, self.render_size/2,
                            0, 0, 1]).reshape(3,3)
         self.aug = self.setup_augmentation()
-        self.model = inout.load_ply(obj_path.replace(".obj",".ply"))
+        self.model = inout.load_ply(obj_path[0].replace(".obj",".ply"))
         self.backgrounds = self.load_bg_images("backgrounds", background_path, num_bgs,
                                                self.img_size, self.img_size)
 

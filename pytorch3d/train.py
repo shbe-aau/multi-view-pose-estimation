@@ -81,10 +81,10 @@ def loadDataset(file_list, batch_size=2):
                 curr_batch["Rs"].append(curr_pose)
 
                 # Normalize image
-                curr_image = curr_data["images"][i]                
+                curr_image = curr_data["images"][i]
                 curr_image = curr_image/np.max(curr_image)
                 curr_batch["images"].append(curr_image)
-                
+
                 if(len(curr_batch["Rs"]) >= batch_size):
                     data.append(curr_batch)
                     curr_batch = {"Rs":[],"images":[]}
@@ -111,7 +111,8 @@ def main():
     torch.cuda.set_device(device)
 
     # Set up batch renderer
-    br = BatchRender(args.get('Dataset', 'CAD_PATH'),
+
+    br = BatchRender(json.loads(args.get('Dataset', 'CAD_PATH')),
                      device,
                      batch_size=args.getint('Training', 'BATCH_SIZE'),
                      faces_per_pixel=args.getint('Rendering', 'FACES_PER_PIXEL'),
@@ -190,7 +191,7 @@ def main():
     # Prepare datasets
     bg_path = "../../autoencoder_ws/data/VOC2012/JPEGImages/"
     training_data = DatasetGenerator(args.get('Dataset', 'BACKGROUND_IMAGES'),
-                                     args.get('Dataset', 'CAD_PATH'),
+                                     json.loads(args.get('Dataset', 'CAD_PATH')),
                                      json.loads(args.get('Rendering', 'T'))[-1],
                                      args.getint('Training', 'BATCH_SIZE'),
                                      "not_used",
@@ -216,12 +217,13 @@ def main():
         append2file([loss], os.path.join(output_path, "train-loss.csv"))
 
         # Test on validation data
-        val_loss = testEpoch(mean, std, br, validation_data, model, device, output_path,
-                             "vsd-predicted-view-log-fixed",
-                             pose_rep=args.get('Training', 'POSE_REPRESENTATION'),
-                             t=json.loads(args.get('Rendering', 'T')),
-                             visualize=args.getboolean('Training', 'SAVE_IMAGES'),
-                             loss_params=args.getfloat('Training', 'LOSS_PARAMS'))
+        # val_loss = testEpoch(mean, std, br, validation_data, model, device, output_path,
+        #                      "vsd-predicted-view-log-fixed",
+        #                      pose_rep=args.get('Training', 'POSE_REPRESENTATION'),
+        #                      t=json.loads(args.get('Rendering', 'T')),
+        #                      visualize=args.getboolean('Training', 'SAVE_IMAGES'),
+        #                      loss_params=args.getfloat('Training', 'LOSS_PARAMS'))
+        val_loss = loss
         append2file([val_loss], os.path.join(output_path, "validation-loss.csv"))
 
         # Plot losses
