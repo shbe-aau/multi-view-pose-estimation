@@ -35,7 +35,7 @@ class BatchRender:
         self.points = None
 
         # Setup batch of meshes
-        self.batch_verts, self.batch_faces, self.batch_textures = self.initMeshes()
+        self.vertices, self.faces, self.textures = self.initMeshes()
 
         # Initialize the renderer
         self.renderer = self.initRender(image_size=image_size, method=self.method)
@@ -50,14 +50,16 @@ class BatchRender:
         else:
             batch_T = ts
 
-        print(ids)
-        print(self.batch_verts.shape)
+        batch_verts_rgb = list_to_padded([self.textures[i] for i in ids])
+        batch_textures = Textures(verts_rgb=batch_verts_rgb.to(self.device))
+        batch_verts=[self.vertices[i].to(self.device) for i in ids]
+        batch_faces=[self.faces[i].to(self.device) for i in ids]
 
         # Load meshes based on object ids
         mesh = Meshes(
-            verts=self.batch_verts[ids,:],
-            faces=self.batch_faces[ids,:],
-            textures=self.batch_textures[ids,:]
+            verts=batch_verts,
+            faces=batch_faces,
+            textures=batch_textures
         )
 
         images = self.renderer(meshes_world=mesh, R=batch_R, T=batch_T)
@@ -99,12 +101,7 @@ class BatchRender:
             vertices.append(verts)
             textures.append(verts_rgb)
             faces.append(facs)
-
-        batch_verts_rgb = list_to_padded([t for t in textures])
-        batch_textures = Textures(verts_rgb=batch_verts_rgb.to(self.device))
-        batch_verts=[v.to(self.device) for v in vertices]
-        batch_faces=[f.to(self.device) for f in faces]
-        return batch_verts, batch_faces, batch_textures
+        return vertices, faces, textures
 
 
     def initRender(self, method, image_size):

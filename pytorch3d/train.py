@@ -303,10 +303,11 @@ def runEpoch(mean, std, br, dataset, model,
         T = np.array(t, dtype=np.float32)
         Rs = curr_batch["Rs"]
         ts = [T.copy() for t in Rs]
+        ids = curr_batch["ids"]
 
         # Calculate the loss
         loss, batch_loss, gt_images, predicted_images = Loss(predicted_poses, Rs, br, ts,
-                                                             mean, std, loss_method=loss_method, pose_rep=pose_rep, views=views, loss_params=loss_params)
+                                                             mean, std, ids, loss_method=loss_method, pose_rep=pose_rep, views=views, loss_params=loss_params)
 
         Rs = torch.tensor(np.stack(Rs), device=device, dtype=torch.float32)
 

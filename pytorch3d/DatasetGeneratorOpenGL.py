@@ -47,14 +47,13 @@ from utils.pytless.renderer import Renderer
 
 class DatasetGenerator():
 
-    def __init__(self, background_path, obj_path, obj_distance, batch_size,
+    def __init__(self, background_path, obj_paths, obj_distance, batch_size,
                  _, device, sampling_method="sphere", random_light=True,
                  num_bgs=5000):
         self.curr_samples = 0
         self.max_samples = 1000
         self.device = device
         self.poses = []
-        self.obj_path = obj_path
         self.batch_size = batch_size
         self.dist = obj_distance
         self.img_size = 128
@@ -64,13 +63,16 @@ class DatasetGenerator():
                            0, 1073.90, self.render_size/2,
                            0, 0, 1]).reshape(3,3)
         self.aug = self.setup_augmentation()
-        self.model = inout.load_ply(obj_path[0].replace(".obj",".ply"))
         self.backgrounds = self.load_bg_images("backgrounds", background_path, num_bgs,
                                                self.img_size, self.img_size)
 
-        self.renderer = Renderer(self.model, (self.render_size,self.render_size),
-                                 self.K, surf_color=(1, 1, 1), mode='rgb',
-                                 random_light=random_light)
+        self.renderers = []
+        for o in obj_paths:
+            curr_model = inout.load_ply(o.replace(".obj",".ply"))
+            curr_rend= Renderer(curr_model, (self.render_size,self.render_size),
+                                self.K, surf_color=(1, 1, 1), mode='rgb',
+                                random_light=random_light)
+            self.renderers.append(curr_rend)
 
         self.pose_reuse = False
         if(sampling_method.split("-")[-1] == "reuse"):
@@ -460,6 +462,7 @@ class DatasetGenerator():
         # Generate random poses
         curr_Rs = []
         curr_ts = []
+        curr_ids = []
 
         image_renders = []
 
@@ -468,6 +471,7 @@ class DatasetGenerator():
 
         for k in np.arange(self.batch_size):
             R, t = self.pose_sampling()
+            obj_id = np.random.randint(0, len(self.renderers)-1, size=1)[0]
 
             if(self.hard_mining == True):
                 if(len(self.hard_samples) > 0):
@@ -489,10 +493,11 @@ class DatasetGenerator():
             R_opengl = np.transpose(R_opengl)
 
             # Render images
-            ren_rgb = self.renderer.render(R_opengl, t)
+            ren_rgb = self.renderers[obj_id].render(R_opengl, t)
 
             curr_Rs.append(R)
             curr_ts.append(t)
+            curr_ids.append(obj_id)
 
             image_renders.append(ren_rgb)
 
@@ -538,19 +543,23 @@ class DatasetGenerator():
             image_aug = image_aug[0].astype(np.float)/255.0
             images.append(image_aug[:,:,:3])
 
-        data = {"images":images,
+        data = {"ids":curr_ids,
+                "images":images,
                 "Rs":curr_Rs}
         return data
 
     def generate_images(self, num_samples):
-        data = {"images":[],
+        data = {"ids":[],
+                "images":[],
                 "Rs":[]}
         while(len(data["images"]) < num_samples):
             curr_data = self.generate_image_batch()
             data["images"] = data["images"] + curr_data["images"]
             data["Rs"] = data["Rs"] + curr_data["Rs"]
+            data["ids"] = data["ids"] + curr_data["ids"]
         data["images"] = data["images"][:num_samples]
         data["Rs"] = data["Rs"][:num_samples]
+        data["ids"] = data["ids"][:num_samples]
         return data
 
     def __iter__(self):
