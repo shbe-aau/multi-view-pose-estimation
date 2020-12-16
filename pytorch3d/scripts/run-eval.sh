@@ -54,7 +54,7 @@ else
     if test -f "$OUR_CSV_PATH"; then
 	echo " - CSV with results already exists, skipping..."
     else
-	ENCODER_WEIGHTS="pytorch3d/data/t-less-obj${OBJ_ID}/obj${OBJ_ID}-encoder.npy"
+	ENCODER_WEIGHTS="pytorch3d/data/obj1-18/encoder.npy"
 	${MERGED_DOCKER} python pytorch3d/eval-pickle.py -pi /shared-folder/bop/bop-tless-dataset/tless/pickles/${DATA_SPLIT}/obj${OBJ_ID}/tless-${DATA_SPLIT}-obj${OBJ_ID}.p -o /shared-folder/bop/bop-tless-dataset/tless/pickles/${DATA_SPLIT}/obj${OBJ_ID}/${APPROACH_NAME}-obj${OBJ_ID}_tless-${DATA_SPLIT}-primesense.csv -ep ${ENCODER_WEIGHTS} -mp ${TRAINED_MODEL} > log.out #-op pytorch3d/data/t-less-obj${OBJ_ID}/cad/obj_${OBJ_ID}.ply
 	wait
     fi
