@@ -40,11 +40,11 @@ from pytorch3d.renderer import (
     HardPhongShader, PointLights, DirectionalLights
 )
 
-from vispy import app, gloo
+
 #from utils.pytless import inout, misc
+from vispy import app, gloo
 #from utils.pytless.renderer import Renderer
 from utils.sundermeyer.meshrenderer import Renderer
-
 
 class DatasetGenerator():
 
@@ -65,14 +65,15 @@ class DatasetGenerator():
                            0, 1073.90, self.render_size/2,
                            0, 0, 1]).reshape(3,3)
         self.aug = self.setup_augmentation()
-        self.model = inout.load_ply(obj_path.replace(".obj",".ply"))
+        #self.model = inout.load_ply(obj_path.replace(".obj",".ply"))
         self.backgrounds = self.load_bg_images("backgrounds", background_path, num_bgs,
                                                self.img_size, self.img_size)
 
-        #self.renderer = Renderer(self.model, (self.render_size,self.render_size),
-        #                         self.K, surf_color=(1, 1, 1), mode='rgb',
-        #                         random_light=random_light)
-        self.renderer = Renderer([obj_path], 8, ".", 1)
+        # self.renderer = Renderer(self.model, (self.render_size,self.render_size),
+        #                          self.K, surf_color=(1, 1, 1), mode='rgb',
+        #                          random_light=random_light)
+
+        self.renderer = Renderer([obj_path], samples=8)
 
         self.pose_reuse = False
         if(sampling_method.split("-")[-1] == "reuse"):
@@ -464,6 +465,7 @@ class DatasetGenerator():
         curr_ts = []
 
         image_renders = []
+        depth_renders = []
 
         if(self.hard_mining == True):
             print("num hard samples: ", len(self.hard_samples))
@@ -492,20 +494,24 @@ class DatasetGenerator():
 
             # Render images
             #ren_rgb = self.renderer.render(R_opengl, t)
-            ren_rgb, _ = self.renderer.render(obj_id=0,
-                                              W=self.img_size,
-                                              H=self.img_size,
-                                              K=self.K.copy(),
-                                              R=R_opengl,
-                                              t=t,
-                                              near=10,
-                                              far=10000,
-                                              random_light=True)
+
+            ren_rgb, ren_depth = self.renderer.render(
+                obj_id=0,
+                W=self.render_size,
+                H=self.render_size,
+                K=self.K.copy(),
+                R=R_opengl,
+                t=t,
+                near=10,
+                far=10000,
+                random_light=True
+            )
 
             curr_Rs.append(R)
             curr_ts.append(t)
 
             image_renders.append(ren_rgb)
+            depth_renders.append(ren_depth)
 
         if(len(self.backgrounds) > 0):
             bg_im_isd = np.random.choice(len(self.backgrounds), self.batch_size, replace=False)
@@ -528,16 +534,17 @@ class DatasetGenerator():
             obj_bb_off = obj_bb + np.array([rand_trans_x,rand_trans_y,0,0])
 
             cropped = extract_square_patch(org_img, obj_bb_off)
+            cropped_depth = extract_square_patch(depth_renders[k], obj_bb_off)
 
             # Apply background
             if(len(self.backgrounds) > 0):
                 img_back = self.backgrounds[bg_im_isd[k]]
                 img_back = cv.cvtColor(img_back, cv.COLOR_BGR2RGBA).astype(float)
-                alpha = cropped[:, :, 0:3].astype(float)
-                sum_img = np.sum(cropped[:,:,:3], axis=2)
-                alpha[sum_img > 0] = 1
+                img_back = img_back[:,:,0:3]
 
-                cropped[:, :, 0:3] = cropped[:, :, 0:3] * alpha + img_back[:, :, 0:3] * (1 - alpha)
+                alpha = cropped_depth == 0
+                cropped[alpha] = img_back[alpha]
+
             else:
                 cropped = cropped[:, :, 0:3]
 
