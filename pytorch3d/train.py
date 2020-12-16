@@ -20,6 +20,7 @@ from Pipeline import Pipeline
 from BatchRender import BatchRender
 from losses import Loss
 from DatasetGeneratorOpenGL import DatasetGenerator
+#from DatasetGeneratorSM import DatasetGenerator
 
 optimizer = None
 lr_reducer = None
@@ -81,10 +82,10 @@ def loadDataset(file_list, batch_size=2):
                 curr_batch["Rs"].append(curr_pose)
 
                 # Normalize image
-                curr_image = curr_data["images"][i]                
+                curr_image = curr_data["images"][i]
                 curr_image = curr_image/np.max(curr_image)
                 curr_batch["images"].append(curr_image)
-                
+
                 if(len(curr_batch["Rs"]) >= batch_size):
                     data.append(curr_batch)
                     curr_batch = {"Rs":[],"images":[]}

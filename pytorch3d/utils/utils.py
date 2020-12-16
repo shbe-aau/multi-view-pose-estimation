@@ -39,7 +39,7 @@ def look_at_rotation_fixed(camera_position, at=((0, 0, 0),), up=((0, 1, 0),), de
     if torch.norm(x_axis) <= 0 or torch.norm(y_axis) <= 0 or torch.norm(z_axis) <= 0:
         raise ValueError("look_at_rotation: x, y or z axis is zero!")
     return R.transpose(1, 2)
-                                                                                                        
+
 
 
 def hinter_sampling(min_n_pts, radius=1):
@@ -161,7 +161,7 @@ class GaussianSmoothing(nn.Module):
             kernel_size = [kernel_size] * dim
         if isinstance(sigma, numbers.Number):
             sigma = [sigma] * dim
-        
+
         # The gaussian kernel is the product of the
         # gaussian function of each dimension.
         kernel = 1
@@ -175,17 +175,17 @@ class GaussianSmoothing(nn.Module):
             mean = (size - 1) / 2
             kernel *= 1 / (std * math.sqrt(2 * math.pi)) * \
                       torch.exp(-((mgrid - mean) / (2 * std)) ** 2)
-            
+
         # Make sure sum of values in gaussian kernel equals 1.
         kernel = kernel / torch.sum(kernel)
-        
+
         # Reshape to depthwise convolutional weight
         kernel = kernel.view(1, 1, *kernel.size())
         kernel = kernel.repeat(channels, *[1] * (kernel.dim() - 1))
-        
+
         self.register_buffer('weight', kernel)
         self.groups = channels
-        
+
         if dim == 1:
             self.conv = F.conv1d
         elif dim == 2:
@@ -196,7 +196,7 @@ class GaussianSmoothing(nn.Module):
             raise RuntimeError(
                 'Only 1, 2 and 3 dimensions are supported. Received {}.'.format(dim)
             )
-        
+
     def forward(self, input):
         """
         Apply gaussian filter to input.
@@ -487,5 +487,5 @@ def extract_square_patch(scene_img, bb_xywh, pad_factor=1.2,resize=(128,128),
             scene_crop[:,:(x-left)] = 0
             scene_crop[:,(x+w-left):] = 0
 
-        scene_crop = cv2.resize(scene_crop, resize) #, interpolation = interpolation)
+        scene_crop = cv2.resize(scene_crop, resize, interpolation = interpolation)
         return scene_crop
