@@ -213,7 +213,7 @@ class DatasetGenerator():
             #iaa.Sometimes(0.5, PerspectiveTransform(0.05)),
             #iaa.Sometimes(0.5, CropAndPad(percent=(-0.05, 0.1))),
             iaa.Sometimes(0.5, iaa.Affine(scale=(1.0, 1.2))),
-            #iaa.Sometimes(0.5, iaa.CoarseDropout( p=0.2, size_percent=0.05) ),
+            iaa.Sometimes(0.5, iaa.CoarseDropout( p=0.2, size_percent=0.05) ),
             iaa.Sometimes(0.5, iaa.GaussianBlur(1.2*np.random.rand())),
             iaa.Sometimes(0.5, iaa.Add((-25, 25), per_channel=0.3)),
             iaa.Sometimes(0.3, iaa.Invert(0.2, per_channel=True)),
