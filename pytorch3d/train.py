@@ -19,8 +19,8 @@ from Encoder import Encoder
 from Pipeline import Pipeline
 from BatchRender import BatchRender
 from losses import Loss
-#from DatasetGeneratorOpenGL import DatasetGenerator
-from DatasetGeneratorSM import DatasetGenerator
+from DatasetGeneratorOpenGL import DatasetGenerator
+#from DatasetGeneratorSM import DatasetGenerator
 
 optimizer = None
 lr_reducer = None

@@ -50,6 +50,7 @@ class DatasetGenerator():
     def __init__(self, background_path, obj_path, obj_distance, batch_size,
                  _, device, sampling_method="sphere", random_light=True,
                  num_bgs=5000):
+        self.realistic_occlusions = True
         self.curr_samples = 0
         self.max_samples = 1000
         self.device = device
@@ -203,7 +204,7 @@ class DatasetGenerator():
             #iaa.Sometimes(0.5, PerspectiveTransform(0.05)),
             #iaa.Sometimes(0.5, CropAndPad(percent=(-0.05, 0.1))),
             iaa.Sometimes(0.5, iaa.Affine(scale=(1.0, 1.2))),
-            iaa.Sometimes(0.5, iaa.CoarseDropout( p=0.2, size_percent=0.05) ),
+            #iaa.Sometimes(0.5, iaa.CoarseDropout( p=0.2, size_percent=0.05) ),
             iaa.Sometimes(0.5, iaa.GaussianBlur(1.2*np.random.rand())),
             iaa.Sometimes(0.5, iaa.Add((-25, 25), per_channel=0.3)),
             iaa.Sometimes(0.3, iaa.Invert(0.2, per_channel=True)),
@@ -517,6 +518,22 @@ class DatasetGenerator():
             obj_bb_off = obj_bb + np.array([rand_trans_x,rand_trans_y,0,0])
 
             cropped = extract_square_patch(org_img, obj_bb_off)
+
+            # Apply more realistic occlusions
+            if(self.realistic_occlusions):
+                randn = int(np.random.uniform(low=0, high=len(image_renders), size=1)[0])
+                print(randn)
+                occ_for = image_renders[randn]
+
+                # Crop occlusion randomly
+                rand_trans_x = np.random.uniform(0.3, 0.8)*np.sign(np.random.uniform(-1.0, 1.0)) * w
+                rand_trans_y = np.random.uniform(0.3, 0.8)*np.sign(np.random.uniform(-1.0, 1.0)) * h
+                occ_bb_off = obj_bb + np.array([rand_trans_x,rand_trans_y,0,0])
+                occ_cropped = extract_square_patch(occ_for, occ_bb_off)
+
+                occ_mask = occ_cropped != 0
+                cropped[occ_mask] = 0 #occ_cropped[occ_mask]
+                #org_img = occ_for
 
             # Apply background
             if(len(self.backgrounds) > 0):
