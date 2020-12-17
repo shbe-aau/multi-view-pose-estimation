@@ -40,6 +40,7 @@ from pytorch3d.renderer import (
     HardPhongShader, PointLights, DirectionalLights
 )
 
+
 #from utils.pytless import inout, misc
 from vispy import app, gloo
 #from utils.pytless.renderer import Renderer
@@ -544,14 +545,6 @@ class DatasetGenerator():
                 alpha = cropped_depth == 0
                 cropped[alpha] = img_back[alpha]
 
-                #alpha = cropped[:, :, 0:3].astype(float)
-                #sum_img = np.sum(cropped[:,:,:3], axis=2)
-                #alpha[sum_img > 0] = 1
-                #alpha = np.ones(cropped.shape)
-                #alpha = cropped_depth != 0
-                #alpha = alpha[..., np.newaxis]
-
-                #cropped[:, :, 0:3] = cropped[:, :, 0:3] * alpha + img_back[:, :, 0:3] * (1 - alpha)
             else:
                 cropped = cropped[:, :, 0:3]
 
