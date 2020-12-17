@@ -57,7 +57,7 @@ class DatasetGenerator():
         self.batch_size = batch_size
         self.dist = obj_distance
         self.img_size = 128
-        self.render_size = 320
+        self.render_size = self.img_size*2
         self.max_rel_offset = 0.2
         self.K = np.array([1075.65, 0, self.render_size/2,
                            0, 1073.90, self.render_size/2,
@@ -67,8 +67,22 @@ class DatasetGenerator():
                                                self.img_size, self.img_size)
 
         self.renderers = []
+        self.obj_ids = []
         for o in obj_paths:
             curr_model = inout.load_ply(o.replace(".obj",".ply"))
+
+            # Normalize pts
+            verts = curr_model['pts']
+            center = np.mean(verts, axis=0)
+            verts_normed = verts - center
+
+
+            scale = np.max(np.max(np.abs(verts_normed), axis=0))
+            #scale = max(verts_normed.abs().max(0)[0])
+            verts_normed = (verts_normed / scale)
+            curr_model['pts'] = verts_normed*100.0
+
+
             curr_rend= Renderer(curr_model, (self.render_size,self.render_size),
                                 self.K, surf_color=(1, 1, 1), mode='rgb',
                                 random_light=random_light)
@@ -471,7 +485,10 @@ class DatasetGenerator():
 
         for k in np.arange(self.batch_size):
             R, t = self.pose_sampling()
-            obj_id = np.random.randint(0, len(self.renderers)-1, size=1)[0]
+            if(len(self.obj_ids) == 0):
+                self.obj_ids = [1] #list(np.arange(len(self.renderers)))
+            random.shuffle(self.obj_ids)
+            obj_id = self.obj_ids.pop()
 
             if(self.hard_mining == True):
                 if(len(self.hard_samples) > 0):
