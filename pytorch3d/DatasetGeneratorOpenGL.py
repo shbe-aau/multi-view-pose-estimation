@@ -528,22 +528,6 @@ class DatasetGenerator():
 
             cropped = extract_square_patch(org_img, obj_bb_off)
 
-            # Apply more realistic occlusions
-            if(self.realistic_occlusions):
-                randn = int(np.random.uniform(low=0, high=len(image_renders), size=1)[0])
-                print(randn)
-                occ_for = image_renders[randn]
-
-                # Crop occlusion randomly
-                rand_trans_x = np.random.uniform(0.3, 0.8)*np.sign(np.random.uniform(-1.0, 1.0)) * w
-                rand_trans_y = np.random.uniform(0.3, 0.8)*np.sign(np.random.uniform(-1.0, 1.0)) * h
-                occ_bb_off = obj_bb + np.array([rand_trans_x,rand_trans_y,0,0])
-                occ_cropped = extract_square_patch(occ_for, occ_bb_off)
-
-                occ_mask = occ_cropped != 0
-                cropped[occ_mask] = 0 #occ_cropped[occ_mask]
-                #org_img = occ_for
-
             # Apply background
             if(len(self.backgrounds) > 0):
                 img_back = self.backgrounds[bg_im_isd[k]]
