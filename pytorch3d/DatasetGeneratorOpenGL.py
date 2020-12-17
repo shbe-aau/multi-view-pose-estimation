@@ -59,15 +59,24 @@ class DatasetGenerator():
         self.batch_size = batch_size
         self.dist = obj_distance
         self.img_size = 128
-        self.render_size = 320
+        self.render_size = 2*self.img_size
         self.max_rel_offset = 0.2
         self.K = np.array([1075.65, 0, self.render_size/2,
                            0, 1073.90, self.render_size/2,
                            0, 0, 1]).reshape(3,3)
         self.aug = self.setup_augmentation()
-        self.model = inout.load_ply(obj_path.replace(".obj",".ply"))
         self.backgrounds = self.load_bg_images("backgrounds", background_path, num_bgs,
                                                self.img_size, self.img_size)
+
+        self.model = inout.load_ply(obj_path.replace(".obj",".ply"))
+
+        # Normalize pts
+        verts = self.model['pts']
+        center = np.mean(verts, axis=0)
+        verts_normed = verts - center
+        scale = np.max(np.max(np.abs(verts_normed), axis=0))
+        verts_normed = (verts_normed / scale)
+        self.model['pts'] = verts_normed*100.0
 
         self.renderer = Renderer(self.model, (self.render_size,self.render_size),
                                  self.K, surf_color=(1, 1, 1), mode='rgb',
