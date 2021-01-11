@@ -66,6 +66,7 @@ def sphere_sampling():
     return R
 
 def renderNormCat(Rs, ts, renderer, mean, std, views):
+    return None
     images = []
     for v in views:
         # Render images
@@ -227,6 +228,14 @@ def Loss(predicted_poses, gt_poses, renderer, ts, mean, std, loss_method="diff",
         return loss, batch_loss, gt_imgs, predicted_imgs
 
     elif(loss_method=="trace-pose"):
+        num_views = len(views)
+        pose_start = num_views
+        pose_end = pose_start + 6
+        Rs_predicted = compute_rotation_matrix_from_ortho6d(predicted_poses[:,pose_start:pose_end])
+
+        gt_imgs = renderer.renderBatch(Rs_gt, ts)
+        predicted_imgs = renderer.renderBatch(Rs_predicted, ts)
+        
         R = torch.matmul(Rs_gt, torch.transpose(Rs_predicted, 1, 2))
         R_trace = torch.diagonal(R, dim1=-2, dim2=-1).sum(-1)
         theta = (R_trace - 1.0)/2.0
@@ -239,6 +248,14 @@ def Loss(predicted_poses, gt_poses, renderer, ts, mean, std, loss_method="diff",
         return loss, batch_loss, gt_imgs, predicted_imgs
     
     elif(loss_method=="l2-pose"):
+        num_views = len(views)
+        pose_start = num_views
+        pose_end = pose_start + 6
+        Rs_predicted = compute_rotation_matrix_from_ortho6d(predicted_poses[:,pose_start:pose_end])
+
+        gt_imgs = renderer.renderBatch(Rs_gt, ts)
+        predicted_imgs = renderer.renderBatch(Rs_predicted, ts)
+        
         mseLoss = nn.MSELoss(reduction='none')
         l2loss = mseLoss(Rs_predicted, Rs_gt)/6.0
         loss = torch.sum(l2loss)
