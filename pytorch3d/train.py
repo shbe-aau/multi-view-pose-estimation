@@ -218,7 +218,7 @@ def main():
 
         # Test on validation data
         val_loss = testEpoch(mean, std, br, validation_data, model, device, output_path,
-                             "vsd-predicted-view-log-fixed",
+                             loss_method=args.get('Training', 'LOSS'),
                              pose_rep=args.get('Training', 'POSE_REPRESENTATION'),
                              t=json.loads(args.get('Rendering', 'T')),
                              visualize=args.getboolean('Training', 'SAVE_IMAGES'),
