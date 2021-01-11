@@ -50,12 +50,14 @@ p = {
 parser = argparse.ArgumentParser()
 parser.add_argument('--datasets_path', default=p['datasets_path'])
 parser.add_argument('--dataset_split', default=p['dataset_split'])
+parser.add_argument('--dataset', default=p['dataset'])
 parser.add_argument('--scene_ids', type=int, nargs='+', default=p['scene_ids'])
 parser.add_argument('--obj_ids', type=int, nargs='+', default=p['obj_ids'])
 args = parser.parse_args()
 
 p['datasets_path'] = str(args.datasets_path)
 p['dataset_split'] = str(args.dataset_split)
+p['dataset'] = str(args.dataset)
 p['scene_ids'] = args.scene_ids
 p['obj_ids'] = args.obj_ids
 
