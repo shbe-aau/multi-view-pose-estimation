@@ -66,7 +66,6 @@ def sphere_sampling():
     return R
 
 def renderNormCat(Rs, ts, renderer, mean, std, views):
-    return None
     images = []
     for v in views:
         # Render images
@@ -227,6 +226,18 @@ def Loss(predicted_poses, gt_poses, renderer, ts, mean, std, loss_method="diff",
         batch_loss = loss_params*pose_batch_loss + (1-loss_params)*depth_batch_loss
         return loss, batch_loss, gt_imgs, predicted_imgs
 
+    elif(loss_method=="trace-pose"):
+        R = torch.matmul(Rs_gt, torch.transpose(Rs_predicted, 1, 2))
+        R_trace = torch.diagonal(R, dim1=-2, dim2=-1).sum(-1)
+        theta = (R_trace - 1.0)/2.0
+        epsilon=1e-5
+        theta = torch.acos(torch.clamp(theta, -1 + epsilon, 1 - epsilon))
+        degree = theta * (180.0/3.14159)
+        batch_loss = degree/180.0
+        loss = torch.sum(degree/180.0)
+        print(gt_imgs.shape)
+        return loss, batch_loss, gt_imgs, predicted_imgs
+    
     elif(loss_method=="l2-pose"):
         mseLoss = nn.MSELoss(reduction='none')
         l2loss = mseLoss(Rs_predicted, Rs_gt)/6.0
