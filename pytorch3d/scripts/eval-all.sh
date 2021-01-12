@@ -1,32 +1,32 @@
-#Eval vsd intersection vs union
-for OBJ_ID in 10 17 19
-do
-    bash run-eval-v2.sh ${OBJ_ID} "vsd-union-75epochs" "pytorch3d/output/depth/vsd-union/obj${OBJ_ID}/models/model-epoch75.pt" "train" "tless"
-    wait
-    bash run-eval-v2.sh ${OBJ_ID} "vsd-union-75epochs" "pytorch3d/output/depth/vsd-union/obj${OBJ_ID}/models/model-epoch75.pt" "test" "tless"
-    wait
-    bash run-eval-v2.sh ${OBJ_ID} "vsd-intersection-75epochs" "pytorch3d/output/depth/vsd-intersection/obj${OBJ_ID}/models/model-epoch75.pt" "train" "tless"
-    wait
-    bash run-eval-v2.sh ${OBJ_ID} "vsd-intersection-75epochs" "pytorch3d/output/depth/vsd-intersection/obj${OBJ_ID}/models/model-epoch75.pt" "test" "tless"
-    wait
-done
-
-# #Eval linemod objects
-# for OBJ_ID in 03 05 10 #14 15
+# #Eval vsd intersection vs union
+# for OBJ_ID in 10 17 19
 # do
-#     bash run-eval-v2.sh ${OBJ_ID} "sundermeyer" "" "train" "lm"
+#     bash run-eval.sh ${OBJ_ID} "vsd-union-75epochs" "pytorch3d/output/depth/vsd-union/obj${OBJ_ID}/models/model-epoch75.pt" "train" "tless"
 #     wait
-#     bash run-eval-v2.sh ${OBJ_ID} "sundermeyer" "" "test" "lm"
+#     bash run-eval.sh ${OBJ_ID} "vsd-union-75epochs" "pytorch3d/output/depth/vsd-union/obj${OBJ_ID}/models/model-epoch75.pt" "test" "tless"
 #     wait
-#     bash run-eval-v2.sh ${OBJ_ID} "nn-99epochs" "pytorch3d/output/depth/linemod/obj${OBJ_ID}/models/model-epoch99.pt" "train" "lm"
+#     bash run-eval.sh ${OBJ_ID} "vsd-intersection-75epochs" "pytorch3d/output/depth/vsd-intersection/obj${OBJ_ID}/models/model-epoch75.pt" "train" "tless"
 #     wait
-#     bash run-eval-v2.sh ${OBJ_ID} "nn-99epochs" "pytorch3d/output/depth/linemod/obj${OBJ_ID}/models/model-epoch99.pt" "test" "lm"
-#     wait
-#     bash run-eval-v2.sh ${OBJ_ID} "l2-pose-99epochs" "pytorch3d/output/pose/linemod/obj${OBJ_ID}/models/model-epoch99.pt" "train" "lm"
-#     wait
-#     bash run-eval-v2.sh ${OBJ_ID} "l2-pose-99epochs" "pytorch3d/output/pose/linemod/obj${OBJ_ID}/models/model-epoch99.pt" "test" "lm"
+#     bash run-eval.sh ${OBJ_ID} "vsd-intersection-75epochs" "pytorch3d/output/depth/vsd-intersection/obj${OBJ_ID}/models/model-epoch75.pt" "test" "tless"
 #     wait
 # done
+
+#Eval linemod objects
+for OBJ_ID in 05 # 03 05 10 #14 15
+do
+    bash run-eval.sh ${OBJ_ID} "sundermeyer" "" "train" "lm"
+    wait
+    bash run-eval.sh ${OBJ_ID} "sundermeyer" "" "test" "lm"
+    wait
+    bash run-eval.sh ${OBJ_ID} "nn-130epochs" "pytorch3d/output/depth/linemod/obj${OBJ_ID}/models/model-epoch130.pt" "train" "lm"
+    wait
+    bash run-eval.sh ${OBJ_ID} "nn-130epochs" "pytorch3d/output/depth/linemod/obj${OBJ_ID}/models/model-epoch130.pt" "test" "lm"
+    wait
+    bash run-eval.sh ${OBJ_ID} "l2-pose-99epochs" "pytorch3d/output/pose/linemod/obj${OBJ_ID}/models/model-epoch99.pt" "train" "lm"
+    wait
+    bash run-eval.sh ${OBJ_ID} "l2-pose-99epochs" "pytorch3d/output/pose/linemod/obj${OBJ_ID}/models/model-epoch99.pt" "test" "lm"
+    wait
+done
 
 # #Eval run of all objects using a small model
 # for OBJ_ID in 01 02 03 04 05 06 07 08 09 10 11 12 13 14 15 16 17 18 19 20 21 22 23 24 25 26 27 28 29 30

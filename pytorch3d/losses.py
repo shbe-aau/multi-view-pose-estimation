@@ -1204,10 +1204,10 @@ def Loss(predicted_poses, gt_poses, renderer, ts, mean, std, loss_method="diff",
         loss = torch.mean(batch_loss) #losses) #+torch.mean(pose_losses)
         return loss, batch_loss, gt_imgs, predicted_imgs
 
-    
 
 
-    elif(loss_method=="vsd-intersection"):
+
+    elif(loss_method=="vsd-intersection-max20"):
         num_views = len(views)
         pose_start = num_views
         pose_end = pose_start + 6
@@ -1235,7 +1235,7 @@ def Loss(predicted_poses, gt_poses, renderer, ts, mean, std, loss_method="diff",
 
             # Calculate VSD depth loss
             diff = torch.abs(gt_imgs - imgs)
-            diff = torch.clamp(diff, 0, 100.0)
+            diff = torch.clamp(diff, 0, 20.0)
 
             # Visiblity mask
             mask_gt = gt_imgs != 0
@@ -1295,7 +1295,7 @@ def Loss(predicted_poses, gt_poses, renderer, ts, mean, std, loss_method="diff",
         loss = torch.mean(batch_loss) #losses) #+torch.mean(pose_losses)
         return loss, batch_loss, gt_imgs, predicted_imgs
 
-    elif(loss_method=="vsd-union"):
+    elif(loss_method=="vsd-union-max20"):
         num_views = len(views)
         pose_start = num_views
         pose_end = pose_start + 6
@@ -1323,7 +1323,7 @@ def Loss(predicted_poses, gt_poses, renderer, ts, mean, std, loss_method="diff",
 
             # Calculate VSD depth loss
             diff = torch.abs(gt_imgs - imgs)
-            diff = torch.clamp(diff, 0, 100.0)
+            diff = torch.clamp(diff, 0, 20.0)
 
             # Visiblity mask
             mask_gt = gt_imgs != 0
