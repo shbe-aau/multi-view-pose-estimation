@@ -21,6 +21,7 @@ from utils.tools import *
 
 from Pipeline import Pipeline
 from Model import Model
+#from ModelSmall import Model
 from Encoder import Encoder
 from utils.pytless import inout, misc
 from utils.pytless.renderer import Renderer
@@ -142,6 +143,7 @@ def main():
             for k in range(num_views):
                 # Extract current pose and move to next one
                 curr_pose = predicted_poses[:,pose_start:pose_end]
+                print(curr_pose)
                 Rs_predicted = compute_rotation_matrix_from_ortho6d(curr_pose)
                 Rs_predicted = Rs_predicted.detach().cpu().numpy()[0]
                 pose_start = pose_end

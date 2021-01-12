@@ -1,160 +1,66 @@
-
-#Eval object 1-20
-for OBJ_ID in 09 10 17 19 #21 22 23 24 25 26 27 28 29 30 #01 02 03 04 05 06 07 08 09 10 11 12 13 14 15 16 17 18 19 20 21 22 23 24 25 26 27 28 29 30
+#Eval vsd intersection vs union
+for OBJ_ID in 10 17 19
 do
-    bash run-eval.sh ${OBJ_ID} "sm-render-50epochs" "pytorch3d/output/depth/sm-render/obj${OBJ_ID}/models/model-epoch50.pt" "train"
+    bash run-eval-v2.sh ${OBJ_ID} "vsd-union-75epochs" "pytorch3d/output/depth/vsd-union/obj${OBJ_ID}/models/model-epoch75.pt" "train" "tless"
     wait
-    bash run-eval.sh ${OBJ_ID} "sm-render-50epochs" "pytorch3d/output/depth/sm-render/obj${OBJ_ID}/models/model-epoch50.pt" "test"
+    bash run-eval-v2.sh ${OBJ_ID} "vsd-union-75epochs" "pytorch3d/output/depth/vsd-union/obj${OBJ_ID}/models/model-epoch75.pt" "test" "tless"
     wait
-    bash run-eval.sh ${OBJ_ID} "sundermeyer" "" "train"
+    bash run-eval-v2.sh ${OBJ_ID} "vsd-intersection-75epochs" "pytorch3d/output/depth/vsd-intersection/obj${OBJ_ID}/models/model-epoch75.pt" "train" "tless"
     wait
-    bash run-eval.sh ${OBJ_ID} "sundermeyer" "" "test"
+    bash run-eval-v2.sh ${OBJ_ID} "vsd-intersection-75epochs" "pytorch3d/output/depth/vsd-intersection/obj${OBJ_ID}/models/model-epoch75.pt" "test" "tless"
     wait
 done
 
-# #Eval object 1-20 on test split
-# for OBJ_ID in 11 #09 10 #02 04 05 06 07 08 09 10 11 12 14 15 17 18 19 20
+# #Eval linemod objects
+# for OBJ_ID in 03 05 10 #14 15
 # do
-#     # bash run-eval.sh ${OBJ_ID} "med-model-log-fixed-wolfram-70epochs" "pytorch3d/output/depth/vsd-predicted-view-degrees/med-model-log-fixed-wolfram/obj${OBJ_ID}/models/model-epoch70.pt" "test"
-#     # wait
-#     #bash run-eval.sh ${OBJ_ID} "sundermeyer" "" "test"
-#      wait
-#     # bash run-eval.sh ${OBJ_ID} "posemax40-6views-140epochs" "pytorch3d/output/depth/vsd-predicted-view-degrees/posemax40-6views/obj${OBJ_ID}/models/model-epoch140.pt" "test"
-#     # wait
-#     #bash run-eval.sh ${OBJ_ID} "med-model-log-fixed-sampling-wolfram-70epochs" "pytorch3d/output/depth/vsd-predicted-view-degrees/med-model-log-fixed-wolfram/obj${OBJ_ID}-fixed/models/model-epoch70.pt" "train"
-#     #wait
-# done
-
-
-## Eval object 17
-#bash run-eval.sh 17 "test" "pytorch3d/output/depth/vsd-predicted-view-degrees/med-model-log-fixed-wolfram/obj17/models/model-epoch70.pt" "test"
-
-
-
-# #Eval object 1-20
-# for OBJ_ID in 02 05 08 09 10 12 17 19 #01 02 03 04 05 06 07 08 09 10 11 12 13 14 15 16 17 18 19 20
-# do
-#     bash run-eval.sh ${OBJ_ID} "posemax40-6views-140epochs" "pytorch3d/output/depth/vsd-predicted-view-degrees/posemax40-6views/obj${OBJ_ID}/models/model-epoch140.pt" "train" -1
+#     bash run-eval-v2.sh ${OBJ_ID} "sundermeyer" "" "train" "lm"
+#     wait
+#     bash run-eval-v2.sh ${OBJ_ID} "sundermeyer" "" "test" "lm"
+#     wait
+#     bash run-eval-v2.sh ${OBJ_ID} "nn-99epochs" "pytorch3d/output/depth/linemod/obj${OBJ_ID}/models/model-epoch99.pt" "train" "lm"
+#     wait
+#     bash run-eval-v2.sh ${OBJ_ID} "nn-99epochs" "pytorch3d/output/depth/linemod/obj${OBJ_ID}/models/model-epoch99.pt" "test" "lm"
+#     wait
+#     bash run-eval-v2.sh ${OBJ_ID} "l2-pose-99epochs" "pytorch3d/output/pose/linemod/obj${OBJ_ID}/models/model-epoch99.pt" "train" "lm"
+#     wait
+#     bash run-eval-v2.sh ${OBJ_ID} "l2-pose-99epochs" "pytorch3d/output/pose/linemod/obj${OBJ_ID}/models/model-epoch99.pt" "test" "lm"
 #     wait
 # done
 
-# # Eval object 17
-# bash run-eval.sh 17 "med-model-log-fixed-wolfram-40epochs" "pytorch3d/output/depth/vsd-predicted-view-degrees/med-model-log-fixed-wolfram/obj17/models/model-epoch40.pt" "train" -1
-# wait
-
-# bash run-eval.sh 17 "posemax40-6views-40epochs" "pytorch3d/output/depth/vsd-predicted-view-degrees/obj17-param-sweep/posemax40-6views/obj17/models/model-epoch40.pt" "train" -1
-# wait
-
-# bash run-eval.sh 17 "fixed-wolfram-40epochs" "pytorch3d/output/depth/vsd-predicted-view-degrees/obj10-param-sweep/posemax40-6views/obj17-fixed/models/model-epoch40.pt" "train" -1
-# wait
-
-# bash run-eval.sh 17 "fixed-wolfram-fixed-loss-40epochs" "pytorch3d/output/depth/vsd-predicted-view-degrees/obj10-param-sweep/posemax40-6views/obj17-fixed-fixed/models/model-epoch40.pt" "train" -1
-# wait
-
-
-# # Eval object 10 param sweep
-# bash run-eval.sh 10 "obj10-posemax20-6views-150epochs" "pytorch3d/output/depth/vsd-predicted-view-degrees/obj10-param-sweep/posemax20-6views/obj10/models/model-epoch150.pt" "train" -1
-# wait
-
-# bash run-eval.sh 10 "obj10-posemax40-6views-150epochs" "pytorch3d/output/depth/vsd-predicted-view-degrees/obj10-param-sweep/posemax40-6views/obj10/models/model-epoch150.pt" "train" -1
-# wait
-
-# bash run-eval.sh 10 "obj10-posemax10-12views-40epochs" "pytorch3d/output/depth/vsd-predicted-view-degrees/obj10-param-sweep/posemax10-12views/obj10/models/model-epoch40.pt" "train" -1
-# wait
-
-# bash run-eval.sh 10 "obj10-posemax10-6views-40epochs" "pytorch3d/output/depth/vsd-predicted-view-degrees/obj10-param-sweep/posemax10-6views/obj10/models/model-epoch40.pt" "train" -1
-# wait
-
-# bash run-eval.sh 10 "obj10-posemax10-8views-40epochs" "pytorch3d/output/depth/vsd-predicted-view-degrees/obj10-param-sweep/posemax10-8views/obj10/models/model-epoch40.pt" "train" -1
-# wait
-
-# bash run-eval.sh 10 "obj10-posemax20-12views-40epochs" "pytorch3d/output/depth/vsd-predicted-view-degrees/obj10-param-sweep/posemax20-12views/obj10/models/model-epoch40.pt" "train" -1
-# wait
-
-# bash run-eval.sh 10 "obj10-posemax20-6views-40epochs" "pytorch3d/output/depth/vsd-predicted-view-degrees/obj10-param-sweep/posemax20-6views/obj10/models/model-epoch40.pt" "train" -1
-# wait
-
-# bash run-eval.sh 10 "obj10-posemax40-12views-40epochs" "pytorch3d/output/depth/vsd-predicted-view-degrees/obj10-param-sweep/posemax40-12views/obj10/models/model-epoch40.pt" "train" -1
-# wait
-
-# # Eval object 17
-# bash run-eval.sh 17 "test" "pytorch3d/output/depth/vsd-predicted-view-degrees/med-model-log-fixed-wolfram/obj17/models/model-epoch70.pt" "test" 16
-
-# bash run-eval.sh 17 "test" "pytorch3d/output/depth/vsd-predicted-view-degrees/med-model-log-fixed-wolfram/obj17/models/model-epoch70.pt" "train" -1
-
-# for OBJ_ID in 17 #09 10 #02 04 05 06 07 08 09 10 11 12 14 15 17 18 19 20
+# #Eval run of all objects using a small model
+# for OBJ_ID in 01 02 03 04 05 06 07 08 09 10 11 12 13 14 15 16 17 18 19 20 21 22 23 24 25 26 27 28 29 30
 # do
-#     for SCENE_ID in 15 16 19 #09 10 #02 04 05 06 07 08 09 10 11 12 14 15 17 18 19 20
-#     do
-# 	bash run-eval.sh ${OBJ_ID} "vsd-predicted-med-model-log-fixed-wolfram-70epochs" "pytorch3d/output/depth/vsd-predicted-view-degrees/med-model-log-fixed-wolfram/obj${OBJ_ID}/models/model-epoch70.pt" "test" ${SCENE_ID}
-# 	wait
-#     done
-# done
-
-
-
-
-# Eval object 19
-#bash run-eval.sh 19 "sundermeyer" ""
-
-# Eval object 10
-#bash run-eval.sh 10 "sundermeyer" "" "train"
-
-# Eval object 17
-#bash run-eval.sh 17 "sundermeyer" ""
-
-# Eval object 1-20, pose then depth
-# for OBJ_ID in 01 02 03 04 05 06 07 08 09 10 11 12 13 14 15 16 17 18 19 20
-# do
-#     bash run-eval.sh ${OBJ_ID} "sundermeyer" ""
+#     bash run-eval.sh ${OBJ_ID} "all-objs-small-99epochs" "pytorch3d/output/depth/all-objs-small/obj${OBJ_ID}/models/model-epoch99.pt" "train"
 #     wait
-#     bash run-eval.sh ${OBJ_ID} "pose-pretrain" "pytorch3d/output/pose-2-depth/obj1-20/obj${OBJ_ID}-random-multiview/models/model-epoch39.pt"
-#     wait
-#     bash run-eval.sh ${OBJ_ID} "pose-random-multiview-depth" "pytorch3d/output/pose-2-depth/obj1-20/obj${OBJ_ID}-random-multiview/models/model-epoch99.pt"
+#     bash run-eval.sh ${OBJ_ID} "all-objs-small-99epochs" "pytorch3d/output/depth/all-objs-small/obj${OBJ_ID}/models/model-epoch99.pt" "test"
 #     wait
 # done
 
-# wait
-
-#bash run-eval.sh 10 "predicted-view-cubic-epoch100" "pytorch3d/output/depth/clamped-predicted-view/obj10-cubic/models/model-epoch99.pt" "train"
-#wait
-
-# # Eval object 1-20, depth only
-# for OBJ_ID in 15 12 #19 #09 10 19 02 05 08 12 15 17 #02 05 09 10 12 17 19 #02 05 09 10 17 19 #11 15 17 19 20 #01 02 03 04 05 06 07 08 09 10 11 12 13 14 15 16 17 18 19 20
+# #Eval 2nd run of all objects
+# for OBJ_ID in 01 02 03 04 05 06 07 08 09 10 11 12 13 14 15 16 17 18 19 20 21 22 23 24 25 26 27 28 29 30
 # do
-#     bash run-eval.sh ${OBJ_ID} "vsd-predicted-med-model-log-fixed-wolfram-70epochs" "pytorch3d/output/depth/vsd-predicted-view-degrees/med-model-log-fixed-wolfram/obj${OBJ_ID}/models/model-epoch70.pt" "test"
+#     bash run-eval.sh ${OBJ_ID} "all-objs-2nd-run-99epochs" "pytorch3d/output/depth/all-objs-2nd-run/obj${OBJ_ID}/models/model-epoch99.pt" "train"
 #     wait
-#     bash run-eval.sh ${OBJ_ID} "sundermeyer" "" "test"
+#     bash run-eval.sh ${OBJ_ID} "all-objs-2nd-run-99epochs" "pytorch3d/output/depth/all-objs-2nd-run/obj${OBJ_ID}/models/model-epoch99.pt" "test"
+#     wait
+# done
+
+# # Eval L2 pose loss
+# for OBJ_ID in 01 02 03 04 05 06 07 08 09 10 11 12 13 14 15 16 17 18 19 20 21 22 23 24 25 26 27 28 29 30
+# do
+#     bash run-eval.sh ${OBJ_ID} "l2-pose-100epochs" "pytorch3d/output/pose/all-objs/l2-pose/obj${OBJ_ID}/models/model-epoch100.pt" "train"
+#     wait
+#     bash run-eval.sh ${OBJ_ID} "l2-pose-100epochs" "pytorch3d/output/pose/all-objs/l2-pose/obj${OBJ_ID}/models/model-epoch100.pt" "test"
 #     wait
 # done
 
 
-# # Eval object 1-20, depth only
-# for OBJ_ID in 09 10 #02 04 05 06 07 08 09 10 11 12 14 15 17 18 19 20
+# # Eval trace pose loss
+# for OBJ_ID in 01 02 03 04 05 06 07 08 09 10 11 12 13 14 15 16 17 18 19 20 21 22 23 24 25 26 27 28 29 30
 # do
-#     bash run-eval.sh ${OBJ_ID} "vsd-predicted-med-model-log-fixed-wolfram-50epochs" "pytorch3d/output/depth/vsd-predicted-view-degrees/med-model-log-fixed-wolfram/obj${OBJ_ID}/models/model-epoch50.pt" "train"
+#     bash run-eval.sh ${OBJ_ID} "trace-pose-100epochs" "pytorch3d/output/pose/all-objs/trace-pose/obj${OBJ_ID}/models/model-epoch100.pt" "train"
 #     wait
-# done
-
-
-
-# # Eval object 1-20, depth only
-# for LR in 1 2 3 4 5 6
-# do
-#     bash run-eval.sh 10 "obj10-posemax40-6views-lr${LR}-50epochs" "pytorch3d/output/depth/vsd-predicted-view-degrees/obj10-param-sweep/posemax40-6views-lr${LR}/obj10/models/model-epoch50.pt" "train"
+#     bash run-eval.sh ${OBJ_ID} "trace-pose-100epochs" "pytorch3d/output/pose/all-objs/trace-pose/obj${OBJ_ID}/models/model-epoch100.pt" "test"
 #     wait
-# done
-
-
-# # Eval object 10
-# for EPOCH in 70 60 50 40 30 20 #10
-# do
-#     for POSEMAX in 20 40 80
-#     do
-# 	for VIEW in 4 6 8
-# 	do
-# 	    bash run-eval.sh 10  "obj10-posemax${POSEMAX}-${VIEW}views-${EPOCH}epochs" "pytorch3d/output/depth/vsd-predicted-view-degrees/obj10-param-sweep/posemax${POSEMAX}-${VIEW}views/obj10/models/model-epoch${EPOCH}.pt" "train"
-# 	    wait
-# 	done
-#     done
 # done
