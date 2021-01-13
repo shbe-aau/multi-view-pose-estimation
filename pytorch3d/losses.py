@@ -1296,6 +1296,8 @@ def Loss(predicted_poses, gt_poses, renderer, ts, mean, std, loss_method="diff",
         return loss, batch_loss, gt_imgs, predicted_imgs
 
     elif(loss_method=="vsd-union-max20"):
+        depth_max = 20.0
+        gamma = 0.1
         num_views = len(views)
         pose_start = num_views
         pose_end = pose_start + 6
@@ -1321,19 +1323,19 @@ def Loss(predicted_poses, gt_poses, renderer, ts, mean, std, loss_method="diff",
             predicted_images.append(imgs)
             gt_images.append(gt_imgs)
 
-            # Calculate VSD depth loss
-            diff = torch.abs(gt_imgs - imgs)
-            diff = torch.clamp(diff, 0, 20.0)
-
             # Visiblity mask
             mask_gt = gt_imgs != 0
             mask_pd = imgs != 0
             mask_union = torch.zeros_like(gt_imgs)
             mask_union[mask_gt] = 1.0
             mask_union[mask_pd] = 1.0
+
+            # Calculate loss
+            diff = torch.abs(gt_imgs - imgs)
+            diff = torch.minimum(diff, depth_max)
             batch_loss = torch.sum(diff*mask_union, dim=(1,2))/torch.sum(mask_union, dim=(1,2))
 
-            batch_loss = batch_loss*confs[:,i] + (1.0/num_views)*batch_loss
+            batch_loss = batch_loss*confs[:,i] + gamma*batch_loss
             losses.append(batch_loss.unsqueeze(-1))
 
             # Calculate pose loss
@@ -1364,7 +1366,7 @@ def Loss(predicted_poses, gt_poses, renderer, ts, mean, std, loss_method="diff",
         #print("depth loss ", torch.mean(losses, dim=1))
         #print("pose loss ", torch.mean(pose_losses, dim=1))
 
-        batch_loss = torch.mean(losses, dim=1)
+        batch_loss = torch.sum(losses, dim=1)
         batch_loss = batch_loss + batch_loss * (torch.mean(pose_losses, dim=1)-0.5)/2.0
         #print("VSD: ", torch.mean(losses, dim=1))
         #print("pose: ", torch.mean(pose_losses, dim=1))
