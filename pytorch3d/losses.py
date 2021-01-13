@@ -1332,7 +1332,7 @@ def Loss(predicted_poses, gt_poses, renderer, ts, mean, std, loss_method="diff",
 
             # Calculate loss
             diff = torch.abs(gt_imgs - imgs)
-            diff = torch.min(diff, torch.tensor([depth_max]))
+            diff = torch.clamp(diff, 0.0, depth_max)
             batch_loss = torch.sum(diff*mask_union, dim=(1,2))/torch.sum(mask_union, dim=(1,2))
 
             batch_loss = batch_loss*confs[:,i] + gamma*batch_loss
