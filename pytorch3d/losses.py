@@ -1328,21 +1328,10 @@ def Loss(predicted_poses, gt_poses, renderer, ts, mean, std, loss_method="diff",
             # Visiblity mask
             mask_gt = gt_imgs != 0
             mask_pd = imgs != 0
-            mask_intersection = mask_pd * mask_gt
             mask_union = torch.zeros_like(gt_imgs)
             mask_union[mask_gt] = 1.0
             mask_union[mask_pd] = 1.0
-            batch_loss = torch.sum(diff*mask_union, dim=(1,2))
-
-            # #non_zero = torch.clamp(gt_imgs, 0, 1) # Non zero in gt only
-            # non_zero = torch.clamp(gt_imgs + imgs, 0, 1) # Non zero in either gt or prediction
-            # inliers = torch.clamp(torch.log10(diff+1e-9)/3.0, 0.0, 1.0) * non_zero
-            # inliers = torch.sum(inliers, dim=(1,2))
-            # non_zero_gt = torch.clamp(gt_imgs, 0, 1)
-            # non_zero_pred = torch.clamp(imgs, 0, 1)
-            # non_zero_both = torch.mul(non_zero_gt,non_zero_pred) # Non zero in both gt and predict
-            # total_gt = torch.sum(non_zero_both, dim=(1,2))
-            # batch_loss = (inliers/total_gt)
+            batch_loss = torch.sum(diff*mask_union, dim=(1,2))/torch.sum(mask_union, dim=(1,2))
 
             batch_loss = batch_loss*confs[:,i] + (1.0/num_views)*batch_loss
             losses.append(batch_loss.unsqueeze(-1))
