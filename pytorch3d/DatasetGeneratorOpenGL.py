@@ -61,8 +61,9 @@ class DatasetGenerator():
         self.batch_size = batch_size
         self.dist = obj_distance
         self.img_size = 128
-        self.render_size = 2*self.img_size
+        self.render_size = 3*self.img_size
         self.max_rel_offset = 0.2
+        self.max_rel_scale = None
         self.K = np.array([1075.65, 0, self.render_size/2,
                            0, 1073.90, self.render_size/2,
                            0, 0, 1]).reshape(3,3)
@@ -588,11 +589,13 @@ class DatasetGenerator():
 
             rand_trans_x = np.random.uniform(-self.max_rel_offset, self.max_rel_offset) * w
             rand_trans_y = np.random.uniform(-self.max_rel_offset, self.max_rel_offset) * h
-            #rand_trans_w = np.random.uniform(-self.max_rel_offset, 0) * w
-            #rand_trans_h = np.random.uniform(-self.max_rel_offset, 0) * h
             obj_bb_off = obj_bb + np.array([rand_trans_x,rand_trans_y,0,0])
+            pad_factor =  1.2
+            if(self.max_rel_scale is not None):
+                scale = np.random.uniform(-self.max_rel_scale, self.max_rel_scale)
+                pad_factor = pad_factor + scale
 
-            cropped = extract_square_patch(org_img, obj_bb_off)
+            cropped = extract_square_patch(org_img, obj_bb_off, pad_factor=pad_factor)
 
             if(self.realistic_occlusions):
                 # Apply random renders behind
