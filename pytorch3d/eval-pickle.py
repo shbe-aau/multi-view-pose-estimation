@@ -20,8 +20,8 @@ from utils.utils import *
 from utils.tools import *
 
 from Pipeline import Pipeline
-from Model import Model
-#from ModelSmall import Model
+#from Model import Model
+from ModelSmall import Model
 from Encoder import Encoder
 from utils.pytless import inout, misc
 from utils.pytless.renderer import Renderer

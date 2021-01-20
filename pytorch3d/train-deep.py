@@ -14,7 +14,8 @@ import gc
 
 from utils.utils import *
 
-from Model import Model
+#from Model import Model
+from ModelDeep import Model
 from Encoder import Encoder
 from Pipeline import Pipeline
 from BatchRender import BatchRender

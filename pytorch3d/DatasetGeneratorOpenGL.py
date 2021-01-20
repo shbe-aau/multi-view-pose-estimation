@@ -50,7 +50,9 @@ class DatasetGenerator():
     def __init__(self, background_path, obj_path, obj_distance, batch_size,
                  _, device, sampling_method="sphere", random_light=True,
                  num_bgs=5000):
-        self.realistic_occlusions = True
+        self.random_light = random_light
+        self.realistic_occlusions = False
+        self.random_renders = []
         self.curr_samples = 0
         self.max_samples = 1000
         self.device = device
@@ -466,6 +468,70 @@ class DatasetGenerator():
         t = torch.tensor([0.0, 0.0, self.dist])
         return R,t
 
+    def generate_random_renders(self,num):
+        image_renders = []
+        images = []
+
+        for k in np.arange(num):
+            print("Rendering random objects: ", k)
+            R, t = self.pose_sampling()
+
+            R = R.detach().cpu().numpy()
+            t = t.detach().cpu().numpy()
+
+            # Convert R matrix from pytorch to opengl format
+            # for rendering only!
+            xy_flip = np.eye(3, dtype=np.float)
+            xy_flip[0,0] = -1.0
+            xy_flip[1,1] = -1.0
+            R_opengl = np.dot(R,xy_flip)
+            R_opengl = np.transpose(R_opengl)
+
+            # Render images
+            random_id = np.random.randint(1,31)
+            obj_path = "./data/tless-obj{0:02d}/cad/obj_{1:02d}.obj".format(random_id, random_id)
+            model = inout.load_ply(obj_path.replace(".obj",".ply"))
+
+            # Normalize pts
+            verts = model['pts']
+            center = np.mean(verts, axis=0)
+            verts_normed = verts - center
+            scale = np.max(np.max(np.abs(verts_normed), axis=0))
+            verts_normed = (verts_normed / scale)
+            model['pts'] = verts_normed*100.0
+
+            renderer = Renderer(model, (self.render_size,self.render_size),
+                                     self.K, surf_color=(1, 1, 1), mode='rgb',
+                                     random_light=self.random_light)
+
+
+            ren_rgb = renderer.render(R_opengl, t)
+            image_renders.append(ren_rgb)
+
+            for i in range(10):
+                # Calc bounding box and crop image
+                org_img = image_renders[k]
+                ys, xs = np.nonzero(org_img[:,:,0] > 0)
+                obj_bb = calc_2d_bbox(xs,ys,[self.render_size,self.render_size])
+
+                # Add relative offset when cropping - like Sundermeyer
+                x, y, w, h = obj_bb
+
+                rand_trans_x = np.random.uniform(-2.0, 2.0) * w
+                rand_trans_y = np.random.uniform(-2.0, 2.0) * h
+
+                scale = np.random.uniform(0.2, 0.8)
+                obj_bb_off = obj_bb + np.array([rand_trans_x,rand_trans_y,
+                                            w*scale,h*scale])
+
+                try:
+                    cropped = extract_square_patch(org_img, obj_bb_off)
+                    images.append(cropped)
+                except:
+                    continue
+        return images
+
+
     def generate_image_batch(self):
         # Generate random poses
         curr_Rs = []
@@ -527,6 +593,25 @@ class DatasetGenerator():
             obj_bb_off = obj_bb + np.array([rand_trans_x,rand_trans_y,0,0])
 
             cropped = extract_square_patch(org_img, obj_bb_off)
+
+            if(self.realistic_occlusions):
+                # Apply random renders behind
+                num_behind = np.random.randint(0,4)
+                for n in range(num_behind):
+                    random_int = int(np.random.uniform(0, len(self.random_renders)-1))
+                    behind = self.random_renders[random_int]
+                    sum_img = np.sum(cropped[:,:,:3], axis=2)
+                    mask = sum_img == 0
+                    cropped[mask] = behind[mask]
+
+                # Apply random renders behind
+                num_front = np.random.randint(0,2)
+                for n in range(num_front):
+                    random_int = int(np.random.uniform(0, len(self.random_renders)-1))
+                    front = self.random_renders[random_int]
+                    sum_img = np.sum(front[:,:,:3], axis=2)
+                    mask = sum_img != 0
+                    cropped[mask] = front[mask]
 
             # Apply background
             if(len(self.backgrounds) > 0):

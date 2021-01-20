@@ -1,14 +1,33 @@
-#Eval all objs with union loss from paper
+# bash run-eval.sh 20 "test-occ-120epochs" "pytorch3d/output/depth/test-occ-obj20/models/model-epoch120.pt" "test" "tless"
+# wait
+# bash run-eval.sh 20 "test-occ-120epochs" "pytorch3d/output/depth/test-occ-obj20/models/model-epoch120.pt" "train" "tless"
+# wait
+
+# #Eval all objs with union loss from paper
+# for OBJ_ID in 01 02 03 04 05 06 07 08 09 10 11 12 13 14 15 16 17 18 19 20 21 22 23 24 25 26 27 28 29 30
+# do
+#     bash run-eval.sh ${OBJ_ID} "all-objs-vsd-union-99epochs" "pytorch3d/output/depth/all-objs-vsd-union/obj${OBJ_ID}/models/model-epoch99.pt" "train" "tless"
+#     wait
+#     bash run-eval.sh ${OBJ_ID} "all-objs-vsd-union-99epochs" "pytorch3d/output/depth/all-objs-vsd-union/obj${OBJ_ID}/models/model-epoch99.pt" "test" "tless"
+#     wait
+# done
+
+# #Eval all objs with union and adding pose
+# for OBJ_ID in 01 02 03 04 05 06 07 08 09 10 11 12 13 14 15 16 17 18 19 20 21 22 23 24 25 26 27 28 29 30
+# do
+#     bash run-eval.sh ${OBJ_ID} "all-objs-vsd-union-add-99epochs" "pytorch3d/output/depth/all-objs-vsd-union-add/obj${OBJ_ID}/models/model-epoch99.pt" "train" "tless"
+#     wait
+#     bash run-eval.sh ${OBJ_ID} "all-objs-vsd-union-add-99epochs" "pytorch3d/output/depth/all-objs-vsd-union-add/obj${OBJ_ID}/models/model-epoch99.pt" "test" "tless"
+#     wait
+# done
+
+#Eval all objs with union and small model
 for OBJ_ID in 01 02 03 04 05 06 07 08 09 10 11 12 13 14 15 16 17 18 19 20 21 22 23 24 25 26 27 28 29 30
 do
-    bash run-eval.sh ${OBJ_ID} "all-objs-vsd-union-99epochs" "pytorch3d/output/depth/all-objs-vsd-union/obj${OBJ_ID}/models/model-epoch99.pt" "train" "tless"
+    bash run-eval.sh ${OBJ_ID} "all-objs-vsd-union-small-99epochs" "pytorch3d/output/depth/all-objs-vsd-union-small/obj${OBJ_ID}/models/model-epoch99.pt" "train" "tless"
     wait
-    bash run-eval.sh ${OBJ_ID} "all-objs-vsd-union-99epochs" "pytorch3d/output/depth/all-objs-vsd-union/obj${OBJ_ID}/models/model-epoch99.pt" "test" "tless"
+    bash run-eval.sh ${OBJ_ID} "all-objs-vsd-union-small-99epochs" "pytorch3d/output/depth/all-objs-vsd-union-small/obj${OBJ_ID}/models/model-epoch99.pt" "test" "tless"
     wait
-    #bash run-eval.sh ${OBJ_ID} "sundermeyer" "" "train" "tless"
-    #wait
-    #bash run-eval.sh ${OBJ_ID} "sundermeyer" "" "test" "tless"
-    #wait
 done
 
 # #Eval 2nd run of all objects with MSPD and MSSD
