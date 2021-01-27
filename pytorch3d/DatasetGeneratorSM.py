@@ -10,6 +10,8 @@ import argparse
 import glob
 import hashlib
 import cv2 as cv
+from scipy.spatial.transform import Rotation as scipyR
+from utils.utils import *
 
 import configparser
 from dataset import Dataset
@@ -41,35 +43,73 @@ class DatasetGenerator():
         args.set('Dataset', 'NOOF_TRAINING_IMGS', str(int(20000))) #str(int(batch_size*2)))
 
         self.dataset = build_dataset("./dataset-test", args)
-        self.dataset.render_training_images()
+        #self.dataset.render_training_images()
         self.dataset.load_bg_images("./dataset-test")
 
 
-    def opengl2pytorch(self, R):
-        # Convert R matrix from opengl to pytorch format
-        xy_flip = np.eye(3, dtype=np.float)
-        xy_flip[0,0] = -1.0
-        xy_flip[1,1] = -1.0
-        R_conv = np.transpose(R)
-        R_conv = np.dot(R_conv,xy_flip)
-        return R_conv
+    # Truely random
+    # Based on: https://mathworld.wolfram.com/SpherePointPicking.html
+    def sphere_wolfram_sampling_fixed(self):
+        x1 = np.random.uniform(low=-1.0, high=1.0, size=1)[0]
+        x2 = np.random.uniform(low=-1.0, high=1.0, size=1)[0]
+        test = x1**2 + x2**2
+
+        while(test >= 1.0):
+                x1 = np.random.uniform(low=-1.0, high=1.0, size=1)[0]
+                x2 = np.random.uniform(low=-1.0, high=1.0, size=1)[0]
+                test = x1**2 + x2**2
+
+        x = 2.0*x1*(1.0 -x1**2 - x2**2)**(0.5)
+        y = 2.0*x2*(1.0 -x1**2 - x2**2)**(0.5)
+        z = 1.0 - 2.0*(x1**2 + x2**2)
+
+        cam_position = torch.tensor([x, y, z]).unsqueeze(0)
+        if(z < 0):
+            R = look_at_rotation_fixed(cam_position, up=((0, 0, -1),)).squeeze()
+        else:
+            R = look_at_rotation_fixed(cam_position, up=((0, 0, 1),)).squeeze()
+
+        # Rotate in-plane
+        rot_degrees = np.random.uniform(low=-90.0, high=90.0, size=1)
+        rot = scipyR.from_euler('z', rot_degrees, degrees=True)
+        rot_mat = torch.tensor(rot.as_matrix(), dtype=torch.float32)
+        R = torch.matmul(R, rot_mat)
+        R = R.squeeze()
+        return R
+
+    # def opengl2pytorch(self, R):
+    #     # Convert R matrix from opengl to pytorch format
+    #     xy_flip = np.eye(3, dtype=np.float)
+    #     xy_flip[0,0] = -1.0
+    #     xy_flip[1,1] = -1.0
+    #     R_conv = np.transpose(R)
+    #     R_conv = np.dot(R_conv,xy_flip)
+    #     return R_conv
 
     def generate_images(self, num_samples):
         data = {"images":[],
                 "Rs":[]}
 
-        img_x, _, Rs = self.dataset.batch(num_samples)
+        for i in range(num_samples):
+            # Sample rotation matrix
+            R = self.sphere_wolfram_sampling_fixed()
 
-        # Convert rotation matrices
-        for i in range(Rs.shape[0]):
-            Rs[i] = self.opengl2pytorch(Rs[i])
+            # Convert R matrix from pytorch to opengl format
+            # for rendering only!
+            xy_flip = np.eye(3, dtype=np.float)
+            xy_flip[0,0] = -1.0
+            xy_flip[1,1] = -1.0
+            R_opengl = np.dot(R,xy_flip)
+            R_opengl = np.transpose(R_opengl)
 
-        # Convert BGR to RGB
-        for i in range(img_x.shape[0]):
-            img_x[i] = np.flip(img_x[i],axis=2)
+            # Render image
+            img = self.dataset.render_training_image(R_opengl)
 
-        data["images"] = img_x #data["images"][:num_samples]
-        data["Rs"] = Rs #data["Rs"][:num_samples]
+            # Convert BGR to RGB
+            img = np.flip(img,axis=2)
+
+            data["images"].append(img)
+            data["Rs"].append(R)
         return data
 
     def __iter__(self):

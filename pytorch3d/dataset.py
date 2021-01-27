@@ -238,6 +238,78 @@ class Dataset(object):
         return cv2.resize(bgr_y, self.shape[:2])
 
 
+    def render_training_image(self, R):
+        kw = self._kw
+        H, W = int(kw['h']), int(kw['w'])
+        render_dims = eval(kw['render_dims'])
+        K = eval(kw['k'])
+        K = np.array(K).reshape(3,3)
+        clip_near = float(kw['clip_near'])
+        clip_far = float(kw['clip_far'])
+        pad_factor = float(kw['pad_factor'])
+        max_rel_offset = float(kw['max_rel_offset'])
+        t = np.array([0, 0, float(kw['radius'])])
+
+        bgr_x, depth_x = self.renderer.render(
+            obj_id=0,
+            W=render_dims[0],
+            H=render_dims[1],
+            K=K.copy(),
+            R=R,
+            t=t,
+            near=clip_near,
+            far=clip_far,
+            random_light=True
+        )
+
+        ys, xs = np.nonzero(depth_x > 0)
+
+        try:
+            obj_bb = view_sampler.calc_2d_bbox(xs, ys, render_dims)
+        except ValueError as e:
+            print('Object in Rendering not visible. Have you scaled the vertices to mm?')
+
+        x, y, w, h = obj_bb
+
+        rand_trans_x = np.random.uniform(-max_rel_offset, max_rel_offset) * w
+        rand_trans_y = np.random.uniform(-max_rel_offset, max_rel_offset) * h
+
+        obj_bb_off = obj_bb + np.array([rand_trans_x,rand_trans_y,0,0])
+
+        bgr_x = self.extract_square_patch(bgr_x, obj_bb_off, pad_factor,resize=(W,H),interpolation = cv2.INTER_NEAREST)
+        depth_x = self.extract_square_patch(depth_x, obj_bb_off, pad_factor,resize=(W,H),interpolation = cv2.INTER_NEAREST)
+        mask_x = depth_x == 0.
+
+        if self.shape[2] == 1:
+            bgr_x = cv2.cvtColor(np.uint8(bgr_x), cv2.COLOR_BGR2GRAY)[:,:,np.newaxis]
+            bgr_y = cv2.cvtColor(np.uint8(bgr_y), cv2.COLOR_BGR2GRAY)[:,:,np.newaxis]
+
+        assert self.noof_bg_imgs > 0
+
+        rand_idcs_bg = np.random.choice(self.noof_bg_imgs, 1, replace=False)
+
+        batch_x = bgr_x[np.newaxis, ...]
+        masks = mask_x[np.newaxis, ...]
+
+        rand_vocs = self.bg_imgs[rand_idcs_bg]
+
+        if eval(self._kw['realistic_occlusion']):
+            masks = self.augment_occlusion_mask(masks.copy(),max_occl=np.float(self._kw['realistic_occlusion']))
+
+        if eval(self._kw['square_occlusion']):
+            masks = self.augment_squares(masks.copy(),rand_idcs,max_occl=np.float(self._kw['square_occlusion']))
+
+        batch_x[masks] = rand_vocs[masks]
+
+        #needs uint8
+        batch_x = self._aug.augment_images(batch_x)
+
+        #slow...
+        batch_x = batch_x / 255.
+
+        return batch_x[0]
+
+
     def render_training_images(self):
         kw = self._kw
         H, W = int(kw['h']), int(kw['w'])
