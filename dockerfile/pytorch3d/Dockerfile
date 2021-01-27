@@ -35,8 +35,7 @@ RUN pip3 --no-cache-dir install --upgrade \
 # Install OpenCV dependencies
 RUN apt-get install -y \
     	libglfw3-dev \
-	libglfw3 \
-	libassimp-dev
+	libglfw3
 
 # Install cython and numpy
 RUN pip3 --no-cache-dir install \
@@ -47,7 +46,6 @@ RUN pip3 --no-cache-dir install \
 RUN pip3 --no-cache-dir install \
     cyglfw3 \
     imageio==2.6.0 \
-    pyassimp==3.3 \
     imgaug \
     progressbar \
     configparser \
@@ -71,10 +69,22 @@ RUN pip3 --no-cache-dir install \
     torchvision==0.5.0
 
 # Install OpenCV
-RUN pip3 --no-cache-dir --default-timeout=100 install \
+RUN pip3 --no-cache-dir install \
     opencv-python==3.4.0.14 \
     opencv-contrib-python
 
 # Install pytorch3d (forked)
 ENV FORCE_CUDA=1
 RUN pip3 --no-cache-dir install 'git+https://github.com/shbe-aau/pytorch3d.git'
+
+# Install correct version (i.e. 3.3) of libassimp and pyassimp
+RUN apt-get install -y \
+    libminizip1 \
+    wget
+RUN wget https://launchpadlibrarian.net/230132840/libassimp3v5_3.2~dfsg-3_amd64.deb
+RUN apt-get install -y ./libassimp3v5_3.2~dfsg-3_amd64.deb
+
+RUN wget https://launchpadlibrarian.net/230132835/libassimp-dev_3.2~dfsg-3_amd64.deb
+RUN apt-get install -y ./libassimp-dev_3.2~dfsg-3_amd64.deb
+
+RUN pip3 --no-cache-dir install pyassimp==3.3
