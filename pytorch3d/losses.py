@@ -1515,11 +1515,15 @@ def Loss(predicted_poses, gt_poses, renderer, ts, mean, std, loss_method="diff",
             prev_poses.append(Rs_predicted)
 
 
+
         # Concat different views
         gt_imgs = torch.cat(gt_images, dim=1)
         predicted_imgs = torch.cat(predicted_images, dim=1)
         losses = torch.cat(losses, dim=1)
-        pose_losses = torch.cat(pose_losses, dim=1)
+        if(num_views == 1):
+            pose_losses = torch.zeros_like(losses)
+        else:
+            pose_losses = torch.cat(pose_losses, dim=1)
         pose_losses = torch.mean(pose_losses, dim=1)
         depth_losses = torch.sum(losses, dim=1)
 
