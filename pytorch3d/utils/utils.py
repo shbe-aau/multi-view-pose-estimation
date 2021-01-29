@@ -283,7 +283,7 @@ def calcMeanVar(br, data, device, t):
     print(torch.std(result))
     return torch.mean(result), torch.std(result)
 
-def plotView(currView, numViews, vmin, vmax, input_images, groundtruth, predicted, predicted_pose, loss, batch_size, threshold=9999, img_num=0):
+def plotView(currView, numViews, vmin, vmax, input_images, groundtruth, predicted, diffs, predicted_pose, loss, batch_size, threshold=9999, img_num=0):
     # Plot AE input
     plt.subplot(1, 4, 1)
     plt.imshow((input_images[img_num]*255).astype(np.uint8))
@@ -304,14 +304,12 @@ def plotView(currView, numViews, vmin, vmax, input_images, groundtruth, predicte
     np.set_printoptions(linewidth=30)
     plt.title("Predicted: \n " + np.array2string((predicted_pose[img_num]).detach().cpu().numpy(),precision=2))
 
-    # if(currView == 0):
-    #     plt.title("Predicted: \n " + np.array2string((predicted_pose[currView*batch_size]).detach().cpu().numpy(),precision=2))
-    # else:
-    #     plt.title("Predicted")
 
     # Plot difference between depth maps
-    loss_contrib = np.abs((groundtruth[img_num]).detach().cpu().numpy() - (predicted[img_num]).detach().cpu().numpy())
+    #loss_contrib = np.abs((groundtruth[img_num]).detach().cpu().numpy() - (predicted[img_num]).detach().cpu().numpy())
+    loss_contrib = diffs[img_num].detach().cpu().numpy()
     loss_contrib[loss_contrib > threshold] = threshold
+    
     plt.subplot(1, 4, 4)
     plt.imshow(loss_contrib)#, vmin=0.0, vmax=20.0)
     plt.title("Loss: \n " + np.array2string((loss[img_num]).detach().cpu().numpy()))

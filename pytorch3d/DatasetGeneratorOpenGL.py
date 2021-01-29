@@ -68,6 +68,7 @@ class DatasetGenerator():
                            0, 1073.90, self.render_size/2,
                            0, 0, 1]).reshape(3,3)
         self.aug = self.setup_augmentation()
+        self.aug_occ = self.setup_augmentation_occ()
         self.backgrounds = self.load_bg_images("backgrounds", background_path, num_bgs,
                                                self.img_size, self.img_size)
 
@@ -189,34 +190,11 @@ class DatasetGenerator():
         return bg_imgs
 
     def setup_augmentation(self):
-        # Augmentation
-        # aug = iaa.Sequential([
-        #     #iaa.Sometimes(0.5, iaa.PerspectiveTransform(0.05)),
-        #     #iaa.Sometimes(0.5, iaa.CropAndPad(percent=(-0.05, 0.1))),
-        #     #iaa.Sometimes(0.5, iaa.Affine(scale=(1.0, 1.2))),
-        #     iaa.Sometimes(0.5, iaa.CoarseDropout( p=0.05, size_percent=0.01) ),
-        #     iaa.Sometimes(0.5, iaa.GaussianBlur(1.2*np.random.rand())),
-        #     iaa.Sometimes(0.5, iaa.Add((-0.1, 0.1), per_channel=0.3)),
-        #     iaa.Sometimes(0.3, iaa.Invert(0.2, per_channel=True)),
-        #     iaa.Sometimes(0.5, iaa.Multiply((0.6, 1.4), per_channel=0.5)),
-        #     iaa.Sometimes(0.5, iaa.Multiply((0.6, 1.4))),
-        #     iaa.Sometimes(0.5, iaa.ContrastNormalization((0.5, 2.2), per_channel=0.3))],
-        #                      random_order=False)
-        # aug = iaa.Sequential([
-        #     #iaa.Sometimes(0.5, iaa.CoarseDropout( p=0.25, size_percent=0.02) ),
-        #     iaa.Sometimes(0.5, iaa.GaussianBlur(1.2*np.random.rand())),
-        #     iaa.Sometimes(0.5, iaa.Add((-60, 60), per_channel=0.3)),
-        #     iaa.Sometimes(0.5, iaa.Multiply((0.6, 1.4), per_channel=0.5)),
-        #     iaa.Sometimes(0.5, iaa.Multiply((0.6, 1.4))),
-        #     iaa.Sometimes(0.5, iaa.ContrastNormalization((0.5, 2.2), per_channel=0.3))],
-        #                      random_order=False)
-
-
         aug = iaa.Sequential([
             #iaa.Sometimes(0.5, PerspectiveTransform(0.05)),
             #iaa.Sometimes(0.5, CropAndPad(percent=(-0.05, 0.1))),
             iaa.Sometimes(0.5, iaa.Affine(scale=(1.0, 1.2))),
-            iaa.Sometimes(0.5, iaa.CoarseDropout( p=0.2, size_percent=0.05) ),
+            #iaa.Sometimes(0.5, iaa.CoarseDropout( p=0.2, size_percent=0.05) ),
             iaa.Sometimes(0.5, iaa.GaussianBlur(1.2*np.random.rand())),
             iaa.Sometimes(0.5, iaa.Add((-25, 25), per_channel=0.3)),
             iaa.Sometimes(0.3, iaa.Invert(0.2, per_channel=True)),
@@ -225,6 +203,12 @@ class DatasetGenerator():
             iaa.Sometimes(0.5, iaa.ContrastNormalization((0.5, 2.2), per_channel=0.3))],
                              random_order=False)
         return aug
+
+    def setup_augmentation_occ(self):
+        aug = iaa.Sequential([
+            iaa.Sometimes(0.5, iaa.CoarseDropout( p=0.2, size_percent=0.05/6.0))],
+                             random_order=False)
+        return aug        
 
     # Randomly sample poses from .p file (pickle)
     def pickle_sampling(self):
@@ -577,11 +561,13 @@ class DatasetGenerator():
             bg_im_isd = np.random.choice(len(self.backgrounds), self.batch_size, replace=False)
 
         images = []
+        masks = []
         for k in np.arange(self.batch_size):
 
             # Calc bounding box and crop image
             org_img = image_renders[k]
             ys, xs = np.nonzero(org_img[:,:,0] > 0)
+            mask = org_img[:,:,0] > 0
             obj_bb = calc_2d_bbox(xs,ys,[self.render_size,self.render_size])
 
             # Add relative offset when cropping - like Sundermeyer
@@ -596,6 +582,19 @@ class DatasetGenerator():
                 pad_factor = pad_factor + scale
 
             cropped = extract_square_patch(org_img, obj_bb_off, pad_factor=pad_factor)
+
+            # Update masks according to the crop
+            x, y, w, h = np.array(obj_bb_off).astype(np.int32)
+            size = int(np.maximum(h, w) * pad_factor)
+
+            left = int(np.maximum(x+w/2-size/2, 0))
+            right = int(np.minimum(x+w/2+size/2, org_img.shape[1]))
+            top = int(np.maximum(y+h/2-size/2, 0))
+            bottom = int(np.minimum(y+h/2+size/2, org_img.shape[0]))
+            
+            outside_crop = np.ones_like(mask)
+            outside_crop[top:bottom, left:right] = False
+            mask[outside_crop] = False
 
             if(self.realistic_occlusions):
                 # Apply random renders behind
@@ -615,7 +614,7 @@ class DatasetGenerator():
                     sum_img = np.sum(front[:,:,:3], axis=2)
                     mask = sum_img != 0
                     cropped[mask] = front[mask]
-
+                    
             # Apply background
             if(len(self.backgrounds) > 0):
                 img_back = self.backgrounds[bg_im_isd[k]]
@@ -628,6 +627,20 @@ class DatasetGenerator():
             else:
                 cropped = cropped[:, :, 0:3]
 
+            # Augment data with occlusions
+            occ_mask = np.ones((1, mask.shape[0], mask.shape[1], 3)).astype(np.uint8)
+            occ_mask = self.aug_occ(images=occ_mask)
+            occ_mask = occ_mask[0,:,:,0]
+
+            # Apply occ mask to image and object mask
+            mask[occ_mask == 0] = 0
+            occ_mask_cropped = extract_square_patch(occ_mask, obj_bb_off, pad_factor=pad_factor)
+            cropped[occ_mask_cropped == 0] = 0
+
+            # Scale mask
+            mask = mask[::6,::6] # hard-coded - not good!
+            masks.append(mask)
+                
             # Augment data
             image_aug = np.array([cropped])
             image_aug = self.aug(images=image_aug)
@@ -637,18 +650,22 @@ class DatasetGenerator():
             images.append(image_aug[:,:,:3])
 
         data = {"images":images,
+                "masks":masks,
                 "Rs":curr_Rs}
         return data
 
     def generate_images(self, num_samples):
         data = {"images":[],
+                "masks":[],
                 "Rs":[]}
         while(len(data["images"]) < num_samples):
             curr_data = self.generate_image_batch()
             data["images"] = data["images"] + curr_data["images"]
             data["Rs"] = data["Rs"] + curr_data["Rs"]
+            data["masks"] = data["masks"] + curr_data["masks"]
         data["images"] = data["images"][:num_samples]
         data["Rs"] = data["Rs"][:num_samples]
+        data["masks"] = data["masks"][:num_samples]
         return data
 
     def __iter__(self):
