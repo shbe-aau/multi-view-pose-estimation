@@ -334,18 +334,16 @@ class DatasetGenerator():
             [                0.0,                 0.0,                 0.0, 1.0]])
         R = R[:3,:3]
 
-        # Convert from OpenGL to Pytorch3D convention
-        # Inverse rotation matrix
-        #R = np.transpose(R)
 
-        # Invert xy axes
+        # Convert R matrix from opengl to pytorch format
         xy_flip = np.eye(3, dtype=np.float)
         xy_flip[0,0] = -1.0
         xy_flip[1,1] = -1.0
-        #R = R.dot(xy_flip)
+        R_conv = np.transpose(R)
+        R_conv = np.dot(R_conv,xy_flip)
 
         # Convert to tensors
-        R = torch.from_numpy(R)
+        R = torch.from_numpy(R_conv)
         t = torch.tensor([0.0, 0.0, self.dist])
         return R,t
 
