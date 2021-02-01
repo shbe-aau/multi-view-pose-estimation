@@ -1,17 +1,56 @@
-# bash run-eval.sh 25 "res-50epochs" "pytorch3d/output/depth/network-test/res/obj25/models/model-epoch50.pt" "train" "tless"
+bash run-eval.sh 25 "noise-high-depth-max30-99epochs" "pytorch3d/output/depth/all-objs-max30/noise-high/obj25/models/model-epoch99.pt" "train" "tless"
+wait
+bash run-eval.sh 25 "noise-0.06-depth-max30-99epochs" "pytorch3d/output/depth/all-objs-max30/noise-0.06/obj25/models/model-epoch99.pt" "train" "tless"
+wait
+
+# for OBJ_ID in 25 19 12 06 04
+# do
+#     bash run-eval.sh ${OBJ_ID} "sm-pose-depth-max30-99epochs" "pytorch3d/output/depth/all-objs-max30/sm-pose/obj${OBJ_ID}/models/model-epoch99.pt" "train" "tless"
+#     wait
+#     #bash run-eval.sh ${OBJ_ID} "sm-pose-depth-max30-99epochs" "pytorch3d/output/depth/all-objs-max30/sm-pose/obj${OBJ_ID}/models/model-epoch99.pt" "test" "tless"
+#     wait
+#     bash run-eval.sh ${OBJ_ID} "noise-depth-max30-99epochs" "pytorch3d/output/depth/all-objs-max30/noise/obj${OBJ_ID}/models/model-epoch99.pt" "train" "tless"
+#     wait
+#     #bash run-eval.sh ${OBJ_ID} "noise-depth-max30-99epochs" "pytorch3d/output/depth/all-objs-max30/noise/obj${OBJ_ID}/models/model-epoch99.pt" "test" "tless"
+#     wait
+#     bash run-eval.sh ${OBJ_ID} "6views-depth-max30-99epochs" "pytorch3d/output/depth/all-objs-max30/6views/obj${OBJ_ID}/models/model-epoch99.pt" "train" "tless"
+#     wait
+#     #bash run-eval.sh ${OBJ_ID} "6views-depth-max30-99epochs" "pytorch3d/output/depth/all-objs-max30/6views/obj${OBJ_ID}/models/model-epoch99.pt" "test" "tless"
+#     wait
+#     bash run-eval.sh ${OBJ_ID} "big-occ-depth-max30-99epochs" "pytorch3d/output/depth/all-objs-max30/big-occ/obj${OBJ_ID}/models/model-epoch99.pt" "train" "tless"
+#     wait
+#     #bash run-eval.sh ${OBJ_ID} "big-occ-depth-max30-99epochs" "pytorch3d/output/depth/all-objs-max30/big-occ/obj${OBJ_ID}/models/model-epoch99.pt" "test" "tless"
+#     wait
+#     bash run-eval.sh ${OBJ_ID} "vis-mask-depth-max30-99epochs" "pytorch3d/output/depth/all-objs-max30/vis-mask/obj${OBJ_ID}/models/model-epoch99.pt" "train" "tless"
+#     wait
+#     #bash run-eval.sh ${OBJ_ID} "vis-mask-depth-max30-99epochs" "pytorch3d/output/depth/all-objs-max30/vis-mask/obj${OBJ_ID}/models/model-epoch99.pt" "test" "tless"
+#     wait
+# done
+
+# bash run-eval.sh 25 "sm-pose-99epochs" "pytorch3d/output/depth/sm-pose/obj25/models/model-epoch99.pt" "train" "tless"
 # wait
-# bash run-eval.sh 25 "res-50epochs" "pytorch3d/output/depth/network-test/res/obj25/models/model-epoch50.pt" "test" "tless"
+# bash run-eval.sh 25 "sm-pose-99epochs" "pytorch3d/output/depth/sm-pose/obj25/models/model-epoch99.pt" "test" "tless"
 # wait
 
-# Different networks
-for OBJ_ID in 04 #07 #19 12 25 06
-do
-    MODEL="four-extra"
-    bash run-eval.sh ${OBJ_ID} "${MODEL}-99epochs" "pytorch3d/output/depth/network-test/${MODEL}/obj${OBJ_ID}/models/model-epoch99.pt" "train" "tless"
-    wait
-    bash run-eval.sh ${OBJ_ID} "${MODEL}-99epochs" "pytorch3d/output/depth/network-test/${MODEL}/obj${OBJ_ID}/models/model-epoch99.pt" "test" "tless"
-    wait
-done
+# # Different networks
+# for OBJ_ID in 25 # 06
+# do
+#     bash run-eval.sh ${OBJ_ID} "confs-loss-test-99epochs" "pytorch3d/output/depth/confs-loss-test/obj${OBJ_ID}/models/model-epoch99.pt" "train" "tless"
+#     wait
+#     bash run-eval.sh ${OBJ_ID} "confs-loss-test-99epochs" "pytorch3d/output/depth/confs-loss-test/obj${OBJ_ID}/models/model-epoch99.pt" "test" "tless"
+#     wait
+# done
+
+
+# # Different networks
+# for OBJ_ID in 25 #04 #07 #19 12 25 06
+# do
+#     MODEL="skip-only-four-extra"
+#     bash run-eval.sh ${OBJ_ID} "${MODEL}-30epochs" "pytorch3d/output/depth/network-test/${MODEL}/obj${OBJ_ID}/models/model-epoch30.pt" "train" "tless"
+#     wait
+#     bash run-eval.sh ${OBJ_ID} "${MODEL}-30epochs" "pytorch3d/output/depth/network-test/${MODEL}/obj${OBJ_ID}/models/model-epoch30.pt" "test" "tless"
+#     wait
+# done
 
 # #Max depth test
 # for OBJ_ID in 19 12 25 06 04 07

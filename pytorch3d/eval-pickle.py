@@ -20,10 +20,10 @@ from utils.utils import *
 from utils.tools import *
 
 from Pipeline import Pipeline
-#from Model import Model
+from Model import Model
 #from ModelSkipOnlyFourExtra import Model
 #from ModelSkipOnly import Model
-from ModelFourExtra import Model
+#from ModelFourExtra import Model
 #from ModelTwoExtra import Model
 #from ModelBig import Model
 #from ModelSmall import Model

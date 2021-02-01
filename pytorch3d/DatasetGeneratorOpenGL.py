@@ -128,6 +128,9 @@ class DatasetGenerator():
         elif(sampling_method == "sundermeyer-random"):
             self.pose_sampling = self.sm_quat_random
             self.simple_pose_sampling = False
+        elif(sampling_method == "mixed"):
+            self.pose_sampling = self.mixed
+            self.simple_pose_sampling = False
         elif(sampling_method == "quat"):
             self.pose_sampling = self.quat_sampling
             self.simple_pose_sampling = False
@@ -144,11 +147,13 @@ class DatasetGenerator():
             for i in np.arange(20*1000):
                 R, t = self.pose_sampling()
                 self.poses.append(R)
+                #print("generated random pose: ", len(self.poses))
             self.pose_sampling = self.reuse_poses
 
     def reuse_poses(self):
-        random.shuffle(self.poses)
-        R = self.poses[-1]
+        rand_id = np.random.choice(20*1000,1,replace=False)[0]
+        #print("re-using pose: ", rand_id)
+        R = self.poses[rand_id]
         t = torch.tensor([0.0, 0.0, self.dist])
         return R,t
 
@@ -308,6 +313,14 @@ class DatasetGenerator():
         t = torch.tensor([0.0, 0.0, self.dist])
         return R,t
 
+
+    # Based on Sundermeyer
+    def mixed(self):
+        rand = np.random.uniform(low=-100, high=100, size=1)[0]
+        if(rand > 0):
+            return self.sphere_wolfram_sampling_fixed()
+        return self.sm_quat_random()
+
     # Based on Sundermeyer
     def sm_quat_random(self):
         # Sample random quaternion
@@ -333,7 +346,6 @@ class DatasetGenerator():
             [    q[1, 3]-q[2, 0],     q[2, 3]+q[1, 0], 1.0-q[1, 1]-q[2, 2], 0.0],
             [                0.0,                 0.0,                 0.0, 1.0]])
         R = R[:3,:3]
-
 
         # Convert R matrix from opengl to pytorch format
         xy_flip = np.eye(3, dtype=np.float)
