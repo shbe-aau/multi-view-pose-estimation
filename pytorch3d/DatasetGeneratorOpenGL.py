@@ -129,6 +129,9 @@ class DatasetGenerator():
         elif(sampling_method == "sundermeyer-random"):
             self.pose_sampling = self.sm_quat_random
             self.simple_pose_sampling = False
+        elif(sampling_method == "mixed"):
+            self.pose_sampling = self.mixed
+            self.simple_pose_sampling = False
         elif(sampling_method == "quat"):
             self.pose_sampling = self.quat_sampling
             self.simple_pose_sampling = False
@@ -145,11 +148,13 @@ class DatasetGenerator():
             for i in np.arange(20*1000):
                 R, t = self.pose_sampling()
                 self.poses.append(R)
+                #print("generated random pose: ", len(self.poses))
             self.pose_sampling = self.reuse_poses
 
     def reuse_poses(self):
-        random.shuffle(self.poses)
-        R = self.poses[-1]
+        rand_id = np.random.choice(20*1000,1,replace=False)[0]
+        #print("re-using pose: ", rand_id)
+        R = self.poses[rand_id]
         t = torch.tensor([0.0, 0.0, self.dist])
         return R,t
 
@@ -292,6 +297,14 @@ class DatasetGenerator():
         t = torch.tensor([0.0, 0.0, self.dist])
         return R,t
 
+
+    # Based on Sundermeyer
+    def mixed(self):
+        rand = np.random.uniform(low=-100, high=100, size=1)[0]
+        if(rand > 0):
+            return self.sphere_wolfram_sampling_fixed()
+        return self.sm_quat_random()
+
     # Based on Sundermeyer
     def sm_quat_random(self):
         # Sample random quaternion
@@ -318,18 +331,15 @@ class DatasetGenerator():
             [                0.0,                 0.0,                 0.0, 1.0]])
         R = R[:3,:3]
 
-        # Convert from OpenGL to Pytorch3D convention
-        # Inverse rotation matrix
-        #R = np.transpose(R)
-
-        # Invert xy axes
+        # Convert R matrix from opengl to pytorch format
         xy_flip = np.eye(3, dtype=np.float)
         xy_flip[0,0] = -1.0
         xy_flip[1,1] = -1.0
-        #R = R.dot(xy_flip)
+        R_conv = np.transpose(R)
+        R_conv = np.dot(R_conv,xy_flip)
 
         # Convert to tensors
-        R = torch.from_numpy(R)
+        R = torch.from_numpy(R_conv)
         t = torch.tensor([0.0, 0.0, self.dist])
         return R,t
 
