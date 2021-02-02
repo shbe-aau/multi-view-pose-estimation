@@ -307,20 +307,9 @@ def runEpoch(mean, std, br, dataset, model,
         Rs = curr_batch["Rs"]
         ts = [T.copy() for t in Rs]
 
-        if("masks" in curr_batch):
-            masks = curr_batch["masks"]
-        else:
-            masks = None
-        
         # Calculate the loss
-        loss, batch_loss, gt_images, predicted_images, diffs = Loss(predicted_poses,
-                                                                    Rs, br, ts,
-                                                                    mean, std,
-                                                                    loss_method=loss_method,
-                                                                    pose_rep=pose_rep,
-                                                                    views=views,
-                                                                    loss_params=loss_params,
-                                                                    masks=masks)
+        loss, batch_loss, gt_images, predicted_images = Loss(predicted_poses, Rs, br, ts,
+                                                             mean, std, loss_method=loss_method, pose_rep=pose_rep, views=views, loss_params=loss_params)
 
         Rs = torch.tensor(np.stack(Rs), device=device, dtype=torch.float32)
 
@@ -368,7 +357,7 @@ def runEpoch(mean, std, br, dataset, model,
 
             fig = plt.figure(figsize=(12,3+len(views)*2))
             #for viewNum in np.arange(len(views)):
-            plotView(0, len(views), vmin, vmax, input_images, gt_images, predicted_images, diffs,
+            plotView(0, len(views), vmin, vmax, input_images, gt_images, predicted_images,
                      predicted_poses, batch_loss, batch_size, threshold=loss_params)
             fig.tight_layout()
 
