@@ -1,7 +1,30 @@
-bash run-eval.sh 25 "noise-high-depth-max30-99epochs" "pytorch3d/output/depth/all-objs-max30/noise-high/obj25/models/model-epoch99.pt" "train" "tless"
-wait
-bash run-eval.sh 25 "noise-0.06-depth-max30-99epochs" "pytorch3d/output/depth/all-objs-max30/noise-0.06/obj25/models/model-epoch99.pt" "train" "tless"
-wait
+#Eval all objs with union and adding pose
+for OBJ_ID in 30 29 28 27 26 25 24 23 22 21 20 19 18 17 16 15 14 13 12 11 10 09 08 07 06 05 04 03 02 01
+do
+    bash run-eval.sh ${OBJ_ID} "6views-depth-max30-199epochs" "pytorch3d/output/depth/all-objs-max30/6views/obj${OBJ_ID}/models/model-epoch199.pt" "train" "tless"
+    bash run-eval.sh ${OBJ_ID} "6views-depth-max30-199epochs" "pytorch3d/output/depth/all-objs-max30/6views/obj${OBJ_ID}/models/model-epoch199.pt" "test" "tless"
+done
+
+# #Eval all objs with union and adding pose
+# for OBJ_ID in 30 29 28 27 26 25 24 23 22 21 20 19 18 17 16 15 14 13 12 11 10 09 08 07 06 05 04 03 02 01
+# do
+#     bash run-eval.sh ${OBJ_ID} "all-objs-vsd-union-add-99epochs" "pytorch3d/output/depth/all-objs-vsd-union-add/obj${OBJ_ID}/models/model-epoch99.pt" "train" "tless"
+#     wait
+#     bash run-eval.sh ${OBJ_ID} "all-objs-vsd-union-add-99epochs" "pytorch3d/output/depth/all-objs-vsd-union-add/obj${OBJ_ID}/models/model-epoch99.pt" "test" "tless"
+#     wait
+#     bash run-eval.sh ${OBJ_ID} "sundermeyer" "" "train" "tless"
+#     wait
+#     bash run-eval.sh ${OBJ_ID} "sundermeyer" "" "test" "tless"
+#     wait
+# done
+
+# for OBJ_ID in 25 19 12
+# do
+#     bash run-eval.sh ${OBJ_ID} "sm-pose-reuse-depth-max30-99epochs" "pytorch3d/output/depth/all-objs-max30/sm-pose-reuse/obj${OBJ_ID}/models/model-epoch99.pt" "train" "tless"
+#     wait
+#     #bash run-eval.sh ${OBJ_ID} "sm-pose-reuse-depth-max30-99epochs" "pytorch3d/output/depth/all-objs-max30/sm-pose-reuse/obj${OBJ_ID}/models/model-epoch99.pt" "test" "tless"
+#     #wait
+# done
 
 # for OBJ_ID in 25 19 12 06 04
 # do

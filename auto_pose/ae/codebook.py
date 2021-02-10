@@ -47,7 +47,6 @@ class Codebook(object):
         self.nearest_neighbor_idx = tf.argmax(self.cos_similarity, axis=1)
 
 
-
     def nearest_rotation(self, session, x, top_n=1, upright=False, return_idcs=False):
         #R_model2cam
 
@@ -56,7 +55,9 @@ class Codebook(object):
         if x.ndim == 3:
             x = np.expand_dims(x, 0)
 
-        cosine_similarity = session.run(self.cos_similarity, {self._encoder.x: x})
+        code = session.run(self._encoder.z, feed_dict={self._encoder.x: x})
+        #cosine_similarity = session.run(self.cos_similarity, {self._encoder.x: x})
+
         if top_n == 1:
             if upright:
                 idcs = np.argmax(cosine_similarity[:,::int(self._dataset._kw['num_cyclo'])], axis=1)*int(self._dataset._kw['num_cyclo'])
