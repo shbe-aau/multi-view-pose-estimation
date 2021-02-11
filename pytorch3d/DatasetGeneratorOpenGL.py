@@ -199,7 +199,7 @@ class DatasetGenerator():
         #     #iaa.Sometimes(0.5, iaa.PerspectiveTransform(0.05)),
         #     #iaa.Sometimes(0.5, iaa.CropAndPad(percent=(-0.05, 0.1))),
         #     #iaa.Sometimes(0.5, iaa.Affine(scale=(1.0, 1.2))),
-        #     iaa.Sometimes(0.5, iaa.CoarseDropout( p=0.05, size_percent=0.01) ),
+        #     iaa.Sometimes(0.5, iaa.CoarseDropout( p=0.05, size_percent=0.01) ),F
         #     iaa.Sometimes(0.5, iaa.GaussianBlur(1.2*np.random.rand())),
         #     iaa.Sometimes(0.5, iaa.Add((-0.1, 0.1), per_channel=0.3)),
         #     iaa.Sometimes(0.3, iaa.Invert(0.2, per_channel=True)),
@@ -221,9 +221,17 @@ class DatasetGenerator():
             #iaa.Sometimes(0.5, PerspectiveTransform(0.05)),
             #iaa.Sometimes(0.5, CropAndPad(percent=(-0.05, 0.1))),
             iaa.Sometimes(0.5, iaa.Affine(scale=(1.0, 1.2))),
-            iaa.Sometimes(0.5, iaa.CoarseDropout( p=0.2, size_percent=0.05) ),
+            #iaa.Sometimes(0.5, iaa.CoarseDropout( p=0.2, size_percent=0.05) ),
+            iaa.Sometimes(0.5,
+                iaa.SomeOf(2, [ iaa.CoarseDropout( p=0.2, size_percent=0.05),
+                                iaa.Cutout(fill_mode="constant", cval=(0, 255),
+                 fill_per_channel=0.5),
+                                iaa.Cutout(fill_mode="constant", cval=(255)),
+                                iaa.CoarseSaltAndPepper(0.05, size_px=(4, 16)),
+                                iaa.CoarseSalt(0.05, size_percent=(0.01, 0.1))
+                                ])),
             iaa.Sometimes(0.5, iaa.GaussianBlur(1.2*np.random.rand())),
-            iaa.Sometimes(0.5, iaa.Add((-25, 25), per_channel=0.3)),
+            iaa.Sometimes(0.5, iaa.Add((-25, 25), per_channel=0.3)),computer science
             iaa.Sometimes(0.3, iaa.Invert(0.2, per_channel=True)),
             iaa.Sometimes(0.5, iaa.Multiply((0.6, 1.4), per_channel=0.5)),
             iaa.Sometimes(0.5, iaa.Multiply((0.6, 1.4))),
