@@ -1,9 +1,19 @@
-#Eval all objs with union and adding pose
-for OBJ_ID in 30 29 28 27 26 25 24 23 22 21 20 19 18 17 16 15 14 13 12 11 10 09 08 07 06 05 04 03 02 01
+for OBJ_ID in 20 #19 25 08
 do
-    bash run-eval.sh ${OBJ_ID} "6views-depth-max30-199epochs" "pytorch3d/output/depth/all-objs-max30/6views/obj${OBJ_ID}/models/model-epoch199.pt" "train" "tless"
+    bash run-eval.sh ${OBJ_ID} "square-occ-depth-max30-199epochs" "pytorch3d/output/depth/all-objs-max30/square-occ/obj${OBJ_ID}/models/model-epoch199.pt" "test" "tless"
+    wait
     bash run-eval.sh ${OBJ_ID} "6views-depth-max30-199epochs" "pytorch3d/output/depth/all-objs-max30/6views/obj${OBJ_ID}/models/model-epoch199.pt" "test" "tless"
+    wait
 done
+
+# #Eval all objs with union and adding pose
+# for OBJ_ID in 30 29 28 27 26 25 24 23 22 21 20 19 18 17 16 15 14 13 12 11 10 09 08 07 06 05 04 03 02 01
+# do
+#     bash run-eval.sh ${OBJ_ID} "6views-depth-max30-199epochs" "pytorch3d/output/depth/all-objs-max30/6views/obj${OBJ_ID}/models/model-epoch199.pt" "train" "tless"
+#     wait
+#     bash run-eval.sh ${OBJ_ID} "6views-depth-max30-199epochs" "pytorch3d/output/depth/all-objs-max30/6views/obj${OBJ_ID}/models/model-epoch199.pt" "test" "tless"
+#     wait
+# done
 
 # #Eval all objs with union and adding pose
 # for OBJ_ID in 30 29 28 27 26 25 24 23 22 21 20 19 18 17 16 15 14 13 12 11 10 09 08 07 06 05 04 03 02 01
