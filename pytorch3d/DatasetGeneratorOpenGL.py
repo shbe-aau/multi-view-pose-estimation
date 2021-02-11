@@ -57,7 +57,7 @@ class DatasetGenerator():
         self.batch_size = batch_size
         self.dist = obj_distance
         self.img_size = 128
-        self.render_size = self.img_size*2
+        self.render_size = 3*self.img_size
         self.max_rel_offset = 0.2
         self.K = np.array([1075.65, 0, self.render_size/2,
                            0, 1073.90, self.render_size/2,
@@ -486,7 +486,7 @@ class DatasetGenerator():
         for k in np.arange(self.batch_size):
             R, t = self.pose_sampling()
             if(len(self.obj_ids) == 0):
-                self.obj_ids = [1] #list(np.arange(len(self.renderers)))
+                self.obj_ids = list(np.arange(len(self.renderers)))
             random.shuffle(self.obj_ids)
             obj_id = self.obj_ids.pop()
 
