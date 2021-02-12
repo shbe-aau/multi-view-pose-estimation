@@ -33,9 +33,17 @@ def dbg(message, flag):
     if flag:
         print(message)
 
+
+import re
+def atoi(text):
+    return int(text) if text.isdigit() else text
+
+def natural_keys(text):
+    return [ atoi(c) for c in re.split(r'(\d+)', text) ]
+
 def latestCheckpoint(model_dir):
     checkpoints = glob.glob(os.path.join(model_dir, "*.pt"))
-    checkpoints_sorted = sorted(checkpoints, key=os.path.getmtime)
+    checkpoints_sorted = sorted(checkpoints, key=natural_keys)
     if(len(checkpoints_sorted) > 0):
         return checkpoints_sorted[-1]
     return None
