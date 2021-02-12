@@ -44,6 +44,8 @@ from utils.pytless import inout, misc
 from vispy import app, gloo
 from utils.pytless.renderer import Renderer
 
+from utils.sundermeyer.pysixd import view_sampler
+
 
 class DatasetGenerator():
 
@@ -72,6 +74,11 @@ class DatasetGenerator():
                                                self.img_size, self.img_size)
 
         self.model = inout.load_ply(obj_path.replace(".obj",".ply"))
+
+        # Stuff for viewsphere aug sampling
+        self.view_sphere = None
+        self.view_sphere_indices = []
+        self.random_aug = None
 
         # Normalize pts
         verts = self.model['pts']
@@ -128,6 +135,12 @@ class DatasetGenerator():
         elif(sampling_method == "sundermeyer-random"):
             self.pose_sampling = self.sm_quat_random
             self.simple_pose_sampling = False
+        elif(sampling_method == "viewsphere-aug"):
+            self.pose_sampling = self.viewsphere_aug
+            self.simple_pose_sampling = False
+        elif(sampling_method == "viewsphere-aug-no-conv"):
+            self.pose_sampling = self.viewsphere_aug_no_conv
+            self.simple_pose_sampling = False
         elif(sampling_method == "mixed"):
             self.pose_sampling = self.mixed
             self.simple_pose_sampling = False
@@ -156,6 +169,26 @@ class DatasetGenerator():
         R = self.poses[rand_id]
         t = torch.tensor([0.0, 0.0, self.dist])
         return R,t
+
+
+    def viewsphere_for_embedding(self, num_views, num_inplane):
+        azimuth_range = (0, 2 * np.pi)
+        elev_range = (-0.5 * np.pi, 0.5 * np.pi)
+        views, _ = view_sampler.sample_views(
+            num_views,
+            1000.0,
+            azimuth_range,
+            elev_range
+        )
+
+        Rs = np.empty( (len(views)*num_inplane, 3, 3) )
+        i = 0
+        for view in views:
+            for cyclo in np.linspace(0, 2.*np.pi, num_inplane):
+                rot_z = np.array([[np.cos(-cyclo), -np.sin(-cyclo), 0], [np.sin(-cyclo), np.cos(-cyclo), 0], [0, 0, 1]])
+                Rs[i,:,:] = rot_z.dot(view['R'])
+                i += 1
+        return Rs
 
     def load_bg_images(self, output_path, background_path, num_bg_images, h, w, c=3):
         if(background_path == ""):
@@ -253,6 +286,86 @@ class DatasetGenerator():
         R = torch.tensor(self.poses[index], dtype=torch.float32)
         t = torch.tensor([0.0, 0.0, self.dist])
         return R,t
+
+    def quat_random(self):
+        # Sample random quaternion
+        rand = np.random.rand(3)
+        r1 = np.sqrt(1.0 - rand[0])
+        r2 = np.sqrt(rand[0])
+        pi2 = math.pi * 2.0
+        t1 = pi2 * rand[1]
+        t2 = pi2 * rand[2]
+        random_quat = np.array([np.cos(t2)*r2, np.sin(t1)*r1,
+                                np.cos(t1)*r1, np.sin(t2)*r2])
+
+        # Convert quaternion to rotation matrix
+        q = np.array(random_quat, dtype=np.float64, copy=True)
+        n = np.dot(q, q)
+        if n < 0.0001: #_EPS:
+            return np.identity(4)
+        q *= math.sqrt(2.0 / n)
+        q = np.outer(q, q)
+        R = np.array([
+            [1.0-q[2, 2]-q[3, 3],     q[1, 2]-q[3, 0],     q[1, 3]+q[2, 0], 0.0],
+            [    q[1, 2]+q[3, 0], 1.0-q[1, 1]-q[3, 3],     q[2, 3]-q[1, 0], 0.0],
+            [    q[1, 3]-q[2, 0],     q[2, 3]+q[1, 0], 1.0-q[1, 1]-q[2, 2], 0.0],
+            [                0.0,                 0.0,                 0.0, 1.0]])
+        R = R[:3,:3]
+        return R
+
+    # Randomly sample poses from SM view sphere
+    def viewsphere_aug(self):
+        if(self.view_sphere is None):
+            self.view_sphere = self.viewsphere_for_embedding(600, 18)
+
+        if(len(self.view_sphere_indices) == 0):
+            self.view_sphere_indices = list(np.random.choice(self.view_sphere.shape[0],
+                                                             self.max_samples, replace=False))
+            # Sample new rotation aug for each new list!
+            self.random_aug = self.quat_random()
+
+        # Pop random index and associated R matrix
+        rand_i = self.view_sphere_indices.pop()
+        curr_R = self.view_sphere[rand_i]
+
+        # Apply random augmentation R matrix
+        aug_R = np.dot(curr_R, self.random_aug)
+
+        # Convert R matrix from opengl to pytorch format
+        xy_flip = np.eye(3, dtype=np.float)
+        xy_flip[0,0] = -1.0
+        xy_flip[1,1] = -1.0
+        R_conv = np.transpose(aug_R)
+        R_conv = np.dot(R_conv,xy_flip)
+
+        # Convert to tensors
+        R = torch.from_numpy(R_conv)
+        t = torch.tensor([0.0, 0.0, self.dist])
+        return R,t
+
+    # Randomly sample poses from SM view sphere
+    def viewsphere_aug_no_conv(self):
+        if(self.view_sphere is None):
+            self.view_sphere = self.viewsphere_for_embedding(600, 18)
+
+        if(len(self.view_sphere_indices) == 0):
+            self.view_sphere_indices = list(np.random.choice(self.view_sphere.shape[0],
+                                                             self.max_samples, replace=False))
+            # Sample new rotation aug for each new list!
+            self.random_aug = self.quat_random()
+
+        # Pop random index and associated R matrix
+        rand_i = self.view_sphere_indices.pop()
+        curr_R = self.view_sphere[rand_i]
+
+        # Apply random augmentation R matrix
+        aug_R = np.dot(curr_R, self.random_aug)
+
+        # Convert to tensors
+        R = torch.from_numpy(aug_R)
+        t = torch.tensor([0.0, 0.0, self.dist])
+        return R,t
+
 
     # Randomly sample poses from SM view sphere
     def viewsphere_sampling(self):
