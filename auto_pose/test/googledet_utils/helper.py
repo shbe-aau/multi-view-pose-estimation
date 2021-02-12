@@ -51,8 +51,8 @@ class FPS:
     def fps(self):
         # compute the (approximate) frames per second
         return self._numFrames / self.elapsed()
-
-
+    
+    
 class FPS2:
     def __init__(self, interval):
         self._glob_start = None
@@ -88,14 +88,14 @@ class FPS2:
 
     def fps(self):
         return self._glob_numFrames / self.elapsed()
-
+    
     def fps_local(self):
         if self.first:
             return round(self._local_numFrames / self.curr_local_elapsed,1)
         else:
             return 0.0
-
-
+    
+    
 class WebcamVideoStream:
 # with modifications from https://www.pyimagesearch.com/2015/12/21/increasing-webcam-fps-with-python-and-opencv/
     def __init__(self, src, width, height):
@@ -115,7 +115,7 @@ class WebcamVideoStream:
         self.real_width = int(self.stream.get(3))
         self.real_height = int(self.stream.get(4))
         print("> Start video stream with shape: {},{}".format(self.real_width,self.real_height))
-
+    
     def start(self):
         # start the thread to read frames from the video stream
         threading.Thread(target=self.update, args=()).start()
@@ -140,17 +140,17 @@ class WebcamVideoStream:
     def stop(self):
         # indicate that the thread should be stopped
         self.stopped = True
-
+        
     def isActive(self):
         # check if VideoCapture is still Opened
         return self.stream.isOpened
 
     def resize(self):
         try:
-            self.frame = cv2.resize(self.frame, (self.width, self.height))
+            self.frame = cv2.resize(self.frame, (self.width, self.height)) 
         except:
             print("> Error resizing video stream")
-
+        
 
 
 class SessionWorker():

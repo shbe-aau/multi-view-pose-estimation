@@ -8,7 +8,6 @@ from webcam_video_stream import WebcamVideoStream
 from auto_pose.ae.utils import get_dataset_path
 from aae_retina_pose_estimator import AePoseEstimator
 
-from transforms3d.euler import *
 
 parser = argparse.ArgumentParser()
 parser.add_argument("-test_config", type=str, required=False, default='test_config_webcam.cfg')
@@ -29,16 +28,16 @@ test_args.read(test_configpath)
 
 ae_pose_est = AePoseEstimator(test_configpath)
 
-videoStream = WebcamVideoStream(2, ae_pose_est._width, ae_pose_est._height).start()
+videoStream = WebcamVideoStream(0, ae_pose_est._width, ae_pose_est._height).start()
 
 if args.vis:
     from auto_pose.meshrenderer import meshrenderer
 
     ply_model_paths = [str(train_args.get('Paths','MODEL_PATH')) for train_args in ae_pose_est.all_train_args]
     cad_reconst = [str(train_args.get('Dataset','MODEL')) for train_args in ae_pose_est.all_train_args]
-
-    renderer = meshrenderer.Renderer(ply_model_paths,
-                    samples=1,
+    
+    renderer = meshrenderer.Renderer(ply_model_paths, 
+                    samples=1, 
                     vertex_tmp_store_folder=get_dataset_path(workspace_path),
                     vertex_scale=float(1)) # float(1) for some models
 
@@ -50,15 +49,13 @@ while videoStream.isActive():
 
     boxes, scores, labels = ae_pose_est.process_detection(image)
 
-    print(labels)
-
     all_pose_estimates, all_class_idcs = ae_pose_est.process_pose(boxes, labels, image)
 
     if args.vis:
         bgr, depth,_ = renderer.render_many(obj_ids = [clas_idx for clas_idx in all_class_idcs],
                     W = ae_pose_est._width,
                     H = ae_pose_est._height,
-                    K = ae_pose_est._camK,
+                    K = ae_pose_est._camK, 
                     # R = transform.random_rotation_matrix()[:3,:3],
                     Rs = [pose_est[:3,:3] for pose_est in all_pose_estimates],
                     ts = [pose_est[:3,3] for pose_est in all_pose_estimates],
@@ -68,31 +65,20 @@ while videoStream.isActive():
                     phong={'ambient':0.4,'diffuse':0.8, 'specular':0.3})
 
         bgr = cv2.resize(bgr,(ae_pose_est._width,ae_pose_est._height))
-
+        
         g_y = np.zeros_like(bgr)
-        g_y[:,:,1]= bgr[:,:,1]
-        im_bg = cv2.bitwise_and(image,image,mask=(g_y[:,:,1]==0).astype(np.uint8))
+        g_y[:,:,1]= bgr[:,:,1]    
+        im_bg = cv2.bitwise_and(image,image,mask=(g_y[:,:,1]==0).astype(np.uint8))                 
         image_show = cv2.addWeighted(im_bg,1,g_y,1,0)
 
-        Rs = [pose_est[:3,:3] for pose_est in all_pose_estimates]
-        ts = [pose_est[:3,3] for pose_est in all_pose_estimates]
+        #cv2.imshow('pred view rendered', pred_view)
+        for label,box,score in zip(labels,boxes,scores):
+            box = box.astype(np.int32)
+            xmin,ymin,xmax,ymax = box[0],box[1],box[0]+box[2],box[1]+box[3]
+            print label
+            cv2.putText(image_show, '%s : %1.3f' % (label,score), (xmin, ymax+20), cv2.FONT_ITALIC, .5, color_dict[int(label)], 2)
+            cv2.rectangle(image_show,(xmin,ymin),(xmax,ymax),(255,0,0),2)
 
-        #Draw bounding boxes
-        for label,box,score,t,R in zip(labels,boxes,scores,ts,Rs):
-           euler = mat2euler((np.asarray(R).reshape(3,3)),'sxyz')
-           box = box.astype(np.int32)
-           xmin,ymin,xmax,ymax = box[0],box[1],box[0]+box[2],box[1]+box[3]
-           print label
-           cv2.putText(image_show, 'class: %s score: %1.2f' % (label,score), (xmin, ymax+20), cv2.FONT_ITALIC, .5, (0,0,255), 2)
-           cv2.putText(image_show, 'translation: (%1.2f, %1.2f, %1.2f)' % (t[0],t[1],t[2]), (xmin, ymax+40), cv2.FONT_ITALIC, .5, (0,0,255), 2)
-           cv2.putText(image_show, 'rotation: (%1.2f, %1.2f, %1.2f)' % (euler[0],euler[1],euler[2]), (xmin, ymax+60), cv2.FONT_ITALIC, .5, (0,0,255), 2)
-           cv2.rectangle(image_show,(xmin,ymin),(xmax,ymax),(0,0,255),2)
-
-        cv2.imshow('', bgr)
+        #cv2.imshow('', bgr)
         cv2.imshow('real', image_show)
-        k = cv2.waitKey(1)
-        if k == 27:
-            break
-print("Closing....")
-videoStream.stop()
-ae_pose_est.sess.close()
+        cv2.waitKey(1)

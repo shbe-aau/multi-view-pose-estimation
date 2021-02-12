@@ -19,9 +19,9 @@ from sixd_toolkit.params import dataset_params
 from sixd_toolkit.tools import eval_calc_errors, eval_loc
 
 def main():
-
+    
     parser = argparse.ArgumentParser()
-
+    
     parser.add_argument('experiment_name')
     parser.add_argument('evaluation_name')
     parser.add_argument('--eval_cfg', default='eval.cfg', required=False)
@@ -42,7 +42,7 @@ def main():
     eval_args = configparser.ConfigParser()
     train_args.read(train_cfg_file_path)
     eval_args.read(eval_cfg_file_path)
-
+    
     #[DATA]
     dataset_name = eval_args.get('DATA','DATASET')
     obj_id = eval_args.getint('DATA','OBJ_ID')
@@ -54,7 +54,7 @@ def main():
     #[METRIC]
     top_nn = eval_args.getint('METRIC','TOP_N')
     #[EVALUATION]
-    icp = eval_args.getboolean('EVALUATION','ICP')
+    icp = eval_args.getboolean('EVALUATION','ICP')    
 
     evaluation_name = evaluation_name + '_icp' if icp else evaluation_name
     evaluation_name = evaluation_name + '_bbest' if estimate_bbs else evaluation_name
@@ -76,7 +76,7 @@ def main():
 
     sess = tf.Session(config=config)
     factory.restore_checkpoint(sess, tf.train.Saver(), ckpt_dir, at_step=at_step)
-
+    
 
     # if estimate_bbs:
     #     #Object Detection, seperate from main
@@ -87,16 +87,16 @@ def main():
     #     from rmcssd.bin import detector
     #     ssd = detector.Detector(eval_args.get('BBOXES','CKPT'))
 
-
+    
     t_errors = []
     R_errors = []
     all_test_visibs = []
 
-    # if eval_args.getboolean('EVALUATION','EVALUATE_ERRORS'):
+    # if eval_args.getboolean('EVALUATION','EVALUATE_ERRORS'):    
     #     eval_loc.match_and_eval_performance_scores(eval_args, eval_dir)
     #     exit()
 
-    test_embeddings = []
+    test_embeddings = []  
     for scene_id in scenes:
 
         test_imgs = eval_utils.load_scenes(scene_id, eval_args)
@@ -145,11 +145,11 @@ def main():
 
         for view in range(noof_scene_views):
             try:
-                test_crops, test_crops_depth, test_bbs, test_scores, test_visibs = eval_utils.select_img_crops(test_img_crops[view][obj_id],
+                test_crops, test_crops_depth, test_bbs, test_scores, test_visibs = eval_utils.select_img_crops(test_img_crops[view][obj_id], 
                                                                                                                test_img_depth_crops[view][obj_id] if icp else None,
                                                                                                                bbs[view][obj_id],
-                                                                                                               bb_scores[view][obj_id],
-                                                                                                               visibilities[view][obj_id],
+                                                                                                               bb_scores[view][obj_id], 
+                                                                                                               visibilities[view][obj_id], 
                                                                                                                eval_args)
             except:
                 print 'no detections'
@@ -161,17 +161,17 @@ def main():
             all_test_visibs.append(test_visibs[0])
             t_errors_crop = []
             R_errors_crop = []
-
-            for i, (test_crop, test_bb, test_score) in enumerate(zip(test_crops, test_bbs, test_scores)):
+            
+            for i, (test_crop, test_bb, test_score) in enumerate(zip(test_crops, test_bbs, test_scores)):    
 
                 if train_args.getint('Dataset','C') == 1:
                     test_crop = cv2.cvtColor(test_crop,cv2.COLOR_BGR2GRAY)[:,:,None]
                 start = time.time()
-                Rs_est, ts_est = codebook.auto_pose6d(sess,
-                                                                    test_crop,
-                                                                    test_bb,
-                                                                    Ks_test[view].copy(),
-                                                                    top_nn,
+                Rs_est, ts_est = codebook.auto_pose6d(sess, 
+                                                                    test_crop, 
+                                                                    test_bb, 
+                                                                    Ks_test[view].copy(), 
+                                                                    top_nn, 
                                                                     train_args)
                 ae_time = time.time() - start
                 run_time = ae_time + bb_preds[view][0]['det_time'] if estimate_bbs else ae_time
@@ -182,7 +182,7 @@ def main():
 
 
                 # icp = False if view<350 else True
-                #TODO:
+                #TODO: 
                 Rs_est_old, ts_est_old = Rs_est.copy(), ts_est.copy()
                 for p in range(top_nn):
                     if icp:
@@ -205,15 +205,15 @@ def main():
 
                         icp_time = time.time() - start
                         Rs_est[p], ts_est[p] = R_est_refined, t_est_refined
-
-
+                    
+                        
                     preds.setdefault('ests',[]).append({'score':test_score, 'R': Rs_est[p], 't':ts_est[p]})
                 run_time = run_time + icp_time if icp else run_time
 
                 min_t_err, min_R_err = eval_plots.print_trans_rot_errors(gts[view], obj_id, ts_est, ts_est_old, Rs_est, Rs_est_old)
                 t_errors_crop.append(min_t_err)
                 R_errors_crop.append(min_R_err)
-
+                                       
                 if eval_args.getboolean('PLOT','RECONSTRUCTION'):
                     eval_plots.plot_reconstruction_test(sess, codebook._encoder, decoder, test_crop)
                     # eval_plots.plot_reconstruction_train(sess, decoder, nearest_train_codes[0])
@@ -222,7 +222,7 @@ def main():
                         pred_views.append(dataset.render_rot( R_est ,downSample = 2))
                     eval_plots.show_nearest_rotation(pred_views, test_crop, view)
                 if eval_args.getboolean('PLOT','SCENE_WITH_ESTIMATE'):
-                    eval_plots.plot_scene_with_estimate(test_imgs[view].copy(),icp_renderer.renderer if icp else dataset.renderer,Ks_test[view].copy(), Rs_est_old[0],
+                    eval_plots.plot_scene_with_estimate(test_imgs[view].copy(),icp_renderer.renderer if icp else dataset.renderer,Ks_test[view].copy(), Rs_est_old[0], 
                                                         ts_est_old[0],Rs_est[0], ts_est[0],test_bb, test_score, obj_id, gts[view], bb_preds[view] if estimate_bbs else None)
 
 
@@ -232,12 +232,12 @@ def main():
 
             t_errors.append(t_errors_crop[np.argmin(np.linalg.norm(np.array(t_errors_crop),axis=1))])
             R_errors.append(R_errors_crop[np.argmin(np.linalg.norm(np.array(t_errors_crop),axis=1))])
-
+                    
 
             # save predictions in sixd format
             res_path = os.path.join(scene_res_dir,'%04d_%02d.yml' % (view,obj_id))
             inout.save_results_sixd17(res_path, preds, run_time=run_time)
-
+            
     if not os.path.exists(os.path.join(eval_dir,'latex')):
         os.makedirs(os.path.join(eval_dir,'latex'))
     if not os.path.exists(os.path.join(eval_dir,'figures')):
@@ -245,7 +245,7 @@ def main():
 
     if eval_args.getboolean('EVALUATION','COMPUTE_ERRORS'):
         eval_calc_errors.eval_calc_errors(eval_args, eval_dir)
-    if eval_args.getboolean('EVALUATION','EVALUATE_ERRORS'):
+    if eval_args.getboolean('EVALUATION','EVALUATE_ERRORS'):    
         eval_loc.match_and_eval_performance_scores(eval_args, eval_dir)
 
     cyclo = train_args.getint('Embedding','NUM_CYCLO')
@@ -270,7 +270,7 @@ def main():
         eval_plots.animate_embedding_path(test_embeddings[0])
     if eval_args.getboolean('PLOT','RECONSTRUCTION_TEST_BATCH'):
         eval_plots.plot_reconstruction_test_batch(sess, codebook, decoder, test_img_crops, noof_scene_views, obj_id, eval_dir=eval_dir)
-        # plt.show()
+        # plt.show()    
 
         # calculate 6D pose errors
         # print 'exiting ...'

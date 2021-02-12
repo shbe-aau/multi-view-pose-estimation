@@ -231,7 +231,7 @@ class DatasetGenerator():
                                 iaa.CoarseSalt(0.05, size_percent=(0.01, 0.1))
                                 ])),
             iaa.Sometimes(0.5, iaa.GaussianBlur(1.2*np.random.rand())),
-            iaa.Sometimes(0.5, iaa.Add((-25, 25), per_channel=0.3)),computer science
+            iaa.Sometimes(0.5, iaa.Add((-25, 25), per_channel=0.3)),
             iaa.Sometimes(0.3, iaa.Invert(0.2, per_channel=True)),
             iaa.Sometimes(0.5, iaa.Multiply((0.6, 1.4), per_channel=0.5)),
             iaa.Sometimes(0.5, iaa.Multiply((0.6, 1.4))),

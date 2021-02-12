@@ -207,12 +207,12 @@ class Dataset(object):
 
         size = int(np.maximum(h, w) * pad_factor)
 
-        left = np.maximum(x+w/2-size/2, 0)
-        right = np.minimum(x+w/2+size/2, bgr_y.shape[1])
-        top = np.maximum(y+h/2-size/2, 0)
-        bottom = np.minimum(y+h/2+size/2, bgr_y.shape[0])
+        left = int(np.maximum(x+w/2-size/2, 0))
+        right = int(np.minimum(x+w/2+size/2, bgr_y.shape[1]))
+        top = int(np.maximum(y+h/2-size/2, 0))
+        bottom = int(np.minimum(y+h/2+size/2, bgr_y.shape[0]))
 
-        bgr_y = bgr_y[int(top):int(bottom), int(left):int(right)]
+        bgr_y = bgr_y[top:bottom, left:right]
         return cv2.resize(bgr_y, self.shape[:2])
 
 
@@ -276,12 +276,6 @@ class Dataset(object):
                 print('Object in Rendering not visible. Have you scaled the vertices to mm?')
                 break
 
-            # # Augment with random scaling
-            # random_scale = np.random.uniform(0.5, 1.5)
-            # obj_bb = np.array([obj_bb[0]-(random_scale*obj_bb[2]-obj_bb[2])*0.5,
-            #                    obj_bb[1]-(random_scale*obj_bb[3]-obj_bb[3])*0.5,
-            #                    obj_bb[2]*random_scale,
-            #                    obj_bb[3]*random_scale])
 
             x, y, w, h = obj_bb
 
@@ -297,12 +291,6 @@ class Dataset(object):
 
             ys, xs = np.nonzero(depth_y > 0)
             obj_bb = view_sampler.calc_2d_bbox(xs, ys, render_dims)
-
-            # # Augment with random scaling
-            # obj_bb = np.array([obj_bb[0]-(random_scale*obj_bb[2]-obj_bb[2])*0.5,
-            #                    obj_bb[1]-(random_scale*obj_bb[3]-obj_bb[3])*0.5,
-            #                    obj_bb[2]*random_scale,
-            #                    obj_bb[3]*random_scale])
 
             bgr_y = self.extract_square_patch(bgr_y, obj_bb, pad_factor,resize=(W,H),interpolation = cv2.INTER_NEAREST)
 
@@ -392,7 +380,7 @@ class Dataset(object):
     @lazy_property
     def _aug(self):
         from imgaug.augmenters import Sequential,SomeOf,OneOf,Sometimes,WithColorspace,WithChannels, \
-            Noop,Lambda,AssertLambda,AssertShape,Scale,CropAndPad, \
+            Noop,Cutout,CoarseSaltAndPepper,CoarseSalt,Lambda,AssertLambda,AssertShape,Scale,CropAndPad, \
             Pad,Crop,Fliplr,Flipud,Superpixels,ChangeColorspace, PerspectiveTransform, \
             Grayscale,GaussianBlur,AverageBlur,MedianBlur,Convolve, \
             Sharpen,Emboss,EdgeDetect,DirectedEdgeDetect,Add,AddElementwise, \

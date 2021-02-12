@@ -26,19 +26,22 @@ ckpt_dir = u.get_checkpoint_dir(log_dir)
 
 train_cfg_file_path = u.get_train_config_exp_file_path(log_dir, experiment_name)
 train_args = configparser.ConfigParser()
-train_args.read(train_cfg_file_path)
+train_args.read(train_cfg_file_path)  
 
 width = 960
 height = 720
 videoStream = WebcamVideoStream(0,width,height).start()
 
+gpu_options = tf.GPUOptions(allow_growth=True, per_process_gpu_memory_fraction = 0.9)
+config = tf.ConfigProto(gpu_options=gpu_options)
+config.gpu_options.allow_growth = True
 
-with tf.Session() as sess:
+with tf.Session(config=config) as sess:
     factory.restore_checkpoint(sess, tf.train.Saver(), ckpt_dir)
 
     while videoStream.isActive():
         image = videoStream.read()
-
+        
         # try your detector here:
         # bb_xywh = detector.detect(image)
         # image_crop = dataset.extract_square_patch(image, bb_xywh, train_args.getfloat('Dataset','PAD_FACTOR'))
@@ -46,22 +49,12 @@ with tf.Session() as sess:
 
         img = cv2.resize(image,(128,128))
 
-        # Find and show the 'n' nearest exampels in the codebook
-        n = 10
-        R = codebook.nearest_rotation(sess, img, top_n=n)
-        pred_view = None
-        for i in np.arange(n):
-            curr_view = dataset.render_rot(R[i],downSample = 1)
-            if(pred_view is None):
-                pred_view = curr_view
-            else:
-                pred_view = np.concatenate((pred_view, curr_view), axis=1)
-            print(R[i])
-        cv2.imshow('pred view rendered', pred_view)
+        R = codebook.nearest_rotation(sess, img)
+        pred_view = dataset.render_rot(R,downSample = 1)
+        print(R)
         cv2.imshow('resized webcam input', img)
-        k = cv2.waitKey(1)
-        if k == 27:
-            break
-    print("Closing....")
-    videoStream.stop()
-    sess.close()
+        cv2.imshow('pred view rendered', pred_view)
+        cv2.waitKey(1)
+
+if __name__ == '__main__':
+    main()

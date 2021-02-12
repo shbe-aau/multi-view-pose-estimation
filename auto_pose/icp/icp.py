@@ -53,7 +53,7 @@ class ICP():
             if np.linalg.det(R) < 0:
                Vt[m-1,:] *= -1
                R = np.dot(Vt.T, U.T)
-
+            
             t = centroid_B.T - np.dot(R,centroid_A.T)
             if no_depth:
                 #TODO
@@ -138,7 +138,7 @@ class ICP():
             # update the current source
             src = np.dot(T, src)
 
-
+            
             mean_error = np.mean(distances)
             # print mean_error
             # check error
@@ -190,7 +190,7 @@ class ICP():
             sub_idcs_real = np.random.choice(len(real_depth_pts),np.min([len(real_depth_pts),len(synthetic_pts),N]))
             sub_idcs_syn = np.random.choice(len(synthetic_pts),np.min([len(real_depth_pts),len(synthetic_pts),N]))
 
-            T, distances, iterations = self.icp(synthetic_pts[sub_idcs_syn], real_depth_pts[sub_idcs_real],
+            T, distances, iterations = self.icp(synthetic_pts[sub_idcs_syn], real_depth_pts[sub_idcs_real], 
                                             tolerance=0.000001, depth_only=depth_only, no_depth=no_depth)
 
 
@@ -202,7 +202,7 @@ class ICP():
 
             H_est = np.eye(4)
             # R_est, t_est is from model to camera
-            H_est[:3,3] = t_est
+            H_est[:3,3] = t_est 
             H_est[:3,:3] = R_est
             H_est_refined = np.dot(T,H_est)
 

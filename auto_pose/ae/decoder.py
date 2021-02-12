@@ -8,8 +8,8 @@ from .utils import lazy_property
 
 class Decoder(object):
 
-    def __init__(self, reconstruction_target, latent_code, num_filters,
-                kernel_size, strides, loss, bootstrap_ratio,
+    def __init__(self, reconstruction_target, latent_code, num_filters, 
+                kernel_size, strides, loss, bootstrap_ratio, 
                 auxiliary_mask, batch_norm, is_training=False):
         self._reconstruction_target = reconstruction_target
         self._latent_code = latent_code
@@ -60,7 +60,7 @@ class Decoder(object):
             )
             if self._batch_normalization:
                 x = tf.layers.batch_normalization(x, training=self._is_training)
-
+        
         x = tf.image.resize_nearest_neighbor( x, [h, w] )
 
         if self._auxiliary_mask:
@@ -129,7 +129,7 @@ class Decoder(object):
         else:
             print('ERROR: UNKNOWN LOSS ', self._loss)
             exit()
-
+        
         tf.summary.scalar('reconst_loss', loss)
         if self._auxiliary_mask:
             mask_loss = tf.losses.mean_squared_error (
