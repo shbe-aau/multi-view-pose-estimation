@@ -15,7 +15,7 @@ class SynRenderer(object):
 
             # self.has_vertex_color.append(True if train_args.get('Dataset','model')=='reconst' else False)
 
-        self.has_vertex_color = has_vertex_color # try True
+        self.has_vertex_color = has_vertex_color # try True 
 
         self.vertex_scale = all_train_args[0].getint('Dataset','vertex_scale')
         self.renderer
@@ -36,12 +36,12 @@ class SynRenderer(object):
         # R = transform.random_rotation_matrix()[:3,:3]
         W_test, H_test = test_shape[:2]
 
-        _, depth_x = self.renderer.render(
+        _, depth_x = self.renderer.render( 
                         obj_id=clas_idx,
-                        W=W_test,
+                        W=W_test, 
                         H=H_test,
-                        K=K_test,
-                        R=R_est,
+                        K=K_test, 
+                        R=R_est, 
                         t=np.array([0,0,t_est[2]]), #TODO use t_est because R is corrected now!!!
                         near=10,
                         far=10000,
@@ -55,15 +55,16 @@ class SynRenderer(object):
     def render_trafo(self, K_test, R_est, t_est, test_shape, clas_idx=0):
         W_test, H_test = test_shape[:2]
 
-        bgr, depth_x = self.renderer.render(
+        bgr, depth_x = self.renderer.render( 
                         obj_id=clas_idx,
-                        W=W_test,
+                        W=W_test, 
                         H=H_test,
-                        K=K_test,
-                        R=R_est,
+                        K=K_test, 
+                        R=R_est, 
                         t=t_est,
                         near=10,
                         far=10000,
                         random_light=False
                     )
         return bgr,depth_x
+

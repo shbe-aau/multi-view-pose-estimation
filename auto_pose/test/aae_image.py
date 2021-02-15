@@ -36,8 +36,11 @@ ckpt_dir = utils.get_checkpoint_dir(log_dir)
 
 codebook, dataset = factory.build_codebook_from_name(experiment_name, experiment_group, return_dataset=True)
 
+gpu_options = tf.GPUOptions(allow_growth=True, per_process_gpu_memory_fraction = 0.9)
+config = tf.ConfigProto(gpu_options=gpu_options)
+config.gpu_options.allow_growth = True
 
-with tf.Session() as sess:
+with tf.Session(config=config) as sess:
 
     factory.restore_checkpoint(sess, tf.train.Saver(), ckpt_dir)
 
@@ -49,7 +52,9 @@ with tf.Session() as sess:
         print(R)
 
         pred_view = dataset.render_rot( R,downSample = 1)
-
+    
         cv2.imshow('resized img', cv2.resize(im/255.,(256,256)))
         cv2.imshow('pred_view', cv2.resize(pred_view,(256,256)))
         cv2.waitKey(0)
+
+

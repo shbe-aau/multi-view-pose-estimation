@@ -29,8 +29,8 @@ r'''
 
 \usepackage{pifont}
 \hypersetup{
-    colorlinks=true,
-    linktoc=all,
+    colorlinks=true, 
+    linktoc=all,     
     linkcolor=blue,
 }
 \pagestyle{fancy}
@@ -97,8 +97,8 @@ def main():
 		print error_type
 		topn = split_path[-2].split('=')[2].split('_')[0]
 		error_thres = split_path[-1].split('=')[1].split('_')[0]
-
-		eval_cfg_file_path = os.path.join(workspace_path, 'experiments', experiment_group,
+		
+		eval_cfg_file_path = os.path.join(workspace_path, 'experiments', experiment_group, 
 			exp_name, 'eval', eval_name, test_data, '*.cfg')
 		eval_cfg_file_pathes = glob.glob(eval_cfg_file_path)
 		if len(eval_cfg_file_pathes) == 0:
@@ -128,7 +128,7 @@ def main():
 			sixd_recall = error_score_dict['obj_recalls'][obj_id]
 		except:
 			continue
-
+		
 
 
 		if error_type=='re':
@@ -157,7 +157,7 @@ def main():
 				data_paper_auc[int(data[3])][eval_name+'_'+'auc_rerect'+'_'+str(data[1])] = float(auc_rerect)*100
 			except:
 				print err_file, 'not found'
-
+			
 		elif error_type=='te':
 			data_te.append({'exp_name':exp_name, 'eval_name':eval_name, 'error_type':error_type, 'thres':error_thres,
 				'top': topn, 'sixd_recall': sixd_recall, 'EST_BBS': estimate_bbs, 'eval_data': str(data[:2] + [occl]),
@@ -191,7 +191,7 @@ def main():
 			print 'error not known: ', error_type
 
 
-
+	
 	if len(data_re) > 0:
 		df_re = pd.DataFrame(data_re).sort_values(by=['eval_obj','eval_name','eval_data','sixd_recall'])
 		latex_content.append('\\begin{adjustbox}{max width=\\textwidth}')

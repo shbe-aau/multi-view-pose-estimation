@@ -49,7 +49,7 @@ class Encoder(object):
                 x = tf.layers.batch_normalization(x, training=self._is_training)
 
         encoder_out = tf.contrib.layers.flatten(x)
-
+        
         return encoder_out
 
     @lazy_property
@@ -58,13 +58,13 @@ class Encoder(object):
 
         z = tf.layers.dense(
             x,
-            self._latent_space_size,
+            self._latent_space_size,   
             activation=None,
             kernel_initializer=tf.contrib.layers.xavier_initializer()
         )
 
         return z
-
+    
     @lazy_property
     def q_sigma(self):
         x = self.encoder_out
@@ -80,7 +80,7 @@ class Encoder(object):
     def sampled_z(self):
         epsilon = tf.random_normal(tf.shape(self._latent_space_size), 0., 1.)
         # epsilon = tf.contrib.distributions.Normal(
-        #             np.zeros(self._latent_space_size, dtype=np.float32),
+        #             np.zeros(self._latent_space_size, dtype=np.float32), 
         #             np.ones(self._latent_space_size, dtype=np.float32))
         return self.z + self.q_sigma * epsilon
 
@@ -88,7 +88,7 @@ class Encoder(object):
     @lazy_property
     def kl_div_loss(self):
         p_z = tf.contrib.distributions.Normal(
-            np.zeros(self._latent_space_size, dtype=np.float32),
+            np.zeros(self._latent_space_size, dtype=np.float32), 
             np.ones(self._latent_space_size, dtype=np.float32))
         q_z = tf.contrib.distributions.Normal(self.z, self.q_sigma)
 

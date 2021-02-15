@@ -13,7 +13,7 @@ class IBO(object):
         self.__id = np.empty(1, dtype=np.uint32)
         glCreateBuffers(len(self.__id), self.__id)
         code = 0 if not dynamic else GL_DYNAMIC_STORAGE_BIT | GL_MAP_WRITE_BIT| GL_MAP_PERSISTENT_BIT
-        glNamedBufferStorage(self.__id, indices.nbytes, indices, code)
+        glNamedBufferStorage(self.__id, indices.nbytes, indices, code)      
 
     def bind(self):
         glBindBuffer(GL_DRAW_INDIRECT_BUFFER, self.__id)

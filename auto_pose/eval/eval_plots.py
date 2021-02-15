@@ -1,6 +1,6 @@
 
 import matplotlib.pyplot as plt
-from mpl_toolkits.mplot3d import Axes3D
+from mpl_toolkits.mplot3d import Axes3D 
 from matplotlib2tikz import save as tikz_save
 import cv2
 import os
@@ -28,15 +28,15 @@ def plot_reconstruction_test(sess, encoder, decoder, x):
 
     reconst = sess.run(decoder.x, feed_dict={encoder.x: x})
     cv2.imshow('reconst_test',cv2.resize(reconst[0],(256,256)))
-
+    
 
 def plot_reconstruction_test_batch(sess, codebook, decoder, test_img_crops, noof_scene_views, obj_id, eval_dir=None):
-
+    
     encoder = codebook._encoder
     dataset = codebook._dataset
 
     sample_views = np.random.choice(noof_scene_views, np.min([100,noof_scene_views]), replace=False)
-
+    
     sample_batch = []
     i=0
     j=0
@@ -45,13 +45,13 @@ def plot_reconstruction_test_batch(sess, codebook, decoder, test_img_crops, noof
             sample_batch.append(test_img_crops[sample_views[j]][obj_id][0])
             i += 1
         j += 1
-
+            
     x = np.array(sample_batch).squeeze()
-
+    
     if x.dtype == 'uint8':
         x = x/255.
         print 'converted uint8 to float type'
-
+    
     reconst = sess.run(decoder.x, feed_dict={encoder.x: x})
     nearest_neighbors = []
     for xi in x:
@@ -73,23 +73,23 @@ def plot_reconstruction_train(sess, decoder, train_code):
         train_code = np.expand_dims(train_code, 0)
     reconst = sess.run(decoder.x, feed_dict={decoder._latent_code: train_code})
     cv2.imshow('reconst_train',cv2.resize(reconst[0],(256,256)))
-
+    
 
 
 def show_nearest_rotation(pred_views, test_crop, view):
-    print np.array(pred_views).shape
+    print np.array(pred_views).shape 
     nearest_views = tiles(np.array(pred_views),1,len(pred_views),10,10)
     cv2.imshow('nearest_views',cv2.resize(nearest_views/255.,(len(pred_views)*256,256)))
     cv2.imshow('test_crop',cv2.resize(test_crop,(256,256)))
 
     # cv2.imwrite('/home_local2/sund_ma/autoencoder_ws/aae_imgs/nearest_views_%s.png' % view,nearest_views)
-
+    
 
 def plot_scene_with_3DBoxes(scene_res_dirs,dataset_name='tless',scene_id=1,save=False):
 
     # sixd_img_path = '/home_local/sund_ma/data/linemod_dataset/test'
     # model_path = '/home_local/sund_ma/data/linemod_dataset/models'
-
+    
 
 
 
@@ -115,7 +115,7 @@ def plot_scene_with_3DBoxes(scene_res_dirs,dataset_name='tless',scene_id=1,save=
 
     from auto_pose.meshrenderer import box3d_renderer
     renderer_line = box3d_renderer.Renderer(
-        models_cad_files,
+        models_cad_files, 
         1,
         W,
         H
@@ -158,7 +158,7 @@ def plot_scene_with_3DBoxes(scene_res_dirs,dataset_name='tless',scene_id=1,save=
             #     lines_gt = lines_gt[:,:,[1,0,2]]
             #     img = lines_gt_mask*img + lines_gt
 
-        for scene_dir in scene_dirs:
+        for scene_dir in scene_dirs: 
             try:
                 res_path = glob.glob(os.path.join(scene_dir,'%04d_*.yml' % (view)))
                 print res_path
@@ -175,7 +175,7 @@ def plot_scene_with_3DBoxes(scene_res_dirs,dataset_name='tless',scene_id=1,save=
                 lines_mask = (np.sum(lines,axis=2) < 20)[:,:,None]
                 # img[lines>0] = lines[lines>0]
                 if obj_id % 7 == 1:
-                    lines[:,:,0] = lines[:,:,1]
+                    lines[:,:,0] = lines[:,:,1] 
                 elif obj_id % 7 == 2:
                     lines[:,:,2] = lines[:,:,1]
                 elif obj_id % 7 == 3:
@@ -203,7 +203,7 @@ def plot_scene_with_3DBoxes(scene_res_dirs,dataset_name='tless',scene_id=1,save=
 
 
 
-def plot_scene_with_estimate(test_img,renderer,K_test, R_est_old, t_est_old,R_est_ref, t_est_ref, test_bb, test_score, obj_id, gts=[], bb_pred=None):
+def plot_scene_with_estimate(test_img,renderer,K_test, R_est_old, t_est_old,R_est_ref, t_est_ref, test_bb, test_score, obj_id, gts=[], bb_pred=None):   
     global view_idx
     if bb_pred is not None:
         scene_detect = test_img.copy()
@@ -223,7 +223,7 @@ def plot_scene_with_estimate(test_img,renderer,K_test, R_est_old, t_est_old,R_es
                 pass
             #cv2.putText(scene_detect, '%s: %1.3f' % (obj_id,test_score), (xmin, ymax+20), cv2.FONT_ITALIC, .5, (0,255,0), 2)
         cv2.imshow('scene_detect',scene_detect)
-
+        
 
     xmin = int(test_bb[0])
     ymin = int(test_bb[1])
@@ -301,9 +301,9 @@ def plot_t_err_hist(t_errors, eval_dir):
     x = np.sort(np.abs(t_errors[:,0]))
     y = np.sort(np.abs(t_errors[:,1]))
     z = np.sort(np.abs(t_errors[:,2]))
-
+    
     recall = (np.arange(len(t_errors))+1.)/len(t_errors)
-
+    
     fig = plt.figure()
     plt.title('Recall vs Translation Error')
     plt.grid()
@@ -347,7 +347,7 @@ def plot_R_err_hist2(R_errors, eval_dir, bins=15):
 
 
 def plot_R_err_hist(eval_args, eval_dir, scene_ids):
-
+    
     top_n_eval = eval_args.getint('EVALUATION','TOP_N_EVAL')
     top_n = eval_args.getint('METRIC','TOP_N')
     cam_type = eval_args.get('DATA','cam_type')
@@ -368,7 +368,7 @@ def plot_R_err_hist(eval_args, eval_dir, scene_ids):
             continue
         # angle_errs_dict = inout.load_yaml(error_file_path)
         # angle_errs += [angle_e['errors'].values()[0] for angle_e in angle_errs_dict]
-
+        
         gts = inout.load_gt(data_params['scene_gt_mpath'].format(scene_id))
         visib_gts = inout.load_yaml(data_params['scene_gt_stats_mpath'].format(scene_id, 15))
         re_dict = inout.load_yaml(error_file_path)
@@ -383,7 +383,7 @@ def plot_R_err_hist(eval_args, eval_dir, scene_ids):
 
     if len(angle_errs) == 0:
         return
-
+        
     angle_errs = np.array(angle_errs)
 
     fig = plt.figure()
@@ -395,7 +395,7 @@ def plot_R_err_hist(eval_args, eval_dir, scene_ids):
 
 
     for n in np.unique(np.array([top_n, 1])):
-
+        
         total_views = len(angle_errs)/top_n
         min_angle_errs = np.empty((total_views,))
         min_angle_errs_rect = np.empty((total_views,))
@@ -418,15 +418,15 @@ def plot_R_err_hist(eval_args, eval_dir, scene_ids):
 
         AUC_angle = np.trapz(recall,min_angle_errs_sorted/180.)
         AUC_angle_rect = np.trapz(recall,min_angle_errs_rect_sorted/90.)
-
+        
         plt.plot(min_angle_errs_sorted,recall)
         plt.plot(min_angle_errs_rect_sorted,recall)
-
+        
         legend += ['top {0} angle err, AUC = {1:.4f}'.format(n,AUC_angle), 'top {0} rectified angle err, AUC = {1:.4f}'.format(n,AUC_angle_rect)]
     plt.legend(legend)
     tikz_save(os.path.join(eval_dir,'latex','R_err_hist.tex'), figurewidth ='0.45\\textheight', figureheight='0.45\\textheight', show_info=False)
 
-def print_trans_rot_errors(gts, obj_id, ts_est, ts_est_old, Rs_est, Rs_est_old):
+def print_trans_rot_errors(gts, obj_id, ts_est, ts_est_old, Rs_est, Rs_est_old):      
 
     t_errs = []
     obj_gts = []
@@ -440,7 +440,7 @@ def print_trans_rot_errors(gts, obj_id, ts_est, ts_est_old, Rs_est, Rs_est_old):
     print min_t_err_idx
     print np.array(t_errs).shape
     print len(obj_gts)
-    gt = obj_gts[min_t_err_idx].copy()
+    gt = obj_gts[min_t_err_idx].copy()   
 
     try:
         print 'Translation Error before refinement'
@@ -456,10 +456,10 @@ def print_trans_rot_errors(gts, obj_id, ts_est, ts_est_old, Rs_est, Rs_est_old):
         pass
 
 
-
+        
 
     return (t_errs[min_t_err_idx], R_err)
-
+        
 def plot_vsd_err_hist(eval_args, eval_dir, scene_ids):
     top_n_eval = eval_args.getint('EVALUATION','TOP_N_EVAL')
     top_n = eval_args.getint('METRIC','TOP_N')
@@ -474,7 +474,7 @@ def plot_vsd_err_hist(eval_args, eval_dir, scene_ids):
         return
 
     data_params = dataset_params.get_dataset_params(dataset_name, model_type='', train_type='', test_type=cam_type, cam_type=cam_type)
-
+    
     vsd_errs = []
     for scene_id in scene_ids:
         error_file_path = os.path.join(eval_dir,'error=vsd_ntop=%s_delta=%s_tau=%s_cost=%s' % (top_n, delta, tau, cost), 'errors_{:02d}.yml'.format(scene_id))
@@ -507,9 +507,9 @@ def plot_vsd_err_hist(eval_args, eval_dir, scene_ids):
     plt.ylabel('recall')
     plt.title('VSD Error vs Recall')
     legend=[]
-
+    
     for n in np.unique(np.array([top_n, 1])):
-
+        
         total_views = len(vsd_errs)/top_n
         min_vsd_errs = np.empty((total_views,))
 
@@ -528,7 +528,7 @@ def plot_vsd_err_hist(eval_args, eval_dir, scene_ids):
 
         AUC_vsd = np.trapz(recall, min_vsd_errs_sorted)
         plt.plot(min_vsd_errs_sorted,recall)
-
+        
         legend += ['top {0} vsd err, AUC = {1:.4f}'.format(n,AUC_vsd)]
     plt.legend(legend)
     tikz_save(os.path.join(eval_dir,'latex','vsd_err_hist.tex'), figurewidth ='0.45\\textheight', figureheight='0.45\\textheight', show_info=False)
@@ -572,7 +572,7 @@ def plot_vsd_occlusion(eval_args, eval_dir, scene_ids, all_test_visibs, bins = 1
     plt.xlabel('visibility [percent]')
     # plt.xlim((0.0, 1.0))
     # plt.ylim((0.0, 1.0))
-
+    
     total_views = len(all_vsd_errs)/top_n
     vsd_errs = np.empty((total_views,))
 
@@ -588,25 +588,25 @@ def plot_vsd_occlusion(eval_args, eval_dir, scene_ids, all_test_visibs, bins = 1
         bin_idcs = np.where((all_test_visibs>bounds[idx]) & (all_test_visibs<bounds[idx+1]))
         bin_vsd_errs.append(vsd_errs[bin_idcs])
         bin_count.append(len(bin_idcs[0]))
-
+    
     middle_bin_vis = bounds[:-1] + (bounds[1]-bounds[0])/2.
     # plt.bar(middle_bin_vis,mean_vsd_err,0.5/bins)
 
     plt.boxplot(bin_vsd_errs, positions = middle_bin_vis, widths=0.5/bins, sym='+')
 
 
-    # count_str = 'bin count ' + bins * '%s '
+    # count_str = 'bin count ' + bins * '%s ' 
     # count_str = count_str % tuple(bin_count)
     plt.title('Visibility vs Mean VSD Error' + str(bin_count))
     tikz_save(os.path.join(eval_dir,'latex','vsd_occlusion.tex'), figurewidth ='0.45\\textheight', figureheight='0.45\\textheight', show_info=False)
-
+    
 def plot_re_rect_occlusion(eval_args, eval_dir, scene_ids, all_test_visibs, bins = 10):
 
     top_n_eval = eval_args.getint('EVALUATION','TOP_N_EVAL')
     top_n = eval_args.getint('METRIC','TOP_N')
     if top_n_eval < 1:
         return
-
+        
     all_angle_errs = []
     for scene_id in scene_ids:
 
@@ -629,7 +629,7 @@ def plot_re_rect_occlusion(eval_args, eval_dir, scene_ids, all_test_visibs, bins
     # plt.axis((-0.1, 1.1, -0.1, 1.1))
     # plt.xlim((0.0, 1.0))
     # plt.ylim((0.0, 1.0))
-
+    
     total_views = len(all_angle_errs)/top_n
     angle_errs_rect = np.empty((total_views,))
 
@@ -646,16 +646,16 @@ def plot_re_rect_occlusion(eval_args, eval_dir, scene_ids, all_test_visibs, bins
         # median_angle_err[idx] = np.median(angle_errs_rect[bin_idcs])
         bin_angle_errs.append(angle_errs_rect[bin_idcs])
         bin_count.append(len(bin_idcs[0]))
-
+    
     middle_bin_vis = bounds[:-1] + (bounds[1]-bounds[0])/2.
     # plt.bar(middle_bin_vis,median_angle_err,0.5/bins)
     plt.boxplot(bin_angle_errs, positions = middle_bin_vis, widths=0.5/bins, sym='+')
 
-    # count_str = 'bin count ' + bins * '%s '
+    # count_str = 'bin count ' + bins * '%s ' 
     # count_str = count_str % tuple(bin_count)
     plt.title('Visibility vs Median Rectified Rotation Error' + str(bin_count))
     tikz_save(os.path.join(eval_dir,'latex','R_err_occlusion.tex'), figurewidth ='0.45\\textheight', figureheight='0.45\\textheight', show_info=False)
-
+    
 
 def animate_embedding_path(z_test):
     pass

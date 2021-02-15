@@ -20,7 +20,7 @@ class WebcamVideoStream:
         self.real_width = int(self.stream.get(3))
         self.real_height = int(self.stream.get(4))
         print("> Start video stream with shape: {},{}".format(self.real_width,self.real_height))
-
+    
     def start(self):
         # start the thread to read frames from the video stream
         threading.Thread(target=self.update, args=()).start()
@@ -45,13 +45,14 @@ class WebcamVideoStream:
     def stop(self):
         # indicate that the thread should be stopped
         self.stopped = True
-
+        
     def isActive(self):
         # check if VideoCapture is still Opened
         return self.stream.isOpened
 
     def resize(self):
         try:
-            self.frame = cv2.resize(self.frame, (self.width, self.height))
+            self.frame = cv2.resize(self.frame, (self.width, self.height)) 
         except:
             print("> Error resizing video stream")
+        
