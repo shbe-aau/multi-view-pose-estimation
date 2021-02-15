@@ -213,7 +213,7 @@ def main():
     print("Loaded validation set!")
 
     # Start training
-    np.random.seed(seed=args.getint('Training', 'RANDOM_SEED'))
+    #np.random.seed(seed=args.getint('Training', 'RANDOM_SEED'))
     while(epoch < args.getint('Training', 'NUM_ITER')):
         # Train on synthetic data
         loss = trainEpoch(mean, std, br, training_data, model, device, output_path,
