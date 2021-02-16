@@ -316,7 +316,7 @@ class DatasetGenerator():
     # Randomly sample poses from SM view sphere
     def viewsphere_aug(self):
         if(self.view_sphere is None):
-            self.view_sphere = self.viewsphere_for_embedding(600, 18)
+            self.view_sphere = self.viewsphere_for_embedding(600, 36)
 
         if(len(self.view_sphere_indices) == 0):
             self.view_sphere_indices = list(np.random.choice(self.view_sphere.shape[0],
