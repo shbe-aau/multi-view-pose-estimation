@@ -50,14 +50,6 @@ class BatchRender:
         else:
             batch_T = ts
 
-        # Convert R matrix from opengl to pytorch format
-        # xy_flip = np.eye(3, dtype=np.float)
-        # xy_flip[0,0] = -1.0
-        # xy_flip[1,1] = -1.0
-        # xy_flip = torch.tensor(xy_flip, device=self.device, dtype=torch.float32)
-        # batch_R = batch_R.permute(0,2,1)
-        # batch_R = torch.matmul(batch_R, xy_flip)
-
         # Re-adjust to match current batch size
         curr_batch_size = batch_R.shape[0]
         mesh = Meshes(
@@ -65,9 +57,6 @@ class BatchRender:
             faces=self.batch_faces[:curr_batch_size],
             textures=self.batch_textures[:curr_batch_size]
         )
-
-
-
 
         images = self.renderer(meshes_world=mesh, R=batch_R, T=batch_T)
         if(self.method == "soft-silhouette"):
@@ -91,20 +80,12 @@ class BatchRender:
         verts, faces_idx, _ = load_obj(self.obj_path)
         faces = faces_idx.verts_idx
 
-
-        # Normalize vertices
-        center = verts.mean(0)
-        verts_normed = verts - center
-        scale = max(verts_normed.abs().max(0)[0])
-        verts_normed = (verts_normed / scale)
-
-        # Sample points
-        trg_mesh = Meshes(verts=[verts_normed.to(self.device)], faces=[faces.to(self.device)])
-        self.points = sample_points_from_meshes(trg_mesh, 10000)
-
-        # Initialize each vertex to be white in color.
-        #verts_rgb = torch.ones_like(verts[0][None,:,:])
-        verts = verts_normed*100.0
+        # # Normalize vertices
+        # center = verts.mean(0)
+        # verts_normed = verts - center
+        # scale = max(verts_normed.abs().max(0)[0])
+        # verts_normed = (verts_normed / scale)
+        # verts = verts_normed*100.0
 
         verts_rgb = torch.ones_like(verts)  # (V, 3)
 
