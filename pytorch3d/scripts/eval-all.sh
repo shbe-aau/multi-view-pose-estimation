@@ -1,10 +1,12 @@
 
 #Eval object 1-20
-for OBJ_ID in 03 05 06 08 10 17 #01 02 03 04 05 06 07 08 09 10 11 12 #13 14 15 16 17 18 19 20 21 22 23 24 25 26 27 28 29 30
+for OBJ_ID in 03 05 06 08 10 #01 02 03 04 05 06 07 08 09 10 11 12 #13 14 15 16 17 18 19 20 21 22 23 24 25 26 27 28 29 30
 do
-    bash run-eval.sh ${OBJ_ID} "multi-object-1-20-99epochs" "pytorch3d/output/depth/multi-object/obj1-20/models/model-epoch99.pt" "test"
-    wait
-    bash run-eval.sh ${OBJ_ID} "multi-object-1-10-99epochs" "pytorch3d/output/depth/multi-object/obj1-10/models/model-epoch99.pt" "test"
+    # bash run-eval.sh ${OBJ_ID} "multi-object-1-20-399epochs" "pytorch3d/output/depth/multi-object/obj1-20/models/model-epoch399.pt" "test"
+    # wait
+    # bash run-eval.sh ${OBJ_ID} "multi-object-new-1-10-99epochs" "pytorch3d/output/depth/multi-object/obj1-10/models/model-epoch99.pt" "test"
+    # wait
+    bash run-eval.sh ${OBJ_ID} "multi-object-seperate-model-199epochs" "pytorch3d/output/depth/multi-object/obj${OBJ_ID}/models/model-epoch199.pt" "test"
     wait
 done
 
