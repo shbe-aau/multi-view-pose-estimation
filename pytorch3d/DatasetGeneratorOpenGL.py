@@ -327,7 +327,7 @@ class DatasetGenerator():
         q = np.array(random_quat, dtype=np.float64, copy=True)
         n = np.dot(q, q)
 
-        if n < numpy.finfo(float).eps * 4.0:
+        if n < np.finfo(float).eps * 4.0:
             R = np.identity(4)
         else:
             q *= math.sqrt(2.0 / n)

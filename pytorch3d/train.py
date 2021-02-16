@@ -225,13 +225,12 @@ def main():
         append2file([loss], os.path.join(output_path, "train-loss.csv"))
 
         # Test on validation data
-        # val_loss = testEpoch(mean, std, br, validation_data, model, device, output_path,
-        #                      "vsd-predicted-view-log-fixed",
-        #                      pose_rep=args.get('Training', 'POSE_REPRESENTATION'),
-        #                      t=json.loads(args.get('Rendering', 'T')),
-        #                      visualize=args.getboolean('Training', 'SAVE_IMAGES'),
-        #                      loss_params=args.getfloat('Training', 'LOSS_PARAMS'))
-        val_loss = loss
+        val_loss = testEpoch(mean, std, br, validation_data, model, device, output_path,
+                             loss_method=args.get('Training', 'LOSS'),
+                             pose_rep=args.get('Training', 'POSE_REPRESENTATION'),
+                             t=json.loads(args.get('Rendering', 'T')),
+                             visualize=args.getboolean('Training', 'SAVE_IMAGES'),
+                             loss_params=args.getfloat('Training', 'LOSS_PARAMS'))
         append2file([val_loss], os.path.join(output_path, "validation-loss.csv"))
 
         # Plot losses
