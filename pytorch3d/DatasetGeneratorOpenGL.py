@@ -457,15 +457,17 @@ class DatasetGenerator():
         # Convert quaternion to rotation matrix
         q = np.array(random_quat, dtype=np.float64, copy=True)
         n = np.dot(q, q)
-        if n < 0.0001: #_EPS:
-            return np.identity(4)
-        q *= math.sqrt(2.0 / n)
-        q = np.outer(q, q)
-        R = np.array([
-            [1.0-q[2, 2]-q[3, 3],     q[1, 2]-q[3, 0],     q[1, 3]+q[2, 0], 0.0],
-            [    q[1, 2]+q[3, 0], 1.0-q[1, 1]-q[3, 3],     q[2, 3]-q[1, 0], 0.0],
-            [    q[1, 3]-q[2, 0],     q[2, 3]+q[1, 0], 1.0-q[1, 1]-q[2, 2], 0.0],
-            [                0.0,                 0.0,                 0.0, 1.0]])
+        
+        if n < numpy.finfo(float).eps * 4.0:
+            R = np.identity(4)
+        else:
+            q *= math.sqrt(2.0 / n)
+            q = np.outer(q, q)
+            R = np.array([
+                [1.0-q[2, 2]-q[3, 3],     q[1, 2]-q[3, 0],     q[1, 3]+q[2, 0], 0.0],
+                [    q[1, 2]+q[3, 0], 1.0-q[1, 1]-q[3, 3],     q[2, 3]-q[1, 0], 0.0],
+                [    q[1, 3]-q[2, 0],     q[2, 3]+q[1, 0], 1.0-q[1, 1]-q[2, 2], 0.0],
+                [                0.0,                 0.0,                 0.0, 1.0]])
         R = R[:3,:3]
 
         # Convert R matrix from opengl to pytorch format
