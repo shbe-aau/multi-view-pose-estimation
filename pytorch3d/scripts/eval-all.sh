@@ -1,10 +1,36 @@
-for OBJ_ID in 25 20 04 12
-do
+# for OBJ_ID in 01  #25 20 12 30 29 28 27 26 25
+# do
+#     for EPOCH in 199 179 159 139 119 99 79 59 39 19
+#     do
+# 	bash run-eval.sh ${OBJ_ID} "6views-depth-max30-${EPOCH}epochs" "pytorch3d/output/depth/all-objs-max30/6views/obj${OBJ_ID}/models/model-epoch${EPOCH}.pt" "test" "tless"
+# 	wait
+#     done
+# done
+
+# for OBJ_ID in 25 20 12
+# do
+#     for EPOCH in 79 69 59 49 39 29 19 9
+#     do
+# 	bash run-eval.sh ${OBJ_ID} "viewsphere-aug-${EPOCH}epochs" "pytorch3d/output/depth/viewsphere-aug/obj${OBJ_ID}/models/model-epoch${EPOCH}.pt" "test" "tless"
+# 	wait
+# 	bash run-eval.sh ${OBJ_ID} "new-occ-old-encoder-${EPOCH}epochs" "pytorch3d/output/depth/new-occlusions/old-encoder/obj${OBJ_ID}/models/model-epoch${EPOCH}.pt" "test" "tless"
+# 	wait
+#     done
+# done
+
+
+# for OBJ_ID in 25 20 04 12
+# do
     bash run-eval.sh ${OBJ_ID} "new-occ-new-encoder-199epochs" "pytorch3d/output/depth/new-occlusions/new-encoder/obj${OBJ_ID}/models/model-epoch199.pt" "test" "tless"
     wait
     bash run-eval.sh ${OBJ_ID} "new-occ-new-encoder-99epochs" "pytorch3d/output/depth/new-occlusions/new-encoder/obj${OBJ_ID}/models/model-epoch99.pt" "test" "tless"
     wait
-done
+    # done
+
+    bash run-eval.sh 04 "new-occ-old-encoder-199epochs" "pytorch3d/output/depth/new-occlusions/old-encoder/obj04/models/model-epoch199.pt" "test" "tless"
+
+    bash run-eval.sh 25 "no-centering-depth-max30-199epochs" "pytorch3d/output/depth/all-objs-max30/no-centering/obj25/models/model-epoch199.pt" "test" "tless"
+
 
 # for OBJ_ID in 25 #19 25 08
 # do
