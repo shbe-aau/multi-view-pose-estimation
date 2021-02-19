@@ -20,8 +20,8 @@ from Encoder import Encoder
 from Pipeline import Pipeline
 from BatchRender import BatchRender
 from losses import Loss
-from DatasetGeneratorOpenGL import DatasetGenerator
-#from DatasetGeneratorSM import DatasetGenerator
+#from DatasetGeneratorOpenGL import DatasetGenerator
+from DatasetGeneratorSM import DatasetGenerator
 
 optimizer = None
 lr_reducer = None
@@ -120,7 +120,7 @@ def main():
     torch.cuda.set_device(device)
 
     # Set up batch renderer
-    br = BatchRender(args.get('Dataset', 'CAD_PATH'),
+    br = BatchRender(args.get('Dataset', 'MODEL_PATH_LOSS'),
                      device,
                      batch_size=args.getint('Training', 'BATCH_SIZE'),
                      faces_per_pixel=args.getint('Rendering', 'FACES_PER_PIXEL'),
@@ -199,7 +199,7 @@ def main():
     # Prepare datasets
     bg_path = "../../autoencoder_ws/data/VOC2012/JPEGImages/"
     training_data = DatasetGenerator(args.get('Dataset', 'BACKGROUND_IMAGES'),
-                                     args.get('Dataset', 'CAD_PATH'),
+                                     args.get('Dataset', 'MODEL_PATH_DATA'),
                                      json.loads(args.get('Rendering', 'T'))[-1],
                                      args.getint('Training', 'BATCH_SIZE'),
                                      "not_used",
@@ -297,9 +297,6 @@ def runEpoch(mean, std, br, dataset, model,
     losses = []
     batch_size = br.batch_size
 
-    if(model.training and dataset.realistic_occlusions):
-        dataset.random_renders = dataset.generate_random_renders(num=100)
-
     for i,curr_batch in enumerate(dataset):
         if(model.training):
             optimizer.zero_grad()
@@ -328,16 +325,16 @@ def runEpoch(mean, std, br, dataset, model,
             optimizer.step()
 
             # Save difficult samples
-            k = int(len(curr_batch["images"])*(dataset.hard_sample_ratio))
-            batch_loss = batch_loss.squeeze()
-            top_val, top_ind = torch.topk(batch_loss, k)
-            hard_samples = Rs[top_ind]
+            # k = int(len(curr_batch["images"])*(dataset.hard_sample_ratio))
+            # batch_loss = batch_loss.squeeze()
+            # top_val, top_ind = torch.topk(batch_loss, k)
+            # hard_samples = Rs[top_ind]
 
-            # Convert hard samples to a list
-            hard_list = []
-            for h in np.arange(hard_samples.shape[0]):
-                hard_list.append(hard_samples[h])
-            dataset.hard_samples = hard_list
+            # # Convert hard samples to a list
+            # hard_list = []
+            # for h in np.arange(hard_samples.shape[0]):
+            #     hard_list.append(hard_samples[h])
+            # dataset.hard_samples = hard_list
 
         #detach all from gpu
         loss.detach().cpu().numpy()

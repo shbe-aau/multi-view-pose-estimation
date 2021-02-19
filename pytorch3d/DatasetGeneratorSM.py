@@ -30,7 +30,7 @@ class DatasetGenerator():
 
     def __init__(self, background_path, obj_path, obj_distance, batch_size,
                  _, device, sampling_method="sphere", random_light=True,
-                 num_bgs=5000):
+                 num_bgs=15000):
         self.curr_samples = 0
         self.max_samples = 1000
         self.obj_path = obj_path
@@ -39,12 +39,19 @@ class DatasetGenerator():
         args = configparser.ConfigParser()
         args.read("test.cfg")
 
-        args.set('Paths', 'MODEL_PATH', obj_path.replace(".obj",".ply"))
-        args.set('Dataset', 'NOOF_TRAINING_IMGS', str(int(20000))) #str(int(batch_size*2)))
+        if('reconst' in obj_path):
+            args.set('Dataset', 'MODEL', 'reconst')
+        elif('cad' in obj_path):
+            args.set('Dataset', 'MODEL', 'cad')
+        else:
+            print("Can determine render type (reconst/cad) from model path: ", obj_path)
+        
+        args.set('Paths', 'MODEL_PATH', obj_path)
+        args.set('Dataset', 'NOOF_TRAINING_IMGS', str(int(batch_size)))
+        args.set('Dataset', 'NOOF_BG_IMGS', str(int(num_bgs)))
 
-        self.dataset = build_dataset("./dataset-test", args)
-        #self.dataset.render_training_images()
-        self.dataset.load_bg_images("./dataset-test")
+        self.dataset = build_dataset("./", args)
+        self.dataset.load_bg_images("./")
 
 
     # Truely random
@@ -76,15 +83,6 @@ class DatasetGenerator():
         R = torch.matmul(R, rot_mat)
         R = R.squeeze()
         return R
-
-    # def opengl2pytorch(self, R):
-    #     # Convert R matrix from opengl to pytorch format
-    #     xy_flip = np.eye(3, dtype=np.float)
-    #     xy_flip[0,0] = -1.0
-    #     xy_flip[1,1] = -1.0
-    #     R_conv = np.transpose(R)
-    #     R_conv = np.dot(R_conv,xy_flip)
-    #     return R_conv
 
     def generate_images(self, num_samples):
         data = {"images":[],

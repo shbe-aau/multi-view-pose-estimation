@@ -77,6 +77,7 @@ class Dataset(object):
         #from auto_pose.meshrenderer import meshrenderer, meshrenderer_phong
 
         from utils.sundermeyer import meshrenderer
+        from utils.sundermeyer import meshrenderer_phong
         if self._kw['model'] == 'cad':
             renderer = meshrenderer.Renderer(
                [self._kw['model_path']],
@@ -100,14 +101,14 @@ class Dataset(object):
         current_config_hash = hashlib.md5((str(args.items('Dataset')+args.items('Paths'))).encode('utf-8')).hexdigest()
         current_file_name = os.path.join(dataset_path, current_config_hash + '.npz')
 
-        if os.path.exists(current_file_name):
-            training_data = np.load(current_file_name)
-            self.train_x = training_data['train_x'].astype(np.uint8)
-            self.train_R = training_data['train_R']
-            self.mask_x = training_data['mask_x']
-            self.train_y = training_data['train_y'].astype(np.uint8)
-        else:
-            self.render_training_images()
+        # if os.path.exists(current_file_name):
+        #     training_data = np.load(current_file_name)
+        #     self.train_x = training_data['train_x'].astype(np.uint8)
+        #     self.train_R = training_data['train_R']
+        #     self.mask_x = training_data['mask_x']
+        #     self.train_y = training_data['train_y'].astype(np.uint8)
+        # else:
+        self.render_training_images()
             # np.savez(current_file_name,
             #          train_R = self.train_R,
             #          train_x = self.train_x,
@@ -169,7 +170,8 @@ class Dataset(object):
         current_config_hash = hashlib.md5((str(self.shape) + str(self.noof_bg_imgs) + str(self._kw['background_images_glob'])).encode('utf-8')).hexdigest()
         current_file_name = os.path.join(dataset_path, current_config_hash +'.npy')
         if os.path.exists(current_file_name):
-            self.bg_imgs = np.load(current_file_name)
+            #self.bg_imgs = np.load(current_file_name)
+            self.bg_imgs = []
         else:
             file_list = self.bg_img_paths[:self.noof_bg_imgs]
             from random import shuffle
@@ -189,7 +191,7 @@ class Dataset(object):
                 if self.shape[2] == 1:
                     bgr = cv2.cvtColor(np.uint8(bgr), cv2.COLOR_BGR2GRAY)[:,:,np.newaxis]
                 self.bg_imgs[j] = bgr
-            np.save(current_file_name,self.bg_imgs)
+            #np.save(current_file_name,self.bg_imgs)
 
 
 
