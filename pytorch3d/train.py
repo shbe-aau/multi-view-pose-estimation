@@ -310,7 +310,10 @@ def runEpoch(mean, std, br, dataset, model,
         T = np.array(t, dtype=np.float32)
         Rs = curr_batch["Rs"]
         ts = [T.copy() for t in Rs]
-        ids = curr_batch["ids"]
+        if "ids" in curr_batch:
+            ids = curr_batch["ids"]
+        else:
+            ids = [0 for k in Rs]
 
         # Calculate the loss
         loss, batch_loss, gt_images, predicted_images = Loss(predicted_poses, Rs, br, ts,
