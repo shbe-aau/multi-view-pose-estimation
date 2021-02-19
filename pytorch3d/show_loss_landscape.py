@@ -271,6 +271,39 @@ def plot_points(points, losses):
     #ax.plot_trisurf(x, y, z, rstride=1, cstride=1, color=losses, shade=0, cmap=cm.Greys_r)
     #ax.plot_surface(X, Y, Z, rstride=1, cstride=1, facecolors=fcolors, shade=0)
 
+def plot_flat_landscape(points_in, losses, path):
+    angles = [point['spherical'] for point in points_in]
+    theta, phi = zip(*angles)
+
+    from scipy.spatial import Voronoi, voronoi_plot_2d
+
+    vor = Voronoi(angles)
+    #fig = voronoi_plot_2d(vor)
+    #plt.scatter(theta, phi)
+
+    minima = min(losses)
+    maxima = max(losses)
+
+    # normalize chosen colormap
+    norm = matplotlib.colors.Normalize(vmin=minima, vmax=maxima, clip=True)
+    mapper = cm.ScalarMappable(norm=norm, cmap=cm.jet)
+
+    loss_color = [mapper.to_rgba(l) for l in losses]
+
+    # plot Voronoi diagram, and fill finite regions with color mapped from losses
+    fig = voronoi_plot_2d(vor, show_points=False, show_vertices=False, line_alpha=0, s=1)
+    ax = fig.add_subplot(1,1,1)
+    plt.xlim([min(theta), max(theta)])
+    plt.ylim([min(phi), max(phi)])
+    for r in range(len(vor.point_region)):
+        region = vor.regions[vor.point_region[r]]
+        if not -1 in region:
+            polygon = [vor.vertices[i] for i in region]
+            plt.fill(*zip(*polygon), color=mapper.to_rgba(losses[r]))
+    plt.show()
+
+    plt.show()
+
 def main():
     import faulthandler
     faulthandler.enable()
@@ -279,6 +312,8 @@ def main():
     points = np.load(os.path.join(path, 'points.npy'), allow_pickle=True)
     losses = np.load(os.path.join(path, 'losses.npy'), allow_pickle=True)
     print(losses)
+    print(points)
+    plot_flat_landscape(points, losses, path)
     voronoi_plot(points, losses, path)
 
 
