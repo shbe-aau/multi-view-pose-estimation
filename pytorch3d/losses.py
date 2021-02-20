@@ -152,11 +152,11 @@ def Loss(predicted_poses, gt_poses, renderer, ts, mean, std, loss_method="diff",
             return -1.0
         gt_imgs = renderNormCat(Rs_gt, ts, renderer, mean, std, views)
     else: # this version is for using loss with prerendered ref image and regular rot matrix for predicted pose
-        Rs_predicted = predicted_poses
-        Rs_predicted = torch.Tensor(Rs_predicted).to(renderer.device)
+        #Rs_predicted = predicted_poses
+        #Rs_predicted = torch.Tensor(Rs_predicted).to(renderer.device)
         gt_imgs = fixed_gt_images
 
-    predicted_imgs = renderNormCat(Rs_predicted, ts, renderer, mean, std, views)
+    #predicted_imgs = renderNormCat(Rs_predicted, ts, renderer, mean, std, views)
     #diff = torch.abs(gt_imgs - predicted_imgs).flatten(start_dim=1) # not needed for "multiview-l2"
 
     if(loss_method=="vsd-union"):
@@ -178,8 +178,13 @@ def Loss(predicted_poses, gt_poses, renderer, ts, mean, std, loss_method="diff",
         pose_losses = []
         for i,v in enumerate(views):
             # Extract current pose and move to next one
-            curr_pose = predicted_poses[:,pose_start:pose_end]
-            Rs_predicted = compute_rotation_matrix_from_ortho6d(curr_pose)
+            if fixed_gt_images is None:
+                curr_pose = predicted_poses[:,pose_start:pose_end]
+                Rs_predicted = compute_rotation_matrix_from_ortho6d(curr_pose)
+            else:
+                pose_matrix = predicted_poses[:,1:].reshape(1,3,3)
+                #Rs_predicted = torch.Tensor(pose_matrix).to(renderer.device)
+                Rs_predicted = pose_matrix
             pose_start = pose_end
             pose_end = pose_start + 6
 

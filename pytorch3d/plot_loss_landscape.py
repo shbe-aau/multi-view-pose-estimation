@@ -79,10 +79,10 @@ def main():
     global learning_rate, optimizer, views, epoch
     # Read configuration file
     parser = argparse.ArgumentParser()
-    parser.add_argument('experiment_name')
+    parser.add_argument('path')
     arguments = parser.parse_args()
 
-    cfg_file_path = os.path.join('./experiments', arguments.experiment_name)
+    cfg_file_path = os.path.join(arguments.path)
     args = configparser.ConfigParser()
     args.read(cfg_file_path)
 
@@ -148,7 +148,11 @@ def main():
         #if args.getboolean('Training', 'SAVE_IMAGES'):
         #    cv2.imwrite(os.path.join(batch_img_dir, '{}.png'.format(i)), im)
 
-        loss, batch_loss, gt_images, predicted_images = Loss(toMatArray(point), ref_pose, br, ts, 0, 1, loss_method=loss_method, views=views, fixed_gt_images=ref_image)
+        flattened = np.append([0], toMatArray(point)[0].flatten())
+
+        poses = torch.tensor([flattened], dtype=torch.float32, device=device)
+
+        loss, batch_loss, gt_images, predicted_images = Loss(poses, ref_pose, br, ts, 0, 1, loss_method=loss_method, views=views, fixed_gt_images=ref_image)
         loss = (loss).detach().cpu().numpy()
         im = (predicted_images).detach().cpu().numpy()
         if args.get('Rendering', 'SHADER')=="hard-phong":
