@@ -2,6 +2,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 import matplotlib
 import matplotlib.cm as cm
+from matplotlib.colors import ListedColormap, LinearSegmentedColormap
 import sys
 import os
 from mpl_toolkits.mplot3d import Axes3D
@@ -129,7 +130,7 @@ def steepest_region(neighbours, losses):
             regions.update(regions_temp)
     return regions, steepest
 
-def voronoi_plot(points_in, losses, path):
+def voronoi_plot(points_in, losses, path, cmap):
     from matplotlib import colors
     from mpl_toolkits.mplot3d.art3d import Poly3DCollection
     import matplotlib.pyplot as plt
@@ -160,7 +161,7 @@ def voronoi_plot(points_in, losses, path):
     ma = max(losses)
 
     norm = matplotlib.colors.Normalize(vmin=mi, vmax=ma, clip=True)
-    mapper = cm.ScalarMappable(norm=norm, cmap=cm.jet)
+    mapper = cm.ScalarMappable(norm=norm, cmap=cmap)
 
     loss_color = [mapper.to_rgba(l) for l in losses]
 
@@ -271,7 +272,7 @@ def plot_points(points, losses):
     #ax.plot_trisurf(x, y, z, rstride=1, cstride=1, color=losses, shade=0, cmap=cm.Greys_r)
     #ax.plot_surface(X, Y, Z, rstride=1, cstride=1, facecolors=fcolors, shade=0)
 
-def plot_flat_landscape(points_in, losses, path):
+def plot_flat_landscape(points_in, losses, path, cmap):
     angles = [point['spherical'] for point in points_in]
     theta, phi = zip(*angles)
 
@@ -286,9 +287,9 @@ def plot_flat_landscape(points_in, losses, path):
 
     # normalize chosen colormap
     norm = matplotlib.colors.Normalize(vmin=minima, vmax=maxima, clip=True)
-    mapper = cm.ScalarMappable(norm=norm, cmap=cm.jet)
+    mapper = cm.ScalarMappable(norm=norm, cmap=cmap) #cm.jet
 
-    loss_color = [mapper.to_rgba(l) for l in losses]
+    #loss_color = [mapper.to_rgba(l) for l in losses]
 
     # plot Voronoi diagram, and fill finite regions with color mapped from losses
     fig = voronoi_plot_2d(vor, show_points=False, show_vertices=False, line_alpha=0, s=1)
@@ -300,9 +301,12 @@ def plot_flat_landscape(points_in, losses, path):
         if not -1 in region:
             polygon = [vor.vertices[i] for i in region]
             plt.fill(*zip(*polygon), color=mapper.to_rgba(losses[r]))
+
+    mapper.set_array(losses)
+    plt.colorbar(mapper)
     plt.show()
 
-    plt.show()
+    fig.savefig(os.path.join(path, "flat_landscape.png"), dpi=fig.dpi)
 
 def main():
     import faulthandler
@@ -313,8 +317,13 @@ def main():
     losses = np.load(os.path.join(path, 'losses.npy'), allow_pickle=True)
     print(losses)
     print(points)
-    plot_flat_landscape(points, losses, path)
-    voronoi_plot(points, losses, path)
+
+    cmap = cm.get_cmap('jet', 256)
+    newcolors = np.vstack((cmap(np.linspace(0, 0.2, 168)),
+                       cmap(np.linspace(0.2, 1, 88))))
+    newcmp = ListedColormap(newcolors)
+    plot_flat_landscape(points, losses, path, newcmp)
+    voronoi_plot(points, losses, path, newcmp)
 
 
 if __name__ == '__main__':
