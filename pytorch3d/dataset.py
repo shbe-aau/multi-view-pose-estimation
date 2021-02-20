@@ -477,7 +477,7 @@ class Dataset(object):
     @lazy_property
     def _aug(self):
         from imgaug.augmenters import Sequential,SomeOf,OneOf,Sometimes,WithColorspace,WithChannels, \
-            Noop,Lambda,AssertLambda,AssertShape,Scale,CropAndPad, \
+            Noop,CoarseSalt,CoarseSaltAndPepper,Cutout,Lambda,AssertLambda,AssertShape,Scale,CropAndPad, \
             Pad,Crop,Fliplr,Flipud,Superpixels,ChangeColorspace, PerspectiveTransform, \
             Grayscale,GaussianBlur,AverageBlur,MedianBlur,Convolve, \
             Sharpen,Emboss,EdgeDetect,DirectedEdgeDetect,Add,AddElementwise, \
