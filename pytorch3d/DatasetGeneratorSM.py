@@ -12,6 +12,7 @@ import hashlib
 import cv2 as cv
 from scipy.spatial.transform import Rotation as scipyR
 from utils.utils import *
+from utils.sundermeyer.pysixd import view_sampler
 
 import configparser
 from dataset import Dataset
@@ -35,6 +36,7 @@ class DatasetGenerator():
         self.max_samples = 1000
         self.obj_path = obj_path
         self.batch_size = batch_size
+        self.dist = obj_distance
 
         args = configparser.ConfigParser()
         args.read("test.cfg")
@@ -53,10 +55,25 @@ class DatasetGenerator():
         self.dataset = build_dataset("./", args)
         self.dataset.load_bg_images("./")
 
+        self.pose_sampling = None
+        if(sampling_method == "sphere-wolfram-fixed"):
+            self.pose_sampling = self.sphere_wolfram_sampling_fixed
+        elif(sampling_method == "sundermeyer-random"):
+            self.pose_sampling = self.sm_quat_random
+        elif(sampling_method == "viewsphere-aug"):
+            self.pose_sampling = self.viewsphere_aug
+            # Stuff for viewsphere aug sampling
+            self.view_sphere = None
+            self.view_sphere_indices = []
+            self.random_aug = None
+        else:
+            print("ERROR! Invalid view sampling method: {0}".format(sampling_method))
+
 
     # Truely random
     # Based on: https://mathworld.wolfram.com/SpherePointPicking.html
     def sphere_wolfram_sampling_fixed(self):
+        #print("wolfram sphere sampling!")
         x1 = np.random.uniform(low=-1.0, high=1.0, size=1)[0]
         x2 = np.random.uniform(low=-1.0, high=1.0, size=1)[0]
         test = x1**2 + x2**2
@@ -84,13 +101,130 @@ class DatasetGenerator():
         R = R.squeeze()
         return R
 
+    # Based on Sundermeyer
+    def sm_quat_random(self):
+        #print("sm quat random!")
+        # Sample random quaternion
+        rand = np.random.rand(3)
+        r1 = np.sqrt(1.0 - rand[0])
+        r2 = np.sqrt(rand[0])
+        pi2 = math.pi * 2.0
+        t1 = pi2 * rand[1]
+        t2 = pi2 * rand[2]
+        random_quat = np.array([np.cos(t2)*r2, np.sin(t1)*r1,
+                                np.cos(t1)*r1, np.sin(t2)*r2])
+
+        # Convert quaternion to rotation matrix
+        q = np.array(random_quat, dtype=np.float64, copy=True)
+        n = np.dot(q, q)
+        
+        if n < np.finfo(float).eps * 4.0:
+            R = np.identity(4)
+        else:
+            q *= math.sqrt(2.0 / n)
+            q = np.outer(q, q)
+            R = np.array([
+                [1.0-q[2, 2]-q[3, 3],     q[1, 2]-q[3, 0],     q[1, 3]+q[2, 0], 0.0],
+                [    q[1, 2]+q[3, 0], 1.0-q[1, 1]-q[3, 3],     q[2, 3]-q[1, 0], 0.0],
+                [    q[1, 3]-q[2, 0],     q[2, 3]+q[1, 0], 1.0-q[1, 1]-q[2, 2], 0.0],
+                [                0.0,                 0.0,                 0.0, 1.0]])
+        R = R[:3,:3]
+
+        # Convert R matrix from opengl to pytorch format
+        xy_flip = np.eye(3, dtype=np.float)
+        xy_flip[0,0] = -1.0
+        xy_flip[1,1] = -1.0
+        R_conv = np.transpose(R)
+        R_conv = np.dot(R_conv,xy_flip)
+
+        # Convert to tensors
+        R = torch.from_numpy(R_conv)
+        t = torch.tensor([0.0, 0.0, self.dist])
+        return R,t
+
+    def viewsphere_for_embedding(self, num_views, num_inplane):
+        azimuth_range = (0, 2 * np.pi)
+        elev_range = (-0.5 * np.pi, 0.5 * np.pi)
+        views, _ = view_sampler.sample_views(
+            num_views,
+            1000.0,
+            azimuth_range,
+            elev_range
+        )
+
+        Rs = np.empty( (len(views)*num_inplane, 3, 3) )
+        i = 0
+        for view in views:
+            for cyclo in np.linspace(0, 2.*np.pi, num_inplane):
+                rot_z = np.array([[np.cos(-cyclo), -np.sin(-cyclo), 0], [np.sin(-cyclo), np.cos(-cyclo), 0], [0, 0, 1]])
+                Rs[i,:,:] = rot_z.dot(view['R'])
+                i += 1
+        return Rs
+
+    def quat_random(self):
+        # Sample random quaternion
+        rand = np.random.rand(3)
+        r1 = np.sqrt(1.0 - rand[0])
+        r2 = np.sqrt(rand[0])
+        pi2 = math.pi * 2.0
+        t1 = pi2 * rand[1]
+        t2 = pi2 * rand[2]
+        random_quat = np.array([np.cos(t2)*r2, np.sin(t1)*r1,
+                                np.cos(t1)*r1, np.sin(t2)*r2])
+
+        # Convert quaternion to rotation matrix
+        q = np.array(random_quat, dtype=np.float64, copy=True)
+        n = np.dot(q, q)
+        if n < 0.0001: #_EPS:
+            return np.identity(4)
+        q *= math.sqrt(2.0 / n)
+        q = np.outer(q, q)
+        R = np.array([
+            [1.0-q[2, 2]-q[3, 3],     q[1, 2]-q[3, 0],     q[1, 3]+q[2, 0], 0.0],
+            [    q[1, 2]+q[3, 0], 1.0-q[1, 1]-q[3, 3],     q[2, 3]-q[1, 0], 0.0],
+            [    q[1, 3]-q[2, 0],     q[2, 3]+q[1, 0], 1.0-q[1, 1]-q[2, 2], 0.0],
+            [                0.0,                 0.0,                 0.0, 1.0]])
+        R = R[:3,:3]
+        return R    
+    
+    # Randomly sample poses from SM view sphere
+    def viewsphere_aug(self):
+        #print("viewsphere aug sampling!")
+        if(self.view_sphere is None):
+            self.view_sphere = self.viewsphere_for_embedding(600, 36)
+
+        if(len(self.view_sphere_indices) == 0):
+            self.view_sphere_indices = list(np.random.choice(self.view_sphere.shape[0],
+                                                             self.max_samples, replace=False))
+            # Sample new rotation aug for each new list!
+            self.random_aug = self.quat_random()
+
+        # Pop random index and associated R matrix
+        rand_i = self.view_sphere_indices.pop()
+        curr_R = self.view_sphere[rand_i]
+
+        # Apply random augmentation R matrix
+        aug_R = np.dot(curr_R, self.random_aug)
+
+        # Convert R matrix from opengl to pytorch format
+        xy_flip = np.eye(3, dtype=np.float)
+        xy_flip[0,0] = -1.0
+        xy_flip[1,1] = -1.0
+        R_conv = np.transpose(aug_R)
+        R_conv = np.dot(R_conv,xy_flip)
+
+        # Convert to tensors
+        R = torch.from_numpy(R_conv)
+        t = torch.tensor([0.0, 0.0, self.dist])
+        return R,t
+    
     def generate_images(self, num_samples):
         data = {"images":[],
                 "Rs":[]}
 
         for i in range(num_samples):
             # Sample rotation matrix
-            R = self.sphere_wolfram_sampling_fixed()
+            R,_ = self.pose_sampling()
 
             # Convert R matrix from pytorch to opengl format
             # for rendering only!
