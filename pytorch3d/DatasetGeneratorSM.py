@@ -47,7 +47,7 @@ class DatasetGenerator():
             args.set('Dataset', 'MODEL', 'cad')
         else:
             print("Can determine render type (reconst/cad) from model path: ", obj_path)
-        
+
         args.set('Paths', 'MODEL_PATH', obj_path)
         args.set('Dataset', 'NOOF_TRAINING_IMGS', str(int(batch_size)))
         args.set('Dataset', 'NOOF_BG_IMGS', str(int(num_bgs)))
@@ -55,11 +55,21 @@ class DatasetGenerator():
         self.dataset = build_dataset("./", args)
         self.dataset.load_bg_images("./")
 
+        self.hard_samples = []
+        self.hard_mining = False
+        if(sampling_method.split("-")[-1] == "hard"):
+            self.hard_mining = True
+        sampling_method = sampling_method.replace("-hard","")
+        self.hard_sample_ratio = 0.3
+        self.hard_mining_ratio = 0.2
+
         self.pose_sampling = None
         if(sampling_method == "sphere-wolfram-fixed"):
             self.pose_sampling = self.sphere_wolfram_sampling_fixed
         elif(sampling_method == "sundermeyer-random"):
             self.pose_sampling = self.sm_quat_random
+        elif(sampling_method == "mixed"):
+            self.pose_sampling = self.mixed
         elif(sampling_method == "viewsphere-aug"):
             self.pose_sampling = self.viewsphere_aug
             # Stuff for viewsphere aug sampling
@@ -69,6 +79,13 @@ class DatasetGenerator():
         else:
             print("ERROR! Invalid view sampling method: {0}".format(sampling_method))
 
+    def mixed(self):
+        rand = np.random.uniform(low=-100, high=100, size=1)[0]
+        if(rand > 0):
+            #print("using wolfram sampling!")
+            return self.sphere_wolfram_sampling_fixed()
+        #print("using sm sampling!")
+        return self.sm_quat_random()
 
     # Truely random
     # Based on: https://mathworld.wolfram.com/SpherePointPicking.html
@@ -117,7 +134,7 @@ class DatasetGenerator():
         # Convert quaternion to rotation matrix
         q = np.array(random_quat, dtype=np.float64, copy=True)
         n = np.dot(q, q)
-        
+
         if n < np.finfo(float).eps * 4.0:
             R = np.identity(4)
         else:
@@ -139,8 +156,8 @@ class DatasetGenerator():
 
         # Convert to tensors
         R = torch.from_numpy(R_conv)
-        t = torch.tensor([0.0, 0.0, self.dist])
-        return R,t
+        #t = torch.tensor([0.0, 0.0, self.dist])
+        return R #,t
 
     def viewsphere_for_embedding(self, num_views, num_inplane):
         azimuth_range = (0, 2 * np.pi)
@@ -185,8 +202,8 @@ class DatasetGenerator():
             [    q[1, 3]-q[2, 0],     q[2, 3]+q[1, 0], 1.0-q[1, 1]-q[2, 2], 0.0],
             [                0.0,                 0.0,                 0.0, 1.0]])
         R = R[:3,:3]
-        return R    
-    
+        return R
+
     # Randomly sample poses from SM view sphere
     def viewsphere_aug(self):
         #print("viewsphere aug sampling!")
@@ -217,14 +234,24 @@ class DatasetGenerator():
         R = torch.from_numpy(R_conv)
         t = torch.tensor([0.0, 0.0, self.dist])
         return R,t
-    
+
     def generate_images(self, num_samples):
         data = {"images":[],
                 "Rs":[]}
 
         for i in range(num_samples):
             # Sample rotation matrix
-            R,_ = self.pose_sampling()
+            R = self.pose_sampling()
+
+            # Sample from hard samples if possible
+            if(self.hard_mining == True):
+                if(len(self.hard_samples) > 0):
+                    rand = np.random.uniform(low=0.0, high=1.0, size=1)[0]
+                    if(rand <= self.hard_sample_ratio):
+                        rani = np.random.uniform(low=0, high=len(self.hard_samples)-1, size=1)[0]
+                        rani = int(rani)
+                        R = self.hard_samples.pop(rani).detach().cpu().numpy()
+                        #print("using hard sample. {0} hard samples left!".format(len(self.hard_samples)))
 
             # Convert R matrix from pytorch to opengl format
             # for rendering only!
