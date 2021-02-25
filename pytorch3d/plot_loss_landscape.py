@@ -95,7 +95,7 @@ def main():
     torch.cuda.set_device(device)
 
     # Set up batch renderer
-    br = BatchRender(args.get('Dataset', 'CAD_PATH'),
+    br = BatchRender(args.get('Dataset', 'MODEL_PATH_LOSS'),
                      device,
                      batch_size=args.getint('Training', 'BATCH_SIZE'),
                      render_method=args.get('Rendering', 'SHADER'),
