@@ -80,13 +80,13 @@ class DatasetGenerator():
         self.view_sphere_indices = []
         self.random_aug = None
 
-        # Normalize pts
-        verts = self.model['pts']
-        center = np.mean(verts, axis=0)
-        verts_normed = verts - center
-        scale = np.max(np.max(np.abs(verts_normed), axis=0))
-        verts_normed = (verts_normed / scale)
-        self.model['pts'] = verts_normed*100.0
+        # # Normalize pts
+        # verts = self.model['pts']
+        # center = np.mean(verts, axis=0)
+        # verts_normed = verts - center
+        # scale = np.max(np.max(np.abs(verts_normed), axis=0))
+        # verts_normed = (verts_normed / scale)
+        # self.model['pts'] = verts_normed*100.0
 
         self.renderer = Renderer(self.model, (self.render_size,self.render_size),
                                  self.K, surf_color=(1, 1, 1), mode='rgb',
@@ -102,7 +102,8 @@ class DatasetGenerator():
         if(sampling_method.split("-")[-1] == "hard"):
             self.hard_mining = True
         sampling_method = sampling_method.replace("-hard","")
-        self.hard_sample_ratio = 0.5
+        self.hard_sample_ratio = 0.2
+        self.hard_mining_ratio = 0.3
 
         self.simple_pose_sampling = False
         if(sampling_method == "tless"):
@@ -457,7 +458,7 @@ class DatasetGenerator():
         # Convert quaternion to rotation matrix
         q = np.array(random_quat, dtype=np.float64, copy=True)
         n = np.dot(q, q)
-        
+
         if n < np.finfo(float).eps * 4.0:
             R = np.identity(4)
         else:

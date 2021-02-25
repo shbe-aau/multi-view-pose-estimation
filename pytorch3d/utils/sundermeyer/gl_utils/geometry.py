@@ -37,7 +37,7 @@ def load_meshes_sixd( obj_files, vertex_tmp_store_folder , recalculate_normals=F
                 attributes.append( (vertices, normals, colors, faces) )
             else:
                 attributes.append( (vertices, normals, faces) )
-        np.save(out_file, attributes)
+        #np.save(out_file, attributes)
         return attributes
 
 
@@ -60,7 +60,7 @@ def load_meshes(obj_files, vertex_tmp_store_folder, recalculate_normals=False):
             normals = calc_normals(vertices) if recalculate_normals else mesh.normals
             attributes.append( (vertices, normals) )
             pyassimp.release(scene)
-        np.save(out_file, attributes)
+        #np.save(out_file, attributes)
         return attributes
 
 def calc_normals(vertices):

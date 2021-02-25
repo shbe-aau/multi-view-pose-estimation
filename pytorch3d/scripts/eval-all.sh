@@ -1,3 +1,19 @@
+bash run-eval.sh 08 "rgb-cad-depth-cad-occ-sm-pose-41epochs" "pytorch3d/output/depth/multi-obj08-test/rgb-cad-depth-cad-occ-sm-pose/models/model-epoch41.pt" "test" "tless"
+
+bash run-eval.sh 08 "rgb-reconst-depth-cad-occ-sm-pose-41epochs" "pytorch3d/output/depth/multi-obj08-test/rgb-reconst-depth-cad-occ-sm-pose/models/model-epoch41.pt" "test" "tless"
+
+bash run-eval.sh 08 "rgb-reconst-depth-reconst-occ-viewsphere-41epochs" "pytorch3d/output/depth/multi-obj08-test/rgb-reconst-depth-reconst-occ-viewsphere/models/model-epoch41.pt" "test" "tless"
+
+
+bash run-eval.sh 23 "rgb-reconst-depth-cad-sm-pose-141epochs" "pytorch3d/output/depth/multi-path-reconst/depth-cad/obj23/models/model-epoch141.pt" "test" "tless"
+
+bash run-eval.sh 22 "rgb-reconst-depth-reconst-sm-pose-150epochs" "pytorch3d/output/depth/multi-path-reconst/depth-reconst/obj22/models/model-epoch150.pt" "train" "tless"
+
+bash run-eval.sh 22 "rgb-reconst-depth-reconst-sm-pose-49epochs" "pytorch3d/output/depth/multi-path-reconst/depth-reconst/obj22/models/model-epoch49.pt" "test" "tless"
+
+
+bash run-eval.sh 25 "rgb-reconst-depth-reconst-10views-sm-pose-141epochs" "pytorch3d/output/depth/multi-path-views/obj25-10views/models/model-epoch141.pt" "test" "tless"
+
 for OBJ_ID in 25 20 04 12
 do
     bash run-eval.sh ${OBJ_ID} "new-occ-new-encoder-199epochs" "pytorch3d/output/depth/new-occlusions/new-encoder/obj${OBJ_ID}/models/model-epoch199.pt" "test" "tless"

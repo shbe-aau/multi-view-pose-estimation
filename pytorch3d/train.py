@@ -120,7 +120,7 @@ def main():
     torch.cuda.set_device(device)
 
     # Set up batch renderer
-    br = BatchRender(args.get('Dataset', 'CAD_PATH'),
+    br = BatchRender(args.get('Dataset', 'MODEL_PATH_LOSS'),
                      device,
                      batch_size=args.getint('Training', 'BATCH_SIZE'),
                      faces_per_pixel=args.getint('Rendering', 'FACES_PER_PIXEL'),
@@ -199,7 +199,7 @@ def main():
     # Prepare datasets
     bg_path = "../../autoencoder_ws/data/VOC2012/JPEGImages/"
     training_data = DatasetGenerator(args.get('Dataset', 'BACKGROUND_IMAGES'),
-                                     args.get('Dataset', 'CAD_PATH'),
+                                     args.get('Dataset', 'MODEL_PATH_DATA'),
                                      json.loads(args.get('Rendering', 'T'))[-1],
                                      args.getint('Training', 'BATCH_SIZE'),
                                      "not_used",
@@ -296,9 +296,7 @@ def runEpoch(mean, std, br, dataset, model,
 
     losses = []
     batch_size = br.batch_size
-
-    if(model.training and dataset.realistic_occlusions):
-        dataset.random_renders = dataset.generate_random_renders(num=100)
+    hard_indeces = []
 
     for i,curr_batch in enumerate(dataset):
         if(model.training):
@@ -327,11 +325,25 @@ def runEpoch(mean, std, br, dataset, model,
             loss.backward()
             optimizer.step()
 
-            # Save difficult samples
-            k = int(len(curr_batch["images"])*(dataset.hard_sample_ratio))
+            # #Save difficult samples
+            k = int(len(curr_batch["images"])*(dataset.hard_mining_ratio))
             batch_loss = batch_loss.squeeze()
             top_val, top_ind = torch.topk(batch_loss, k)
             hard_samples = Rs[top_ind]
+            hard_indeces = list(top_ind)
+
+            # Dump hard samples to file
+            hard_dump_dir= os.path.join(output_path, "images/epoch{0}/hard".format(epoch))
+            prepareDir(hard_dump_dir)
+
+            hard_dict = {"Rs":hard_samples,
+                         "losses":list(top_val)}
+
+            csv_file = os.path.join(hard_dump_dir,"hard_epoch{0}-batch{1}.csv".format(epoch,i))
+            with open(csv_file, "w") as outfile:
+                writer = csv.writer(outfile)
+                writer.writerow(hard_dict.keys())
+                writer.writerows(zip(*hard_dict.values()))
 
             # Convert hard samples to a list
             hard_list = []
@@ -352,6 +364,26 @@ def runEpoch(mean, std, br, dataset, model,
         losses = losses + batch_loss.data.detach().cpu().numpy().tolist()
 
         if(visualize):
+            # Visualize hard samples
+            if(model.training):
+                hard_img_dir = os.path.join(output_path, "images/epoch{0}/hard".format(epoch))
+                prepareDir(hard_img_dir)
+
+                for h in hard_indeces[:1]:
+                    gt_img = (gt_images[h]).detach().cpu().numpy()
+                    predicted_img = (predicted_images[h]).detach().cpu().numpy()
+
+                    vmin = np.linalg.norm(T)*0.9
+                    vmax = max(np.max(gt_img), np.max(predicted_img))
+
+                    fig = plt.figure(figsize=(12,3+len(views)*2))
+                    plotView(0, len(views), vmin, vmax, input_images, gt_images, predicted_images,
+                             predicted_poses, batch_loss, batch_size, threshold=loss_params, img_num=h)
+                    fig.tight_layout()
+
+                    fig.savefig(os.path.join(hard_img_dir, "epoch{0}-batch{1}-sample{2}.png".format(epoch,i,h)), dpi=fig.dpi)
+                    plt.close()
+
             if(model.training):
                 batch_img_dir = os.path.join(output_path, "images/epoch{0}".format(epoch))
             else:

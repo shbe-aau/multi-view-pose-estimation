@@ -4,9 +4,9 @@ import numpy as np
 
 from OpenGL.GL import *
 
-from . import gl_utils as gu
+import utils.sundermeyer.gl_utils as gu
 
-from .pysixd import misc
+from utils.sundermeyer.pysixd import misc
 
 class Renderer(object):
 

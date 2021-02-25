@@ -62,7 +62,7 @@ else
     if test -f "$OUR_CSV_PATH"; then
 	echo $(date +%T) " - CSV with results already exists, skipping..."
     else
-	ENCODER_WEIGHTS="pytorch3d/data/${DATASET}-obj${OBJ_ID}/obj${OBJ_ID}-encoder.npy"
+	ENCODER_WEIGHTS="pytorch3d/data/obj1-18/encoder.npy"
 	${MERGED_DOCKER} python pytorch3d/eval-pickle.py -pi /shared-folder/bop/bop-${DATASET}-dataset/${DATASET}/pickles/${DATA_SPLIT}/obj${OBJ_ID}/${DATASET}-${DATA_SPLIT}-obj${OBJ_ID}.p -o /shared-folder/bop/bop-${DATASET}-dataset/${DATASET}/pickles/${DATA_SPLIT}/obj${OBJ_ID}/${APPROACH_NAME}-obj${OBJ_ID}_${DATASET}-${DATA_SPLIT}${SUB_DATASET}.csv -ep ${ENCODER_WEIGHTS} -mp ${TRAINED_MODEL} > log.out #-op pytorch3d/data/${DATASET}-obj${OBJ_ID}/cad/obj_${OBJ_ID}.ply
 	wait
     fi
