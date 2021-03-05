@@ -155,6 +155,11 @@ def voronoi_plot(points_in, losses, path, cmap):
     y = np.outer(np.sin(u), np.sin(v))
     z = np.outer(np.ones(np.size(u)), np.cos(v))
     ax.plot_surface(x, y, z, color='y', alpha=0.1)
+    ax.grid(False)
+    ax.set_xticks([])
+    ax.set_yticks([])
+    ax.set_zticks([])
+    plt.axis('off')
 
     # normalize and map losses to colormap
     mi = min(losses)
@@ -215,6 +220,12 @@ def voronoi_plot(points_in, losses, path, cmap):
     fig = plt.figure()
     ax = fig.add_subplot(111, projection='3d')
     ax.plot_surface(x, y, z, color='y', alpha=0.1)
+    ax.grid(False)
+    ax.set_xticks([])
+    ax.set_yticks([])
+    ax.set_zticks([])
+    plt.axis('off')
+
     # indicate Voronoi regions (as Euclidean polygons)
     i = 0
     centers = []
@@ -274,10 +285,19 @@ def plot_points(points, losses):
 
 def plot_flat_landscape(points_in, losses, path, cmap):
     angles = [point['spherical'] for point in points_in]
+    # shift for clearer image
+    shift_radians = 1.1
+    for i in range(len(angles)):
+        temp = (angles[i][1] + shift_radians)
+        angles[i][1] = temp if temp < 2*np.pi else temp-2*np.pi
     theta, phi = zip(*angles)
 
     from scipy.spatial import Voronoi, voronoi_plot_2d
 
+    #print(angles[0])
+    angles = np.array(angles)
+    angles[:,[0, 1]] = angles[:,[1, 0]]
+    #print(angles[0])
     vor = Voronoi(angles)
     #fig = voronoi_plot_2d(vor)
     #plt.scatter(theta, phi)
@@ -294,8 +314,14 @@ def plot_flat_landscape(points_in, losses, path, cmap):
     # plot Voronoi diagram, and fill finite regions with color mapped from losses
     fig = voronoi_plot_2d(vor, show_points=False, show_vertices=False, line_alpha=0, s=1)
     ax = fig.add_subplot(1,1,1)
-    plt.xlim([min(theta), max(theta)])
-    plt.ylim([min(phi), max(phi)])
+    fig.set_size_inches(45, 15)
+    fig.tight_layout(rect=(0,0,0.95,1),pad=1.0)
+    ax.grid(False)
+    ax.set_xticks([])
+    ax.set_yticks([])
+    #plt.axis('off')
+    plt.ylim([min(theta), max(theta)])
+    plt.xlim([min(phi), max(phi)])
     for r in range(len(vor.point_region)):
         region = vor.regions[vor.point_region[r]]
         if not -1 in region:
@@ -303,7 +329,12 @@ def plot_flat_landscape(points_in, losses, path, cmap):
             plt.fill(*zip(*polygon), color=mapper.to_rgba(losses[r]))
 
     mapper.set_array(losses)
-    plt.colorbar(mapper)
+    from mpl_toolkits.axes_grid1 import make_axes_locatable
+    divider = make_axes_locatable(plt.gca())
+    cax = divider.append_axes("right", "2%", pad="1%")
+    cbar = plt.colorbar(mapper, cax=cax)
+    cbar.ax.tick_params(labelsize=60)
+
     plt.show()
 
     fig.savefig(os.path.join(path, "flat_landscape.png"), dpi=fig.dpi)
@@ -315,12 +346,10 @@ def main():
     path = sys.argv[1]
     points = np.load(os.path.join(path, 'points.npy'), allow_pickle=True)
     losses = np.load(os.path.join(path, 'losses.npy'), allow_pickle=True)
-    print(losses)
-    print(points)
 
     cmap = cm.get_cmap('jet', 256)
-    newcolors = np.vstack((cmap(np.linspace(0, 0.2, 168)),
-                       cmap(np.linspace(0.2, 1, 88))))
+    newcolors = np.vstack((cmap(np.linspace(0, 0.2, 550)),
+                       cmap(np.linspace(0.2, 1, 450))))
     newcmp = ListedColormap(newcolors)
     plot_flat_landscape(points, losses, path, newcmp)
     voronoi_plot(points, losses, path, newcmp)
