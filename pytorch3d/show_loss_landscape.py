@@ -335,6 +335,26 @@ def plot_flat_landscape(points_in, losses, path, cmap):
     cbar = plt.colorbar(mapper, cax=cax)
     cbar.ax.tick_params(labelsize=60)
 
+    #print(*list(zip(losses,points_in)), sep = "\n")
+    index = list(range(len(losses)))
+
+    sorted_points = np.array([(x,y,z) for x,y,z in sorted(zip(losses,points_in,index), key=lambda tup: tup[0])])
+    last = 1
+    x = []
+    y = []
+    for i in range(last):
+        pt = sorted_points[i][1]['spherical']
+        #print(sorted_points[i])
+        x.append(pt[0])
+        y.append(pt[1])
+    #plt.plot(x, y,'ro')
+    #for i in range(10):
+        #print(sorted_points[i])
+
+    # print(angles[494])
+    # print(angles[972])
+    # print(angles[530])
+    # print(angles[1012])
     plt.show()
 
     fig.savefig(os.path.join(path, "flat_landscape.png"), dpi=fig.dpi)
