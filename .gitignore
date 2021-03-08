@@ -14,9 +14,6 @@ install
 *.obj
 *#
 *.gif
-<<<<<<< HEAD
-=======
 /pytorch3d/experiments
 /pytorch3d/output
 /pytorch3d/data
->>>>>>> Version building and runing for Hampus
