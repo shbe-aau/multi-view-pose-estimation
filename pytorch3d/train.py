@@ -14,6 +14,7 @@ import gc
 import re
 
 from utils.utils import *
+from utils.onecyclelr import OneCycleLR
 
 from Model import Model
 from Encoder import Encoder
@@ -64,7 +65,7 @@ def loadCheckpoint(model_path):
     optimizer = torch.optim.Adam(model.parameters())
     optimizer.load_state_dict(checkpoint['optimizer'])
 
-    lr_reducer = torch.optim.lr_scheduler.StepLR(optimizer, step_size=2, gamma=0.9)
+    lr_reducer = OneCycleLR(optimizer)
     lr_reducer.load_state_dict(checkpoint['lr_reducer'])
 
     print("Loaded the checkpoint: \n" + model_path)
@@ -147,8 +148,8 @@ def main():
 
     # Create an optimizer. Here we are using Adam and we pass in the parameters of the model
     learning_rate=args.getfloat('Training', 'LEARNING_RATE')
-    optimizer = torch.optim.Adam(model.parameters(),lr=learning_rate)
-    lr_reducer = torch.optim.lr_scheduler.StepLR(optimizer, step_size=2, gamma=0.9)
+    optimizer = torch.optim.Adam(model.parameters(), lr=0.0005)
+    lr_reducer = OneCycleLR(optimizer, num_steps=args.getfloat('Training', 'NUM_ITER'), lr_range=(0.0005, 0.005))
 
     # Prepare output directories
     output_path = args.get('Training', 'OUTPUT_PATH')
@@ -223,6 +224,7 @@ def main():
                           visualize=args.getboolean('Training', 'SAVE_IMAGES'),
                           loss_params=args.getfloat('Training', 'LOSS_PARAMS'))
         append2file([loss], os.path.join(output_path, "train-loss.csv"))
+        append2file([lr_reducer.get_lr()], os.path.join(output_path, "learning-rate.csv"))
 
         # Test on validation data
         val_loss = testEpoch(mean, std, br, validation_data, model, device, output_path,
@@ -287,7 +289,7 @@ def runEpoch(mean, std, br, dataset, model,
 
     if(model.training):
         print("Current mode: train!")
-        print("Epoch: {0} - current learning rate: {1}".format(epoch, lr_reducer.get_last_lr()))
+        print("Epoch: {0} - current learning rate: {1}".format(epoch, lr_reducer.get_lr()))
         dataset.hard_samples = [] # Reset hard samples
         torch.set_grad_enabled(True)
     else:
@@ -413,7 +415,7 @@ def runEpoch(mean, std, br, dataset, model,
                  'lr_reducer': lr_reducer.state_dict(),
                  'epoch': epoch}
         torch.save(state, os.path.join(model_dir,"model-epoch{0}.pt".format(epoch)))
-        #lr_reducer.step()
+        lr_reducer.step()
 
     # Memory management
     dbg("After train memory: {}".format(torch.cuda.memory_summary(device=device, abbreviated=False)), dbg_memory)
