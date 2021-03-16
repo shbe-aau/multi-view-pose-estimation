@@ -39,9 +39,9 @@ def arr2str(arr):
         str_arr += "{0:.8f} ".format(flat_arr[i])
     return str_arr[:-1]
 
-def loadCheckpoint(model_path):
+def loadCheckpoint(model_path, device):
     # Load checkpoint and parameters
-    checkpoint = torch.load(model_path)
+    checkpoint = torch.load(model_path, map_location=device)
     epoch = checkpoint['epoch'] + 1
 
     # Load model
@@ -95,7 +95,7 @@ def main():
         model = Model().to(device)
 
         # Load model checkpoint
-        model, optimizer, epoch, learning_rate = loadCheckpoint(args.mp)
+        model, optimizer, epoch, learning_rate = loadCheckpoint(args.mp, device)
         model.to(device)
         model.eval()
 
