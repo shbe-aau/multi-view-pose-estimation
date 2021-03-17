@@ -667,7 +667,7 @@ class DatasetGenerator():
         return images
 
 
-    def generate_image_batch(self):
+    def generate_image_batch(self, R=None, t=None, augment=True):
         # Generate random poses
         curr_Rs = []
         curr_ts = []
@@ -678,7 +678,8 @@ class DatasetGenerator():
             print("num hard samples: ", len(self.hard_samples))
 
         for k in np.arange(self.batch_size):
-            R, t = self.pose_sampling()
+            if R is None:
+                R, t = self.pose_sampling()
 
             if(self.hard_mining == True):
                 if(len(self.hard_samples) > 0):
@@ -721,11 +722,16 @@ class DatasetGenerator():
             # Add relative offset when cropping - like Sundermeyer
             x, y, w, h = obj_bb
 
-            rand_trans_x = np.random.uniform(-self.max_rel_offset, self.max_rel_offset) * w
-            rand_trans_y = np.random.uniform(-self.max_rel_offset, self.max_rel_offset) * h
+
+            if augment:
+                rand_trans_x = np.random.uniform(-self.max_rel_offset, self.max_rel_offset) * w
+                rand_trans_y = np.random.uniform(-self.max_rel_offset, self.max_rel_offset) * h
+            else:
+                rand_trans_x = 0
+                rand_trans_y = 0
             obj_bb_off = obj_bb + np.array([rand_trans_x,rand_trans_y,0,0])
             pad_factor =  1.2
-            if(self.max_rel_scale is not None):
+            if(augment and self.max_rel_scale is not None):
                 scale = np.random.uniform(-self.max_rel_scale, self.max_rel_scale)
                 pad_factor = pad_factor + scale
 
@@ -764,7 +770,8 @@ class DatasetGenerator():
 
             # Augment data
             image_aug = np.array([cropped])
-            image_aug = self.aug(images=image_aug)
+            if augment:
+                image_aug = self.aug(images=image_aug)
 
             ## Convert to float and discard alpha channel
             image_aug = image_aug[0].astype(np.float)/255.0
