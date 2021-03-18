@@ -7,15 +7,25 @@ import json
 import pickle
 import numpy as np
 import matplotlib.pyplot as plt
+from utils.tools import *
+from scipy.spatial.transform import Rotation
+
+def pointToMat(point):
+    r = Rotation.from_euler('yz', point['spherical']) # select point wanted for comparison here
+    R = r.as_matrix()
+    return torch.from_numpy(R)
 
 def main():
     device = torch.device("cuda:0")
+    num_datapoints = 1984
+    views = 10
+    load_points = True
     # Need to replace sundermeyer-random with something where we can
     # use predetermined poses, to plot each arch to visualize
     datagen = DatasetGenerator("",
                             "./data/cad-files/ply-files/obj_10.ply",
                             375,
-                            1,
+                            num_datapoints,
                             "not_used",
                             device,
                             "sundermeyer-random",
@@ -30,14 +40,13 @@ def main():
     #checkpoint = torch.load("./output/depth/multi-path-reconst/depth-reconst/obj10-10views/models/model-epoch200.pt") # Change this later
     checkpoint = torch.load("./output/paper-models/10views/obj10/models/model-epoch199.pt")
 
-    model = Model(num_views=10).cuda()
+    model = Model(num_views=views).cuda()
     model.load_state_dict(checkpoint['model'])
     model = model.eval()
     pipeline = Pipeline(encoder, model, device)
 
     # run images through model
     # Predict poses
-    num_datapoints = 100
     # around x
     shiftx = np.eye(3, dtype=np.float)
     theta = np.pi / num_datapoints
@@ -60,6 +69,7 @@ def main():
     shiftz[1,1] = np.cos(theta)
     shiftz[1,0] = np.sin(theta)
     predicted_poses = []
+    predicted_poses_raw = []
     R_conv = np.eye(3, dtype=np.float)
     #R_conv = np.array([[ 0.5435,  0.1365,  0.8283],
     #                   [ 0.6597,  0.5406, -0.5220],
@@ -70,24 +80,49 @@ def main():
     #R_conv = np.array([[-0.9959,  0.0797,  0.0423],
     #                   [ 0.0444,  0.0249,  0.9987],
     #                   [ 0.0786,  0.9965, -0.0283]])
-    for i in range(num_datapoints):
-        # get data from fixed R and T vectors
-        R_conv = np.matmul(R_conv, shiftx)
-        R = torch.from_numpy(R_conv)
-        t = torch.tensor([0.0, 0.0, 375])
-        curr_batch = datagen.generate_image_batch(R = R, t = t, augment = False)
 
-        predicted_poses.append(pipeline.process(curr_batch["images"]).detach().cpu().numpy()[0])
-        Rs = curr_batch["Rs"]
+    if load_points:
+        # Try with points from the sphere
+        points = np.load('./output/depth/spherical_mapping_obj10_1_500/points.npy', allow_pickle=True)
+        num_datapoints = len(points)
+
+        Rin = []
+        for point in points:
+            Rin.append(pointToMat(point))
+
+    else:
+        Rin = []
+        for i in range(num_datapoints):
+            # get data from fixed R and T vectors
+            R_conv = np.matmul(R_conv, shiftx)
+            R = torch.from_numpy(R_conv)
+            Rin.append(R)
+
+    t = torch.tensor([0.0, 0.0, 375])
+    data = datagen.generate_image_batch(Rin = Rin, tin = t, augment = False)
+
+    output = pipeline.process(data["images"])
 
     # evaluate how output confidence and each view changes with input pose
-    predicted_poses = np.array(predicted_poses)
-    print(predicted_poses[:,6])
-    plot_confidences(predicted_poses)
+    plot_confidences(output.detach().cpu().numpy())
+    plot_flat_landscape(points, output[:,0:views].detach().cpu().numpy())
+
+    rotation_matrices = []
+    for i in range(views):
+        start = views + i*6
+        end = views + (i + 1)*6
+        curr_poses = output[:,start:end]
+        matrices = compute_rotation_matrix_from_ortho6d(curr_poses)
+        euler_angles = compute_euler_angles_from_rotation_matrices(matrices)
+        print(matrices.shape)
+        print(matrices[0:3])
+        print(euler_angles.shape)
+        print(euler_angles[0:3])
+        exit()
 
 def plot_confidences(predicted_poses):
     num_datapoints = len(predicted_poses)
-    views = 10
+    views = int(len(predicted_poses[0])/7)
 
     x = np.linspace(0, np.pi, num_datapoints)
     #fig, ax = plt.subplots(int(views/2),2)
@@ -103,6 +138,46 @@ def plot_confidences(predicted_poses):
     plt.legend(loc="upper right")
     # plt.show()
     fig.savefig('confidence.png', bbox_inches='tight')
+
+def plot_flat_landscape(points_in, conficences):
+    angles = [point['spherical'] for point in points_in]
+    # shift for clearer image
+    shift_radians = 1.1
+    for i in range(len(angles)):
+        temp = (angles[i][1] + shift_radians)
+        angles[i][1] = temp if temp < 2*np.pi else temp-2*np.pi
+    theta, phi = zip(*angles)
+
+    from scipy.spatial import Voronoi, voronoi_plot_2d
+
+    #print(angles[0])
+    angles = np.array(angles)
+    angles[:,[0, 1]] = angles[:,[1, 0]]
+    #print(angles[0])
+    vor = Voronoi(angles)
+
+    colors = plt.rcParams['axes.prop_cycle'].by_key()['color']
+
+    # plot Voronoi diagram, and fill finite regions with color mapped from losses
+    fig = voronoi_plot_2d(vor, show_points=False, show_vertices=False, line_alpha=0, s=1)
+    ax = fig.add_subplot(1,1,1)
+    fig.set_size_inches(45, 15)
+    fig.tight_layout(rect=(0,0,0.95,1),pad=1.0)
+    ax.grid(False)
+    ax.set_xticks([])
+    ax.set_yticks([])
+    #plt.axis('off')
+    plt.ylim([min(theta), max(theta)])
+    plt.xlim([min(phi), max(phi)])
+    print(len(vor.point_region))
+    for r in range(len(vor.point_region)):
+        region = vor.regions[vor.point_region[r]]
+        if not -1 in region:
+            polygon = [vor.vertices[i] for i in region]
+            view = np.argmin(conficences[r,:])
+            plt.fill(*zip(*polygon), color=colors[view])
+
+    fig.savefig('confidence_landscape.png', bbox_inches='tight', dpi=fig.dpi)
 
 # Copied from train.py for now
 def loadDataset(file_list, batch_size=2):
