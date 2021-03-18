@@ -667,7 +667,7 @@ class DatasetGenerator():
         return images
 
 
-    def generate_image_batch(self, R=None, t=None, augment=True):
+    def generate_image_batch(self, Rin=None, tin=None, augment=True):
         # Generate random poses
         curr_Rs = []
         curr_ts = []
@@ -678,8 +678,11 @@ class DatasetGenerator():
             print("num hard samples: ", len(self.hard_samples))
 
         for k in np.arange(self.batch_size):
-            if R is None:
+            if Rin is None:
                 R, t = self.pose_sampling()
+            else:
+                R = Rin[k]
+                t = tin
 
             if(self.hard_mining == True):
                 if(len(self.hard_samples) > 0):
