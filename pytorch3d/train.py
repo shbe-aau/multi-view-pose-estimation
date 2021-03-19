@@ -78,7 +78,7 @@ def loadDataset(file_list, batch_size=2):
         print("Loading dataset: {0}".format(f))
         with open(f, "rb") as f:
             curr_data = pickle.load(f, encoding="latin1")
-            curr_batch = {"Rs":[],"images":[]}
+            curr_batch = {"Rs":[],"images":[], "ids":[]}
             for i in range(len(curr_data["Rs"])):
                 curr_pose = curr_data["Rs"][i]
 
@@ -95,9 +95,12 @@ def loadDataset(file_list, batch_size=2):
                 curr_image = curr_image/np.max(curr_image)
                 curr_batch["images"].append(curr_image)
 
+                # Temp fix for loading pickle without ids
+                curr_batch["ids"].append(0)
+
                 if(len(curr_batch["Rs"]) >= batch_size):
                     data.append(curr_batch)
-                    curr_batch = {"Rs":[],"images":[]}
+                    curr_batch = {"Rs":[],"images":[],"ids":[]}
             data.append(curr_batch)
     return data
 
