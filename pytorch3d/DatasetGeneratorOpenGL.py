@@ -81,8 +81,10 @@ class DatasetGenerator():
         # Prepare renders for each object
         self.renderers = []
         for o in obj_paths:
-            print(o.replace(".obj",".ply"))
-            curr_model = inout.load_ply(o.replace(".obj",".ply"))
+            if('.ply' not in o):
+                print("Error! {0} is not a .ply file!".format(o))
+                return None
+            curr_model = inout.load_ply(o)
             curr_rend= Renderer(curr_model, (self.render_size,self.render_size),
                                 self.K, surf_color=(1, 1, 1), mode='rgb',
                                 random_light=random_light)
