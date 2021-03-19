@@ -8,6 +8,7 @@ import pickle
 import numpy as np
 import matplotlib.pyplot as plt
 from utils.tools import *
+from utils.utils import *
 from scipy.spatial.transform import Rotation
 
 def pointToMat(point):
@@ -20,6 +21,8 @@ def main():
     num_datapoints = 1984
     views = 10
     load_points = True
+    base_directory = './output/paper-models/10views/obj10/visualization/'
+    prepareDir(base_directory)
     # Need to replace sundermeyer-random with something where we can
     # use predetermined poses, to plot each arch to visualize
     datagen = DatasetGenerator("",
@@ -50,6 +53,7 @@ def main():
     # around x
     shiftx = np.eye(3, dtype=np.float)
     theta = np.pi / num_datapoints
+    #theta = np.pi / 3
     shiftx[1,1] = np.cos(theta)
     shiftx[1,2] = -np.sin(theta)
     shiftx[2,2] = np.cos(theta)
@@ -89,6 +93,7 @@ def main():
         Rin = []
         for point in points:
             Rin.append(pointToMat(point))
+            #Rin.append(np.matmul(pointToMat(point), shiftx))
 
     else:
         Rin = []
@@ -137,7 +142,7 @@ def plot_confidences(predicted_poses):
 
     plt.legend(loc="upper right")
     # plt.show()
-    fig.savefig('confidence.png', bbox_inches='tight')
+    fig.savefig('./output/paper-models/10views/obj10/visualization/confidence.png', bbox_inches='tight')
 
 def plot_flat_landscape(points_in, conficences):
     angles = [point['spherical'] for point in points_in]
@@ -177,7 +182,7 @@ def plot_flat_landscape(points_in, conficences):
             view = np.argmin(conficences[r,:])
             plt.fill(*zip(*polygon), color=colors[view])
 
-    fig.savefig('confidence_landscape.png', bbox_inches='tight', dpi=fig.dpi)
+    fig.savefig('./output/paper-models/10views/obj10/visualization/confidence_landscape.png', bbox_inches='tight', dpi=fig.dpi)
 
 # Copied from train.py for now
 def loadDataset(file_list, batch_size=2):
