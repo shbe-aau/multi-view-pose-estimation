@@ -39,7 +39,6 @@ def main():
     # load model
     encoder = Encoder("./data/obj1-18/encoder.npy").to(device)
     encoder.eval()
-    #checkpoint = torch.load("./output/depth/multi-path-reconst/depth-reconst/obj10-10views/models/model-epoch200.pt") # Change this later
     checkpoint = torch.load("./output/paper-models/10views/obj10/models/model-epoch199.pt")
 
     model = Model(num_views=views).cuda()
@@ -47,8 +46,6 @@ def main():
     model = model.eval()
     pipeline = Pipeline(encoder, model, device)
 
-    # run images through model
-    # Predict poses
     # around x
     shiftx = np.eye(3, dtype=np.float)
     theta = np.pi / num_datapoints
@@ -103,13 +100,17 @@ def main():
             Rin.append(R)
 
     t = torch.tensor([0.0, 0.0, 375])
+    # Generate images
     data = datagen.generate_image_batch(Rin = Rin, tin = t, augment = False)
 
+    # run images through model
+    # Predict poses
     output = pipeline.process(data["images"])
 
     # evaluate how output confidence and each view changes with input pose
     plot_confidences(output.detach().cpu().numpy())
-    plot_flat_landscape(points, output[:,0:views].detach().cpu().numpy())
+    if load_points:
+        plot_flat_landscape(points, output[:,0:views].detach().cpu().numpy())
 
     rotation_matrices = []
     for i in range(views):
