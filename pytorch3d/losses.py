@@ -65,50 +65,6 @@ def sphere_sampling():
 
     return R
 
-def renderNormCat(Rs, ts, renderer, mean, std, views):
-    return None
-    images = []
-    for v in views:
-        # Render images
-        Rs_new = torch.matmul(Rs, v.to(renderer.device))
-        imgs = renderer.renderBatch(Rs_new, ts)
-        imgs = (imgs-mean)/std
-        images.append(imgs)
-    return torch.cat(images, dim=1)
-
-
-def renderMulti(Rs_gt, predicted_poses, ts, renderer, views):
-    num_views = len(views)
-    pred_images = []
-    gt_images = []
-    confidences = []
-    pred_poses = []
-    pose_index = num_views
-    for i,v in enumerate(views): #np.arange(num_views):
-        # Render groundtruth images
-        gt_images.append(renderer.renderBatch(Rs_gt, ts))
-
-        # Extract predicted pose
-        end_index = pose_index + 6
-        curr_poses = predicted_poses[:,pose_index:end_index]
-        curr_poses = compute_rotation_matrix_from_ortho6d(curr_poses)
-        pose_index = end_index
-
-        # Render images
-        imgs = renderer.renderBatch(curr_poses, ts)
-        pred_images.append(imgs)
-        pred_poses.append(curr_poses)
-
-    # Extract confidences and perform softmax
-    confidences.append(torch.nn.functional.softmax(predicted_poses[:,:num_views],dim=1))
-
-    gt_images = torch.cat(gt_images, dim=1)
-    pred_images = torch.cat(pred_images, dim=1)
-    confidences = torch.cat(confidences, dim=1)
-    pred_poses = torch.cat(pred_poses, dim=1)
-
-    return gt_images, pred_images, confidences, pred_poses
-
 def mat_theta( A, B ):
     """ comment cos between vectors or matrices """
     At = np.transpose(A)
@@ -150,14 +106,10 @@ def Loss(predicted_poses, gt_poses, renderer, ts, mean, std, ids=[0], loss_metho
         else:
             print("Unknown pose representation specified: ", pose_rep)
             return -1.0
-        gt_imgs = renderNormCat(Rs_gt, ts, renderer, mean, std, views)
     else: # this version is for using loss with prerendered ref image and regular rot matrix for predicted pose
         #Rs_predicted = predicted_poses
         #Rs_predicted = torch.Tensor(Rs_predicted).to(renderer.device)
         gt_imgs = fixed_gt_images
-
-    #predicted_imgs = renderNormCat(Rs_predicted, ts, renderer, mean, std, views)
-    #diff = torch.abs(gt_imgs - predicted_imgs).flatten(start_dim=1) # not needed for "multiview-l2"
 
     if(loss_method=="vsd-union"):
         depth_max = loss_params
