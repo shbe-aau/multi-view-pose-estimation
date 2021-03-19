@@ -376,40 +376,13 @@ class DatasetGenerator():
         R = torch.tensor(self.poses.pop(-1), dtype=torch.float32)
         return R
 
-    # Fixed pose - mainly for debugging purposes
-    def fixed_sampling(self):
-        z = np.random.uniform(low=-0.01, high=0.01, size=1)[0]
-        z = -0.01
-        theta_sample = np.random.uniform(low=0.0, high=2.0*np.pi, size=1)[0]
-        #theta_sample = -0.07*np.pi
-        x = np.sqrt((100.0**2 - z**2))*np.cos(theta_sample)
-        y = np.sqrt((100.0**2 - z**2))*np.sin(theta_sample)
-
-        cam_position = torch.tensor([x, y, z]).unsqueeze(0)
-        if(z < 0):
-            R = look_at_rotation(cam_position, up=((0, 0, -1),)).squeeze()
-        else:
-            R = look_at_rotation(cam_position, up=((0, 0, 1),)).squeeze()
-
-        # Rotate in-plane
-        if(True): #not self.simple_pose_sampling):
-            rot_degrees = np.random.uniform(low=-90.0, high=90.0, size=1)
-            rot_degress = 30.0
-            rot = scipyR.from_euler('z', rot_degrees, degrees=True)
-            rot_mat = torch.tensor(rot.as_matrix(), dtype=torch.float32)
-            R = torch.matmul(R, rot_mat)
-            R = R.squeeze()
-
-        #t = torch.tensor([0.0, 0.0, 100.0])
-        return R#,t
-
     def tless_sampling(self):
         theta_sample = np.random.uniform(low=0.0, high=2.0*np.pi, size=1)[0]
         phi_sample = np.random.uniform(low=0.0, high=2.0*np.pi, size=1)[0]
 
-        x = 100.0*np.sin(theta_sample)*np.cos(phi_sample)
-        y = 100.0*np.sin(theta_sample)*np.sin(phi_sample)
-        z = 100.0*np.cos(theta_sample)
+        x = np.sin(theta_sample)*np.cos(phi_sample)
+        y = np.sin(theta_sample)*np.sin(phi_sample)
+        z = np.cos(theta_sample)
 
         cam_position = torch.tensor([float(x), float(y), float(z)]).unsqueeze(0)
         if(z < 0):
@@ -545,10 +518,10 @@ class DatasetGenerator():
     # Truely random
     # Based on: https://www.cmu.edu/biolphys/deserno/pdf/sphere_equi.pdf
     def sphere_sampling(self):
-        z = np.random.uniform(low=-100.0, high=100.0, size=1)[0]
+        z = np.random.uniform(low=-1.0, high=1.0, size=1)[0]
         theta_sample = np.random.uniform(low=0.0, high=2.0*np.pi, size=1)[0]
-        x = np.sqrt((100.0**2 - z**2))*np.cos(theta_sample)
-        y = np.sqrt((100.0**2 - z**2))*np.sin(theta_sample)
+        x = np.sqrt((1.0**2 - z**2))*np.cos(theta_sample)
+        y = np.sqrt((1.0**2 - z**2))*np.sin(theta_sample)
 
         cam_position = torch.tensor([x, y, z]).unsqueeze(0)
         if(z < 0):
@@ -568,10 +541,10 @@ class DatasetGenerator():
     # Truely random
     # Based on: https://www.cmu.edu/biolphys/deserno/pdf/sphere_equi.pdf
     def sphere_sampling_fixed(self):
-        z = np.random.uniform(low=-100.0, high=100.0, size=1)[0]
+        z = np.random.uniform(low=-1.0, high=1.0, size=1)[0]
         theta_sample = np.random.uniform(low=0.0, high=2.0*np.pi, size=1)[0]
-        x = np.sqrt((100.0**2 - z**2))*np.cos(theta_sample)
-        y = np.sqrt((100.0**2 - z**2))*np.sin(theta_sample)
+        x = np.sqrt((1.0**2 - z**2))*np.cos(theta_sample)
+        y = np.sqrt((1.0**2 - z**2))*np.sin(theta_sample)
 
         cam_position = torch.tensor([x, y, z]).unsqueeze(0)
         if(z < 0):
