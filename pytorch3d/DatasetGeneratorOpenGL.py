@@ -13,7 +13,6 @@ import cv2 as cv
 
 import time
 import pickle
-import random
 from utils.utils import *
 from utils.tools import *
 
@@ -280,7 +279,7 @@ class DatasetGenerator():
 
         # Sample pose randomly
         #random.shuffle(self.poses)
-        index = random.randint(0,len(self.poses)-1)
+        index = np.random.randint(0,len(self.poses))
         R = torch.tensor(self.poses[index], dtype=torch.float32)
         return R
 
@@ -370,7 +369,7 @@ class DatasetGenerator():
             with open(pose_path, "rb") as f:
                 self.poses = pickle.load(f, encoding="latin1")["Rs"]
                 print("Read pickle: ", len(self.poses))
-                random.shuffle(self.poses)
+                np.random.shuffle(self.poses)
 
         # Sample pose randomly
         R = torch.tensor(self.poses.pop(-1), dtype=torch.float32)
