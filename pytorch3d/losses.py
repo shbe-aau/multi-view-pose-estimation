@@ -76,39 +76,6 @@ def renderNormCat(Rs, ts, renderer, mean, std, views):
         images.append(imgs)
     return torch.cat(images, dim=1)
 
-
-def renderMulti(Rs_gt, predicted_poses, ts, renderer, views):
-    num_views = len(views)
-    pred_images = []
-    gt_images = []
-    confidences = []
-    pred_poses = []
-    pose_index = num_views
-    for i,v in enumerate(views): #np.arange(num_views):
-        # Render groundtruth images
-        gt_images.append(renderer.renderBatch(Rs_gt, ts))
-
-        # Extract predicted pose
-        end_index = pose_index + 6
-        curr_poses = predicted_poses[:,pose_index:end_index]
-        curr_poses = compute_rotation_matrix_from_ortho6d(curr_poses)
-        pose_index = end_index
-
-        # Render images
-        imgs = renderer.renderBatch(curr_poses, ts)
-        pred_images.append(imgs)
-        pred_poses.append(curr_poses)
-
-    # Extract confidences and perform softmax
-    confidences.append(torch.nn.functional.softmax(predicted_poses[:,:num_views],dim=1))
-
-    gt_images = torch.cat(gt_images, dim=1)
-    pred_images = torch.cat(pred_images, dim=1)
-    confidences = torch.cat(confidences, dim=1)
-    pred_poses = torch.cat(pred_poses, dim=1)
-
-    return gt_images, pred_images, confidences, pred_poses
-
 def mat_theta( A, B ):
     """ comment cos between vectors or matrices """
     At = np.transpose(A)
