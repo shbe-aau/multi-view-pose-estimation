@@ -3,10 +3,10 @@ from torch.optim import Optimizer
 
 class OneCycleLR:
     """ Sets the learing rate of each parameter group by the one cycle learning rate policy
-    proposed in https://arxiv.org/pdf/1708.07120.pdf. 
-    It is recommended that you set the max_lr to be the learning rate that achieves 
+    proposed in https://arxiv.org/pdf/1708.07120.pdf.
+    It is recommended that you set the max_lr to be the learning rate that achieves
     the lowest loss in the learning rate range test, and set min_lr to be 1/10 th of max_lr.
-    So, the learning rate changes like min_lr -> max_lr -> min_lr -> final_lr, 
+    So, the learning rate changes like min_lr -> max_lr -> min_lr -> final_lr,
     where final_lr = min_lr * reduce_factor.
     Note: Currently only supports one parameter group.
     Args:
@@ -31,7 +31,7 @@ class OneCycleLR:
 
     def __init__(self,
                  optimizer: Optimizer,
-                 num_steps: int,
+                 num_steps: int = 10.0,
                  lr_range: tuple = (0.1, 1.),
                  momentum_range: tuple = (0.85, 0.95),
                  annihilation_frac: float = 0.1,
