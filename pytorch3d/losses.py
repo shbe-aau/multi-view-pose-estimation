@@ -123,7 +123,7 @@ def mat_theta( A, B ):
     return np.arccos(temp)
 
 
-def Loss(predicted_poses, gt_poses, renderer, ts, mean, std, loss_method="diff", pose_rep="6d-pose", views=None, fixed_gt_images=None, loss_params=0.5, eval_mode=False):
+def Loss(predicted_poses, gt_poses, renderer, ts, mean, std, ids=[0], loss_method="diff", pose_rep="6d-pose", views=None, fixed_gt_images=None, loss_params=0.5, eval_mode=False):
     Rs_gt = torch.tensor(np.stack(gt_poses), device=renderer.device,
                             dtype=torch.float32)
 
@@ -258,7 +258,7 @@ def Loss(predicted_poses, gt_poses, renderer, ts, mean, std, loss_method="diff",
         # Prepare gt images
         gt_images = []
         predicted_images = []
-        gt_imgs = renderer.renderBatch(Rs_gt, ts)
+        gt_imgs = renderer.renderBatch(Rs_gt, ts, ids)
 
         losses = []
         confs = predicted_poses[:,:num_views]
@@ -272,7 +272,7 @@ def Loss(predicted_poses, gt_poses, renderer, ts, mean, std, loss_method="diff",
             pose_end = pose_start + 6
 
             # Render predicted images
-            imgs = renderer.renderBatch(Rs_predicted, ts)
+            imgs = renderer.renderBatch(Rs_predicted, ts, ids)
             predicted_images.append(imgs)
             gt_images.append(gt_imgs)
 

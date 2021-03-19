@@ -120,8 +120,14 @@ def main():
     device = torch.device("cuda:0")
     torch.cuda.set_device(device)
 
+    # Handle loading of multiple object paths
+    try:
+        model_path_loss = json.loads(args.get('Dataset', 'MODEL_PATH_LOSS'))
+    except:
+        model_path_loss = [args.get('Dataset', 'MODEL_PATH_LOSS')]
+
     # Set up batch renderer
-    br = BatchRender(args.get('Dataset', 'MODEL_PATH_LOSS'),
+    br = BatchRender(model_path_loss,
                      device,
                      batch_size=args.getint('Training', 'BATCH_SIZE'),
                      faces_per_pixel=args.getint('Rendering', 'FACES_PER_PIXEL'),
@@ -197,11 +203,19 @@ def main():
     encoder.eval()
     pipeline = Pipeline(encoder, model, device)
 
+    # Handle loading of multiple object paths and translations
+    try:
+        model_path_data = json.loads(args.get('Dataset', 'MODEL_PATH_DATA'))
+        translations = np.array(json.loads(args.get('Rendering', 'T')))
+    except:
+        model_path_data = [args.get('Dataset', 'MODEL_PATH_DATA')]
+        translations = [np.array(json.loads(args.get('Rendering', 'T')))]
+
     # Prepare datasets
     bg_path = "../../autoencoder_ws/data/VOC2012/JPEGImages/"
     training_data = DatasetGenerator(args.get('Dataset', 'BACKGROUND_IMAGES'),
-                                     args.get('Dataset', 'MODEL_PATH_DATA'),
-                                     json.loads(args.get('Rendering', 'T'))[-1],
+                                     model_path_data,
+                                     translations,
                                      args.getint('Training', 'BATCH_SIZE'),
                                      "not_used",
                                      device,
@@ -220,7 +234,7 @@ def main():
         loss = trainEpoch(mean, std, br, training_data, model, device, output_path,
                           loss_method=args.get('Training', 'LOSS'),
                           pose_rep=args.get('Training', 'POSE_REPRESENTATION'),
-                          t=json.loads(args.get('Rendering', 'T')),
+                          t=translations,
                           visualize=args.getboolean('Training', 'SAVE_IMAGES'),
                           loss_params=args.getfloat('Training', 'LOSS_PARAMS'))
         append2file([loss], os.path.join(output_path, "train-loss.csv"))
@@ -230,7 +244,7 @@ def main():
         val_loss = testEpoch(mean, std, br, validation_data, model, device, output_path,
                              loss_method=args.get('Training', 'LOSS'),
                              pose_rep=args.get('Training', 'POSE_REPRESENTATION'),
-                             t=json.loads(args.get('Rendering', 'T')),
+                             t=translations,
                              visualize=args.getboolean('Training', 'SAVE_IMAGES'),
                              loss_params=args.getfloat('Training', 'LOSS_PARAMS'))
         append2file([val_loss], os.path.join(output_path, "validation-loss.csv"))
@@ -313,11 +327,16 @@ def runEpoch(mean, std, br, dataset, model,
         # Prepare ground truth poses for the loss function
         T = np.array(t, dtype=np.float32)
         Rs = curr_batch["Rs"]
-        ts = [T.copy() for t in Rs]
+        ids = curr_batch["ids"]
+        ts = [np.array(t[curr_id], dtype=np.float32) for curr_id in ids]
 
         # Calculate the loss
-        loss, batch_loss, gt_images, predicted_images = Loss(predicted_poses, Rs, br, ts,
-                                                             mean, std, loss_method=loss_method, pose_rep=pose_rep, views=views, loss_params=loss_params)
+        loss, batch_loss, gt_images, predicted_images = Loss(predicted_poses, Rs, br,
+                                                             ts, mean, std, ids,
+                                                             loss_method=loss_method,
+                                                             pose_rep=pose_rep,
+                                                             views=views,
+                                                             loss_params=loss_params)
 
         Rs = torch.tensor(np.stack(Rs), device=device, dtype=torch.float32)
 
@@ -327,31 +346,31 @@ def runEpoch(mean, std, br, dataset, model,
             loss.backward()
             optimizer.step()
 
-            # #Save difficult samples
-            k = int(len(curr_batch["images"])*(dataset.hard_mining_ratio))
-            batch_loss = batch_loss.squeeze()
-            top_val, top_ind = torch.topk(batch_loss, k)
-            hard_samples = Rs[top_ind]
-            hard_indeces = list(top_ind)
+            # # #Save difficult samples
+            # k = int(len(curr_batch["images"])*(dataset.hard_mining_ratio))
+            # batch_loss = batch_loss.squeeze()
+            # top_val, top_ind = torch.topk(batch_loss, k)
+            # hard_samples = Rs[top_ind]
+            # hard_indeces = list(top_ind)
 
-            # Dump hard samples to file
-            hard_dump_dir= os.path.join(output_path, "images/epoch{0}/hard".format(epoch))
-            prepareDir(hard_dump_dir)
+            # # Dump hard samples to file
+            # hard_dump_dir= os.path.join(output_path, "images/epoch{0}/hard".format(epoch))
+            # prepareDir(hard_dump_dir)
 
-            hard_dict = {"Rs":hard_samples,
-                         "losses":list(top_val)}
+            # hard_dict = {"Rs":hard_samples,
+            #              "losses":list(top_val)}
 
-            csv_file = os.path.join(hard_dump_dir,"hard_epoch{0}-batch{1}.csv".format(epoch,i))
-            with open(csv_file, "w") as outfile:
-                writer = csv.writer(outfile)
-                writer.writerow(hard_dict.keys())
-                writer.writerows(zip(*hard_dict.values()))
+            # csv_file = os.path.join(hard_dump_dir,"hard_epoch{0}-batch{1}.csv".format(epoch,i))
+            # with open(csv_file, "w") as outfile:
+            #     writer = csv.writer(outfile)
+            #     writer.writerow(hard_dict.keys())
+            #     writer.writerows(zip(*hard_dict.values()))
 
-            # Convert hard samples to a list
-            hard_list = []
-            for h in np.arange(hard_samples.shape[0]):
-                hard_list.append(hard_samples[h])
-            dataset.hard_samples = hard_list
+            # # Convert hard samples to a list
+            # hard_list = []
+            # for h in np.arange(hard_samples.shape[0]):
+            #     hard_list.append(hard_samples[h])
+            # dataset.hard_samples = hard_list
 
         #detach all from gpu
         loss.detach().cpu().numpy()

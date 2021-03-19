@@ -49,7 +49,7 @@ from utils.sundermeyer.pysixd import view_sampler
 
 class DatasetGenerator():
 
-    def __init__(self, background_path, obj_path, obj_distance, batch_size,
+    def __init__(self, background_path, obj_paths, obj_distance, batch_size,
                  _, device, sampling_method="sphere", random_light=True,
                  num_bgs=5000):
         self.random_light = random_light
@@ -59,7 +59,7 @@ class DatasetGenerator():
         self.max_samples = 1000
         self.device = device
         self.poses = []
-        self.obj_path = obj_path
+        self.obj_paths = obj_paths
         self.batch_size = batch_size
         self.dist = obj_distance
         self.img_size = 128
@@ -73,24 +73,20 @@ class DatasetGenerator():
         self.backgrounds = self.load_bg_images("backgrounds", background_path, num_bgs,
                                                self.img_size, self.img_size)
 
-        self.model = inout.load_ply(obj_path.replace(".obj",".ply"))
-
         # Stuff for viewsphere aug sampling
         self.view_sphere = None
         self.view_sphere_indices = []
         self.random_aug = None
 
-        # # Normalize pts
-        # verts = self.model['pts']
-        # center = np.mean(verts, axis=0)
-        # verts_normed = verts - center
-        # scale = np.max(np.max(np.abs(verts_normed), axis=0))
-        # verts_normed = (verts_normed / scale)
-        # self.model['pts'] = verts_normed*100.0
-
-        self.renderer = Renderer(self.model, (self.render_size,self.render_size),
-                                 self.K, surf_color=(1, 1, 1), mode='rgb',
-                                 random_light=random_light)
+        # Prepare renders for each object
+        self.renderers = []
+        for o in obj_paths:
+            print(o.replace(".obj",".ply"))
+            curr_model = inout.load_ply(o.replace(".obj",".ply"))
+            curr_rend= Renderer(curr_model, (self.render_size,self.render_size),
+                                self.K, surf_color=(1, 1, 1), mode='rgb',
+                                random_light=random_light)
+            self.renderers.append(curr_rend)
 
         self.pose_reuse = False
         if(sampling_method.split("-")[-1] == "reuse"):
@@ -168,8 +164,7 @@ class DatasetGenerator():
         rand_id = np.random.choice(20*1000,1,replace=False)[0]
         #print("re-using pose: ", rand_id)
         R = self.poses[rand_id]
-        t = torch.tensor([0.0, 0.0, self.dist])
-        return R,t
+        return R
 
 
     def viewsphere_for_embedding(self, num_views, num_inplane):
@@ -285,8 +280,7 @@ class DatasetGenerator():
         #random.shuffle(self.poses)
         index = random.randint(0,len(self.poses)-1)
         R = torch.tensor(self.poses[index], dtype=torch.float32)
-        t = torch.tensor([0.0, 0.0, self.dist])
-        return R,t
+        return R
 
     def quat_random(self):
         # Sample random quaternion
@@ -341,8 +335,7 @@ class DatasetGenerator():
 
         # Convert to tensors
         R = torch.from_numpy(R_conv)
-        t = torch.tensor([0.0, 0.0, self.dist])
-        return R,t
+        return R
 
     # Randomly sample poses from SM view sphere
     def viewsphere_aug_no_conv(self):
@@ -364,8 +357,7 @@ class DatasetGenerator():
 
         # Convert to tensors
         R = torch.from_numpy(aug_R)
-        t = torch.tensor([0.0, 0.0, self.dist])
-        return R,t
+        return R
 
 
     # Randomly sample poses from SM view sphere
@@ -380,8 +372,7 @@ class DatasetGenerator():
 
         # Sample pose randomly
         R = torch.tensor(self.poses.pop(-1), dtype=torch.float32)
-        t = torch.tensor([0.0, 0.0, self.dist])
-        return R,t
+        return R
 
     # Fixed pose - mainly for debugging purposes
     def fixed_sampling(self):
@@ -389,8 +380,8 @@ class DatasetGenerator():
         z = -0.01
         theta_sample = np.random.uniform(low=0.0, high=2.0*np.pi, size=1)[0]
         #theta_sample = -0.07*np.pi
-        x = np.sqrt((self.dist**2 - z**2))*np.cos(theta_sample)
-        y = np.sqrt((self.dist**2 - z**2))*np.sin(theta_sample)
+        x = np.sqrt((100.0**2 - z**2))*np.cos(theta_sample)
+        y = np.sqrt((100.0**2 - z**2))*np.sin(theta_sample)
 
         cam_position = torch.tensor([x, y, z]).unsqueeze(0)
         if(z < 0):
@@ -407,16 +398,16 @@ class DatasetGenerator():
             R = torch.matmul(R, rot_mat)
             R = R.squeeze()
 
-        t = torch.tensor([0.0, 0.0, self.dist])
-        return R,t
+        #t = torch.tensor([0.0, 0.0, 100.0])
+        return R#,t
 
     def tless_sampling(self):
         theta_sample = np.random.uniform(low=0.0, high=2.0*np.pi, size=1)[0]
         phi_sample = np.random.uniform(low=0.0, high=2.0*np.pi, size=1)[0]
 
-        x = self.dist*np.sin(theta_sample)*np.cos(phi_sample)
-        y = self.dist*np.sin(theta_sample)*np.sin(phi_sample)
-        z = self.dist*np.cos(theta_sample)
+        x = 100.0*np.sin(theta_sample)*np.cos(phi_sample)
+        y = 100.0*np.sin(theta_sample)*np.sin(phi_sample)
+        z = 100.0*np.cos(theta_sample)
 
         cam_position = torch.tensor([float(x), float(y), float(z)]).unsqueeze(0)
         if(z < 0):
@@ -432,8 +423,7 @@ class DatasetGenerator():
             R = torch.matmul(R, rot_mat)
             R = R.squeeze()
 
-        t = torch.tensor([0.0, 0.0, self.dist])
-        return R,t
+        return R
 
 
     # Based on Sundermeyer
@@ -480,13 +470,11 @@ class DatasetGenerator():
 
         # Convert to tensors
         R = torch.from_numpy(R_conv)
-        t = torch.tensor([0.0, 0.0, self.dist])
-        return R,t
+        return R
 
     def quat_sampling(self):
         R = get_sampled_rotation_matrices_by_quat(1).squeeze()
-        t = torch.tensor([0.0, 0.0, self.dist])
-        return R,t
+        return R
 
     # Truely random
     # Based on: https://mathworld.wolfram.com/SpherePointPicking.html
@@ -517,9 +505,7 @@ class DatasetGenerator():
             rot_mat = torch.tensor(rot.as_matrix(), dtype=torch.float32)
             R = torch.matmul(R, rot_mat)
             R = R.squeeze()
-
-        t = torch.tensor([0.0, 0.0, self.dist])
-        return R,t
+        return R
 
     # Truely random
     # Based on: https://mathworld.wolfram.com/SpherePointPicking.html
@@ -551,17 +537,16 @@ class DatasetGenerator():
             R = torch.matmul(R, rot_mat)
             R = R.squeeze()
 
-        t = torch.tensor([0.0, 0.0, self.dist])
-        return R,t
+        return R
 
 
     # Truely random
     # Based on: https://www.cmu.edu/biolphys/deserno/pdf/sphere_equi.pdf
     def sphere_sampling(self):
-        z = np.random.uniform(low=-self.dist, high=self.dist, size=1)[0]
+        z = np.random.uniform(low=-100.0, high=100.0, size=1)[0]
         theta_sample = np.random.uniform(low=0.0, high=2.0*np.pi, size=1)[0]
-        x = np.sqrt((self.dist**2 - z**2))*np.cos(theta_sample)
-        y = np.sqrt((self.dist**2 - z**2))*np.sin(theta_sample)
+        x = np.sqrt((100.0**2 - z**2))*np.cos(theta_sample)
+        y = np.sqrt((100.0**2 - z**2))*np.sin(theta_sample)
 
         cam_position = torch.tensor([x, y, z]).unsqueeze(0)
         if(z < 0):
@@ -576,16 +561,15 @@ class DatasetGenerator():
             rot_mat = torch.tensor(rot.as_matrix(), dtype=torch.float32)
             R = torch.matmul(R, rot_mat)
             R = R.squeeze()
-        t = torch.tensor([0.0, 0.0, self.dist])
-        return R,t
+        return R
 
     # Truely random
     # Based on: https://www.cmu.edu/biolphys/deserno/pdf/sphere_equi.pdf
     def sphere_sampling_fixed(self):
-        z = np.random.uniform(low=-self.dist, high=self.dist, size=1)[0]
+        z = np.random.uniform(low=-100.0, high=100.0, size=1)[0]
         theta_sample = np.random.uniform(low=0.0, high=2.0*np.pi, size=1)[0]
-        x = np.sqrt((self.dist**2 - z**2))*np.cos(theta_sample)
-        y = np.sqrt((self.dist**2 - z**2))*np.sin(theta_sample)
+        x = np.sqrt((100.0**2 - z**2))*np.cos(theta_sample)
+        y = np.sqrt((100.0**2 - z**2))*np.sin(theta_sample)
 
         cam_position = torch.tensor([x, y, z]).unsqueeze(0)
         if(z < 0):
@@ -600,8 +584,7 @@ class DatasetGenerator():
             rot_mat = torch.tensor(rot.as_matrix(), dtype=torch.float32)
             R = torch.matmul(R, rot_mat)
             R = R.squeeze()
-        t = torch.tensor([0.0, 0.0, self.dist])
-        return R,t
+        return R
 
     def generate_random_renders(self,num):
         image_renders = []
@@ -671,6 +654,7 @@ class DatasetGenerator():
         # Generate random poses
         curr_Rs = []
         curr_ts = []
+        curr_ids = []
 
         image_renders = []
 
@@ -678,8 +662,14 @@ class DatasetGenerator():
             print("num hard samples: ", len(self.hard_samples))
 
         for k in np.arange(self.batch_size):
+            obj_id = 0
             if Rin is None:
-                R, t = self.pose_sampling()
+                R = self.pose_sampling()
+                if(len(self.renderers) > 1):
+                    obj_id = np.random.randint(0, len(self.renderers)-1, size=1)[0]
+                else:
+                    obj_id = 0
+                t = torch.tensor([0.0, 0.0, self.dist[obj_id][-1]])
             else:
                 R = Rin[k]
                 t = tin
@@ -704,10 +694,11 @@ class DatasetGenerator():
             R_opengl = np.transpose(R_opengl)
 
             # Render images
-            ren_rgb = self.renderer.render(R_opengl, t)
+            ren_rgb = self.renderers[obj_id].render(R_opengl, t)
 
             curr_Rs.append(R)
             curr_ts.append(t)
+            curr_ids.append(obj_id)
 
             image_renders.append(ren_rgb)
 
@@ -724,7 +715,6 @@ class DatasetGenerator():
 
             # Add relative offset when cropping - like Sundermeyer
             x, y, w, h = obj_bb
-
 
             if augment:
                 rand_trans_x = np.random.uniform(-self.max_rel_offset, self.max_rel_offset) * w
@@ -780,19 +770,23 @@ class DatasetGenerator():
             image_aug = image_aug[0].astype(np.float)/255.0
             images.append(image_aug[:,:,:3])
 
-        data = {"images":images,
+        data = {"ids":curr_ids,
+                "images":images,
                 "Rs":curr_Rs}
         return data
 
     def generate_images(self, num_samples):
-        data = {"images":[],
+        data = {"ids":[],
+                "images":[],
                 "Rs":[]}
         while(len(data["images"]) < num_samples):
             curr_data = self.generate_image_batch()
             data["images"] = data["images"] + curr_data["images"]
             data["Rs"] = data["Rs"] + curr_data["Rs"]
+            data["ids"] = data["ids"] + curr_data["ids"]
         data["images"] = data["images"][:num_samples]
         data["Rs"] = data["Rs"][:num_samples]
+        data["ids"] = data["ids"][:num_samples]
         return data
 
     def __iter__(self):

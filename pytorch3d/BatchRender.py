@@ -19,28 +19,27 @@ from pytorch3d.renderer import (
 )
 
 from pytorch3d.ops import sample_points_from_meshes
-
 from CustomRenderers import *
 
 class BatchRender:
-    def __init__(self, obj_path, device, batch_size=12, faces_per_pixel=16,
+    def __init__(self, obj_paths, device, batch_size=12, faces_per_pixel=16,
                  render_method="silhouette", image_size=256):
         self.batch_size = batch_size
         self.faces_per_pixel = faces_per_pixel
         self.batch_indeces = np.arange(self.batch_size)
-        self.obj_path = obj_path
+        self.obj_paths = obj_paths
         self.device = device
         self.method = render_method
         self.image_size = image_size
         self.points = None
 
         # Setup batch of meshes
-        self.batch_verts, self.batch_faces, self.batch_textures = self.initMeshes()
+        self.vertices, self.faces, self.textures = self.initMeshes()
 
         # Initialize the renderer
         self.renderer = self.initRender(image_size=image_size, method=self.method)
 
-    def renderBatch(self, Rs, ts):
+    def renderBatch(self, Rs, ts, ids=[0]):
         if(type(Rs) is list):
             batch_R = torch.tensor(np.stack(Rs), device=self.device, dtype=torch.float32)
         else:
@@ -50,12 +49,16 @@ class BatchRender:
         else:
             batch_T = ts
 
-        # Re-adjust to match current batch size
-        curr_batch_size = batch_R.shape[0]
+        # Load meshes based on object ids
+        batch_verts_rgb = list_to_padded([self.textures[i] for i in ids])
+        batch_textures = Textures(verts_rgb=batch_verts_rgb.to(self.device))
+        batch_verts=[self.vertices[i].to(self.device) for i in ids]
+        batch_faces=[self.faces[i].to(self.device) for i in ids]
+
         mesh = Meshes(
-            verts=self.batch_verts[:curr_batch_size],
-            faces=self.batch_faces[:curr_batch_size],
-            textures=self.batch_textures[:curr_batch_size]
+            verts=batch_verts,
+            faces=batch_faces,
+            textures=batch_textures
         )
 
         images = self.renderer(meshes_world=mesh, R=batch_R, T=batch_T)
@@ -76,31 +79,26 @@ class BatchRender:
         return images
 
     def initMeshes(self):
-        # Load the obj and ignore the textures and materials.
-        verts, faces_idx, _ = load_obj(self.obj_path)
-        faces = faces_idx.verts_idx
+        textures = []
+        vertices = []
+        faces = []
+        for p in self.obj_paths:
+            # Load the obj and ignore the textures and materials.
+            verts, faces_idx, _ = load_obj(p)
+            facs = faces_idx.verts_idx
 
-        # # Normalize vertices
-        # center = verts.mean(0)
-        # verts_normed = verts - center
-        # scale = max(verts_normed.abs().max(0)[0])
-        # verts_normed = (verts_normed / scale)
-        # verts = verts_normed*100.0
+            # Normalize vertices
+            #center = verts.mean(0)
+            #verts_normed = verts - center
+            #scale = max(verts_normed.abs().max(0)[0])
+            #verts_normed = (verts_normed / scale)
 
-        verts_rgb = torch.ones_like(verts)  # (V, 3)
-
-        batch_verts_rgb = list_to_padded([verts_rgb for k in self.batch_indeces])  # B, Vmax, 3
-
-        batch_textures = Textures(verts_rgb=batch_verts_rgb.to(self.device))
-        batch_verts=[verts.to(self.device) for k in self.batch_indeces]
-        batch_faces=[faces.to(self.device) for k in self.batch_indeces]
-        # batch_mesh = Meshes(
-        #     verts=[verts.to(self.device) for k in self.batch_indeces],
-        #     faces=[faces.to(self.device) for k in self.batch_indeces],
-        #     textures=batch_textures
-        # )
-
-        return batch_verts, batch_faces, batch_textures
+            # Initialize each vertex to be white in color.
+            verts_rgb = torch.ones_like(verts)  # (V, 3)
+            vertices.append(verts)
+            textures.append(verts_rgb)
+            faces.append(facs)
+        return vertices, faces, textures
 
 
     def initRender(self, method, image_size):
