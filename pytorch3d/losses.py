@@ -65,17 +65,6 @@ def sphere_sampling():
 
     return R
 
-def renderNormCat(Rs, ts, renderer, mean, std, views):
-    return None
-    images = []
-    for v in views:
-        # Render images
-        Rs_new = torch.matmul(Rs, v.to(renderer.device))
-        imgs = renderer.renderBatch(Rs_new, ts)
-        imgs = (imgs-mean)/std
-        images.append(imgs)
-    return torch.cat(images, dim=1)
-
 def mat_theta( A, B ):
     """ comment cos between vectors or matrices """
     At = np.transpose(A)
@@ -117,14 +106,10 @@ def Loss(predicted_poses, gt_poses, renderer, ts, mean, std, loss_method="diff",
         else:
             print("Unknown pose representation specified: ", pose_rep)
             return -1.0
-        gt_imgs = renderNormCat(Rs_gt, ts, renderer, mean, std, views)
     else: # this version is for using loss with prerendered ref image and regular rot matrix for predicted pose
         #Rs_predicted = predicted_poses
         #Rs_predicted = torch.Tensor(Rs_predicted).to(renderer.device)
         gt_imgs = fixed_gt_images
-
-    #predicted_imgs = renderNormCat(Rs_predicted, ts, renderer, mean, std, views)
-    #diff = torch.abs(gt_imgs - predicted_imgs).flatten(start_dim=1) # not needed for "multiview-l2"
 
     if(loss_method=="vsd-union"):
         depth_max = loss_params
