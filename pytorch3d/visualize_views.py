@@ -16,13 +16,15 @@ def pointToMat(point):
     R = r.as_matrix()
     return torch.from_numpy(R)
 
+base_directory = './output/paper-models/10views/obj10/'
+vis_directory = base_directory + 'visualization/'
+
 def main():
     device = torch.device("cuda:0")
     num_datapoints = 1984
     views = 10
     load_points = True
-    base_directory = './output/paper-models/10views/obj10/visualization/'
-    prepareDir(base_directory)
+    prepareDir(vis_directory)
     # Need to replace sundermeyer-random with something where we can
     # use predetermined poses, to plot each arch to visualize
     datagen = DatasetGenerator("",
@@ -142,7 +144,7 @@ def plot_confidences(predicted_poses):
 
     plt.legend(loc="upper right")
     # plt.show()
-    fig.savefig('./output/paper-models/10views/obj10/visualization/confidence.png', bbox_inches='tight')
+    fig.savefig(vis_directory + 'confidence.png', bbox_inches='tight')
 
 def plot_flat_landscape(points_in, conficences):
     angles = [point['spherical'] for point in points_in]
@@ -182,7 +184,7 @@ def plot_flat_landscape(points_in, conficences):
             view = np.argmin(conficences[r,:])
             plt.fill(*zip(*polygon), color=colors[view])
 
-    fig.savefig('./output/paper-models/10views/obj10/visualization/confidence_landscape.png', bbox_inches='tight', dpi=fig.dpi)
+    fig.savefig(vis_directory + 'confidence_landscape.png', bbox_inches='tight', dpi=fig.dpi)
 
 # Copied from train.py for now
 def loadDataset(file_list, batch_size=2):
