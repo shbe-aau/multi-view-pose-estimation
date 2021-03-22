@@ -87,7 +87,6 @@ def Loss(predicted_poses, gt_poses, renderer, ts, mean, std, ids=[0], views=None
 
     loss_method = config.get('Training', 'LOSS', fallback='diff')
     pose_rep = config.get('Training', 'POSE_REPRESENTATION', fallback='6d-pose')
-    loss_params = config.getfloat('Training', 'LOSS_PARAMS', fallback=5.0)
 
     if('-random-multiview' in loss_method):
         for i,v in enumerate(views):
@@ -118,10 +117,10 @@ def Loss(predicted_poses, gt_poses, renderer, ts, mean, std, ids=[0], views=None
         gt_imgs = fixed_gt_images
 
     if(loss_method=="vsd-union"):
-        depth_max = loss_params
-        pose_max = 40.0
+        depth_max = config.getfloat('Loss_parameters', 'DEPTH_MAX', fallback=30.0)
+        pose_max = config.getfloat('Loss_parameters', 'POSE_MAX', fallback=40.0)
         num_views = len(views)
-        gamma = 1.0 / num_views
+        gamma = config.getfloat('Loss_parameters', 'GAMMA', fallback=1.0 / num_views)
         pose_start = num_views
         pose_end = pose_start + 6
 
