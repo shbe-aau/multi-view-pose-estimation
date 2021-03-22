@@ -66,19 +66,6 @@ def sphere_sampling():
 
     return R
 
-def mat_theta( A, B ):
-    """ comment cos between vectors or matrices """
-    At = np.transpose(A)
-    AB = np.dot(At, B)
-    temp = (np.trace(AB) - 1) / 2
-    if temp > 1:
-        #print(temp)
-        temp = 1
-    if temp < -1:
-        #print(temp)
-        temp = -1
-    return np.arccos(temp)
-
 def Loss(predicted_poses, gt_poses, renderer, ts, mean, std, ids=[0], views=None, config=None, fixed_gt_images=None, eval_mode=False):
     Rs_gt = torch.tensor(np.stack(gt_poses), device=renderer.device,
                             dtype=torch.float32)
