@@ -152,7 +152,7 @@ def main():
 
         poses = torch.tensor([flattened], dtype=torch.float32, device=device)
 
-        loss, batch_loss, gt_images, predicted_images = Loss(poses, ref_pose, br, ts, 0, 1, loss_method=loss_method, views=views, fixed_gt_images=ref_image)
+        loss, batch_loss, gt_images, predicted_images = Loss(poses, ref_pose, br, ts, 0, 1, config=args, views=views, fixed_gt_images=ref_image)
         loss = (loss).detach().cpu().numpy()
         im = (predicted_images).detach().cpu().numpy()
         if args.get('Rendering', 'SHADER')=="hard-phong":

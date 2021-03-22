@@ -235,21 +235,13 @@ def main():
     while(epoch < args.getint('Training', 'NUM_ITER')):
         # Train on synthetic data
         loss = trainEpoch(mean, std, br, training_data, model, device, output_path,
-                          loss_method=args.get('Training', 'LOSS'),
-                          pose_rep=args.get('Training', 'POSE_REPRESENTATION'),
-                          t=translations,
-                          visualize=args.getboolean('Training', 'SAVE_IMAGES'),
-                          loss_params=args.getfloat('Training', 'LOSS_PARAMS'))
+                          t=translations, config=args)
         append2file([loss], os.path.join(output_path, "train-loss.csv"))
         append2file([lr_reducer.get_lr()], os.path.join(output_path, "learning-rate.csv"))
 
         # Test on validation data
         val_loss = testEpoch(mean, std, br, validation_data, model, device, output_path,
-                             loss_method=args.get('Training', 'LOSS'),
-                             pose_rep=args.get('Training', 'POSE_REPRESENTATION'),
-                             t=translations,
-                             visualize=args.getboolean('Training', 'SAVE_IMAGES'),
-                             loss_params=args.getfloat('Training', 'LOSS_PARAMS'))
+                          t=translations, config=args)
         append2file([val_loss], os.path.join(output_path, "validation-loss.csv"))
 
         # Plot losses
@@ -279,28 +271,23 @@ def main():
 
 
 def testEpoch(mean, std, br, dataset, model,
-               device, output_path, loss_method, pose_rep, t,
-               visualize=False, loss_params=0.5):
+               device, output_path, t, config):
     model = model.eval() # Set model to eval mode
     loss = runEpoch(mean, std, br, dataset, model,
-                    device, output_path, loss_method, pose_rep, t,
-                    visualize, loss_params)
+                    device, output_path, t, config)
     return loss
 
 
 def trainEpoch(mean, std, br, dataset, model,
-               device, output_path, loss_method, pose_rep, t,
-               visualize=False, loss_params=0.5):
+               device, output_path, t, config):
     model = model.train() # Set model to train mode
     loss = runEpoch(mean, std, br, dataset, model,
-                    device, output_path, loss_method, pose_rep, t,
-                    visualize, loss_params)
+                    device, output_path, t, config)
     return loss
 
 
 def runEpoch(mean, std, br, dataset, model,
-               device, output_path, loss_method, pose_rep, t,
-               visualize, loss_params):
+               device, output_path, t, config):
     global optimizer, lr_reducer
     dbg("Before train memory: {}".format(torch.cuda.memory_summary(device=device, abbreviated=False)), dbg_memory)
 
@@ -336,10 +323,8 @@ def runEpoch(mean, std, br, dataset, model,
         # Calculate the loss
         loss, batch_loss, gt_images, predicted_images = Loss(predicted_poses, Rs, br,
                                                              ts, mean, std, ids,
-                                                             loss_method=loss_method,
-                                                             pose_rep=pose_rep,
                                                              views=views,
-                                                             loss_params=loss_params)
+                                                             config=config)
 
         Rs = torch.tensor(np.stack(Rs), device=device, dtype=torch.float32)
 
@@ -387,7 +372,7 @@ def runEpoch(mean, std, br, dataset, model,
             #print("Test batch: {0}/{1} (size: {2}) - loss: {3}".format(i+1, round(dataset.max_samples/batch_size), len(Rs),torch.mean(batch_loss)))
         losses = losses + batch_loss.data.detach().cpu().numpy().tolist()
 
-        if(visualize):
+        if(config.getboolean('Training', 'SAVE_IMAGES')):
             # Visualize hard samples
             if(model.training):
                 hard_img_dir = os.path.join(output_path, "images/epoch{0}/hard".format(epoch))
@@ -402,7 +387,7 @@ def runEpoch(mean, std, br, dataset, model,
 
                     fig = plt.figure(figsize=(12,3+len(views)*2))
                     plotView(0, len(views), vmin, vmax, input_images, gt_images, predicted_images,
-                             predicted_poses, batch_loss, batch_size, threshold=loss_params, img_num=h)
+                             predicted_poses, batch_loss, batch_size, threshold=config['Loss_parameters'].getfloat('DEPTH_MAX'), img_num=h)
                     fig.tight_layout()
 
                     fig.savefig(os.path.join(hard_img_dir, "epoch{0}-batch{1}-sample{2}.png".format(epoch,i,h)), dpi=fig.dpi)
@@ -422,7 +407,7 @@ def runEpoch(mean, std, br, dataset, model,
             fig = plt.figure(figsize=(12,3+len(views)*2))
             #for viewNum in np.arange(len(views)):
             plotView(0, len(views), vmin, vmax, input_images, gt_images, predicted_images,
-                     predicted_poses, batch_loss, batch_size, threshold=loss_params)
+                     predicted_poses, batch_loss, batch_size, threshold=config['Loss_parameters'].getfloat('DEPTH_MAX'))
             fig.tight_layout()
 
             fig.savefig(os.path.join(batch_img_dir, "epoch{0}-batch{1}.png".format(epoch,i)), dpi=fig.dpi)

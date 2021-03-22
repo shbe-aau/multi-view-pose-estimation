@@ -3,6 +3,7 @@ import numpy as np
 from utils.utils import *
 from utils.tools import *
 import torch.nn as nn
+import configparser
 #from pyquaternion import Quaternion
 
 from pytorch3d.renderer import look_at_view_transform
@@ -78,10 +79,15 @@ def mat_theta( A, B ):
         temp = -1
     return np.arccos(temp)
 
-
-def Loss(predicted_poses, gt_poses, renderer, ts, mean, std, ids=[0], loss_method="diff", pose_rep="6d-pose", views=None, fixed_gt_images=None, loss_params=0.5, eval_mode=False):
+def Loss(predicted_poses, gt_poses, renderer, ts, mean, std, ids=[0], views=None, config=None, fixed_gt_images=None, eval_mode=False):
     Rs_gt = torch.tensor(np.stack(gt_poses), device=renderer.device,
                             dtype=torch.float32)
+    if config is None:
+        config = configparser.ConfigParser()
+
+    loss_method = config.get('Training', 'LOSS', fallback='diff')
+    pose_rep = config.get('Training', 'POSE_REPRESENTATION', fallback='6d-pose')
+    loss_params = config.getfloat('Training', 'LOSS_PARAMS', fallback=5.0)
 
     if('-random-multiview' in loss_method):
         for i,v in enumerate(views):
