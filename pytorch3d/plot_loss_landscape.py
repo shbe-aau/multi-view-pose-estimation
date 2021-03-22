@@ -94,8 +94,14 @@ def main():
     device = torch.device('cuda:0')
     torch.cuda.set_device(device)
 
+    # Handle loading of multiple object paths
+    try:
+        model_path_loss = json.loads(args.get('Dataset', 'MODEL_PATH_LOSS'))
+    except:
+        model_path_loss = [args.get('Dataset', 'MODEL_PATH_LOSS')]
+
     # Set up batch renderer
-    br = BatchRender(args.get('Dataset', 'MODEL_PATH_LOSS'),
+    br = BatchRender(model_path_loss,
                      device,
                      batch_size=args.getint('Training', 'BATCH_SIZE'),
                      render_method=args.get('Rendering', 'SHADER'),
