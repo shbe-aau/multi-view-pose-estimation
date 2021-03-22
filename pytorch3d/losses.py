@@ -87,6 +87,7 @@ def Loss(predicted_poses, gt_poses, renderer, ts, mean, std, ids=[0], views=None
 
     loss_method = config.get('Training', 'LOSS', fallback='diff')
     pose_rep = config.get('Training', 'POSE_REPRESENTATION', fallback='6d-pose')
+    verbose = False
 
     if('-random-multiview' in loss_method):
         for i,v in enumerate(views):
@@ -195,8 +196,9 @@ def Loss(predicted_poses, gt_poses, renderer, ts, mean, std, ids=[0], views=None
         pose_losses = torch.mean(pose_losses, dim=1)
         depth_losses = torch.sum(losses, dim=1)
 
-        print("depth loss ", torch.mean(depth_losses))
-        print("pose loss ", torch.mean(pose_losses))
+        if verbose:
+            print("depth loss ", torch.mean(depth_losses))
+            print("pose loss ", torch.mean(pose_losses))
 
         #batch_loss = batch_loss + batch_loss * (torch.mean(pose_losses, dim=1)-0.5)/2.0
         batch_loss = depth_losses + pose_losses
