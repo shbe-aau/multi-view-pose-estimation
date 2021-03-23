@@ -234,13 +234,15 @@ def main():
     np.random.seed(seed=args.getint('Training', 'RANDOM_SEED'))
     while(epoch < args.getint('Training', 'NUM_ITER')):
         # Train on synthetic data
-        loss = trainEpoch(mean, std, br, training_data, model, device, output_path,
+        model = model.train() # Set model to train mode
+        loss = runEpoch(mean, std, br, training_data, model, device, output_path,
                           t=translations, config=args)
         append2file([loss], os.path.join(output_path, "train-loss.csv"))
         append2file([lr_reducer.get_lr()], os.path.join(output_path, "learning-rate.csv"))
 
         # Test on validation data
-        val_loss = testEpoch(mean, std, br, validation_data, model, device, output_path,
+        model = model.eval() # Set model to eval mode
+        val_loss = runEpoch(mean, std, br, validation_data, model, device, output_path,
                           t=translations, config=args)
         append2file([val_loss], os.path.join(output_path, "validation-loss.csv"))
 
@@ -268,23 +270,6 @@ def main():
                 lowest_x = epoch
                 timer = 0
         epoch = epoch+1
-
-
-def testEpoch(mean, std, br, dataset, model,
-               device, output_path, t, config):
-    model = model.eval() # Set model to eval mode
-    loss = runEpoch(mean, std, br, dataset, model,
-                    device, output_path, t, config)
-    return loss
-
-
-def trainEpoch(mean, std, br, dataset, model,
-               device, output_path, t, config):
-    model = model.train() # Set model to train mode
-    loss = runEpoch(mean, std, br, dataset, model,
-                    device, output_path, t, config)
-    return loss
-
 
 def runEpoch(mean, std, br, dataset, model,
                device, output_path, t, config):
