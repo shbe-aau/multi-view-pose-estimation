@@ -48,7 +48,7 @@ def Loss(predicted_poses, gt_poses, renderer, ts, mean, std, ids=[0], views=None
     if config is None:
         config = configparser.ConfigParser()
 
-    loss_method = config.get('Training', 'LOSS', fallback='diff')
+    loss_method = config.get('Training', 'LOSS', fallback='vsd-union')
     pose_rep = config.get('Training', 'POSE_REPRESENTATION', fallback='6d-pose')
     verbose = False
 
