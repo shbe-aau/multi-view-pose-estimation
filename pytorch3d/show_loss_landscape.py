@@ -368,8 +368,10 @@ def main():
     losses = np.load(os.path.join(path, 'losses.npy'), allow_pickle=True)
 
     cmap = cm.get_cmap('jet', 256)
-    newcolors = np.vstack((cmap(np.linspace(0, 0.2, 550)),
-                       cmap(np.linspace(0.2, 1, 450))))
+    first = 550
+    total = 1000
+    newcolors = np.vstack((cmap(np.linspace(0, 0.2, first)),
+                       cmap(np.linspace(0.2, 1, total-first))))
     newcmp = ListedColormap(newcolors)
     plot_flat_landscape(points, losses, path, newcmp)
     voronoi_plot(points, losses, path, newcmp)
