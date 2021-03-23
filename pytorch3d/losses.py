@@ -12,6 +12,12 @@ from scipy.spatial.transform import Rotation as scipyR
 
 from pytorch3d.transforms import Transform3d, Rotate
 
+dbg_losses = False
+
+def dbg(message, flag):
+    if flag:
+        print(message)
+
 # Required to backpropagate when thresholding (torch.where)
 # See: https://discuss.pytorch.org/t/how-do-i-pass-grad-through-torch-where/74671
 # And: https://discuss.pytorch.org/t/torch-where-function-blocks-gradient/72570/6
@@ -183,9 +189,8 @@ def Loss(predicted_poses, gt_poses, renderer, ts, mean, std, ids=[0], views=None
         pose_losses = torch.mean(pose_losses, dim=1)
         depth_losses = torch.sum(losses, dim=1)
 
-        if verbose:
-            print("depth loss ", torch.mean(depth_losses))
-            print("pose loss ", torch.mean(pose_losses))
+        dbg("depth loss {}".format(torch.mean(depth_losses)), dbg_losses)
+        dbg("pose loss  {}".format(torch.mean(pose_losses)), dbg_losses)
 
         #batch_loss = batch_loss + batch_loss * (torch.mean(pose_losses, dim=1)-0.5)/2.0
         batch_loss = depth_losses + pose_losses
