@@ -165,10 +165,6 @@ def main():
     prepareDir(output_path)
     shutil.copy(cfg_file_path, os.path.join(output_path, cfg_file_path.split("/")[-1]))
 
-    # Not used?
-    mean = 0
-    std = 1
-
     # Setup early stopping if enabled
     early_stopping = args.getboolean('Training', 'EARLY_STOPPING', fallback=False)
     if early_stopping:
@@ -235,14 +231,14 @@ def main():
     while(epoch < args.getint('Training', 'NUM_ITER')):
         # Train on synthetic data
         model = model.train() # Set model to train mode
-        loss = runEpoch(mean, std, br, training_data, model, device, output_path,
+        loss = runEpoch(br, training_data, model, device, output_path,
                           t=translations, config=args)
         append2file([loss], os.path.join(output_path, "train-loss.csv"))
         append2file([lr_reducer.get_lr()], os.path.join(output_path, "learning-rate.csv"))
 
         # Test on validation data
         model = model.eval() # Set model to eval mode
-        val_loss = runEpoch(mean, std, br, validation_data, model, device, output_path,
+        val_loss = runEpoch(br, validation_data, model, device, output_path,
                           t=translations, config=args)
         append2file([val_loss], os.path.join(output_path, "validation-loss.csv"))
 
@@ -271,7 +267,7 @@ def main():
                 timer = 0
         epoch = epoch+1
 
-def runEpoch(mean, std, br, dataset, model,
+def runEpoch(br, dataset, model,
                device, output_path, t, config):
     global optimizer, lr_reducer
     dbg("Before train memory: {}".format(torch.cuda.memory_summary(device=device, abbreviated=False)), dbg_memory)
@@ -307,7 +303,7 @@ def runEpoch(mean, std, br, dataset, model,
 
         # Calculate the loss
         loss, batch_loss, gt_images, predicted_images = Loss(predicted_poses, Rs, br,
-                                                             ts, mean, std, ids,
+                                                             ts,
                                                              views=views,
                                                              config=config)
 

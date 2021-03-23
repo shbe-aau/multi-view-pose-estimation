@@ -12,7 +12,13 @@ def dbg(message, flag):
     if flag:
         print(message)
 
-def Loss(predicted_poses, gt_poses, renderer, ts, mean, std, ids=[0], views=None, config=None, fixed_gt_images=None, eval_mode=False):
+def Loss(predicted_poses,
+         gt_poses,
+         renderer,
+         ts,
+         views=None,
+         config=None,
+         fixed_gt_images=None):
     Rs_gt = torch.tensor(np.stack(gt_poses), device=renderer.device,
                             dtype=torch.float32)
     if config is None:
