@@ -2,45 +2,15 @@ import torch
 import numpy as np
 from utils.utils import *
 from utils.tools import *
-import torch.nn as nn
 import configparser
-#from pyquaternion import Quaternion
 
-from pytorch3d.renderer import look_at_view_transform
 from pytorch3d.renderer import look_at_rotation
-from scipy.spatial.transform import Rotation as scipyR
-
-from pytorch3d.transforms import Transform3d, Rotate
 
 dbg_losses = False
 
 def dbg(message, flag):
     if flag:
         print(message)
-
-# Truely random
-# Based on: https://www.cmu.edu/biolphys/deserno/pdf/sphere_equi.pdf
-def sphere_sampling():
-    #z = np.random.uniform(low=-self.dist, high=self.dist, size=1)[0]
-    z = np.random.uniform(low=-1, high=1, size=1)[0]
-    theta_sample = np.random.uniform(low=0.0, high=2.0*np.pi, size=1)[0]
-    x = np.sqrt((1**2 - z**2))*np.cos(theta_sample)
-    y = np.sqrt((1**2 - z**2))*np.sin(theta_sample)
-
-    cam_position = torch.tensor([x, y, z]).unsqueeze(0)
-    if(z < 0):
-        R = look_at_rotation(cam_position, up=((0, 0, -1),)).squeeze()
-    else:
-        R = look_at_rotation(cam_position, up=((0, 0, 1),)).squeeze()
-
-    # Rotate in-plane
-    rot_degrees = np.random.uniform(low=-90.0, high=90.0, size=1)
-    rot = scipyR.from_euler('z', rot_degrees, degrees=True)
-    rot_mat = torch.tensor(rot.as_matrix(), dtype=torch.float32)
-    R = torch.matmul(R, rot_mat)
-    R = R.squeeze()
-
-    return R
 
 def Loss(predicted_poses, gt_poses, renderer, ts, mean, std, ids=[0], views=None, config=None, fixed_gt_images=None, eval_mode=False):
     Rs_gt = torch.tensor(np.stack(gt_poses), device=renderer.device,
@@ -50,14 +20,6 @@ def Loss(predicted_poses, gt_poses, renderer, ts, mean, std, ids=[0], views=None
 
     loss_method = config.get('Training', 'LOSS', fallback='vsd-union')
     pose_rep = config.get('Training', 'POSE_REPRESENTATION', fallback='6d-pose')
-    verbose = False
-
-    if('-random-multiview' in loss_method):
-        for i,v in enumerate(views):
-            if(i > 0):
-                v = sphere_sampling()
-            views[i] = v
-        loss_method = loss_method.replace('-random-multiview','')
 
     if fixed_gt_images is None:
         if(pose_rep == '6d-pose'):
@@ -69,15 +31,12 @@ def Loss(predicted_poses, gt_poses, renderer, ts, mean, std, ids=[0], views=None
             Rs_predicted = compute_rotation_matrix_from_quaternion(predicted_poses)
         elif(pose_rep == 'euler'):
             Rs_predicted = look_at_rotation(predicted_poses).to(renderer.device)
-            #Rs_predicted = compute_rotation_matrix_from_euler(predicted_poses)
         elif(pose_rep == 'axis-angle'):
             Rs_predicted = compute_rotation_matrix_from_axisAngle(predicted_poses)
         else:
             print("Unknown pose representation specified: ", pose_rep)
             return -1.0
     else: # this version is for using loss with prerendered ref image and regular rot matrix for predicted pose
-        #Rs_predicted = predicted_poses
-        #Rs_predicted = torch.Tensor(Rs_predicted).to(renderer.device)
         gt_imgs = fixed_gt_images
 
     if(loss_method=="vsd-union"):
@@ -104,7 +63,6 @@ def Loss(predicted_poses, gt_poses, renderer, ts, mean, std, ids=[0], views=None
                 Rs_predicted = compute_rotation_matrix_from_ortho6d(curr_pose)
             else:
                 pose_matrix = predicted_poses[:,1:].reshape(1,3,3)
-                #Rs_predicted = torch.Tensor(pose_matrix).to(renderer.device)
                 Rs_predicted = pose_matrix
             pose_start = pose_end
             pose_end = pose_start + 6
@@ -162,10 +120,9 @@ def Loss(predicted_poses, gt_poses, renderer, ts, mean, std, ids=[0], views=None
         dbg("depth loss {}".format(torch.mean(depth_losses)), dbg_losses)
         dbg("pose loss  {}".format(torch.mean(pose_losses)), dbg_losses)
 
-        #batch_loss = batch_loss + batch_loss * (torch.mean(pose_losses, dim=1)-0.5)/2.0
         batch_loss = depth_losses + pose_losses
         batch_loss = batch_loss.unsqueeze(-1)
-        loss = torch.mean(batch_loss) #losses) #+torch.mean(pose_losses)
+        loss = torch.mean(batch_loss)
         return loss, batch_loss, gt_imgs, predicted_imgs
 
     print("Unknown loss specified")
