@@ -18,36 +18,6 @@ def dbg(message, flag):
     if flag:
         print(message)
 
-# Required to backpropagate when thresholding (torch.where)
-# See: https://discuss.pytorch.org/t/how-do-i-pass-grad-through-torch-where/74671
-# And: https://discuss.pytorch.org/t/torch-where-function-blocks-gradient/72570/6
-class ThauThreshold(torch.autograd.Function):
-    @staticmethod
-    def forward(ctx, x):
-        thau = 20
-        ones = torch.ones(x.shape).cuda()
-        zeros = torch.zeros(x.shape).cuda()
-        return torch.where(x > thau, ones, zeros)
-
-    @staticmethod
-    def backward(ctx, g):
-        return g
-
-# Required to backpropagate when thresholding (torch.where)
-# See: https://discuss.pytorch.org/t/how-do-i-pass-grad-through-torch-where/74671
-# And: https://discuss.pytorch.org/t/torch-where-function-blocks-gradient/72570/6
-class NonZero(torch.autograd.Function):
-    @staticmethod
-    def forward(ctx, x):
-        ones = torch.ones(x.shape).cuda()
-        zeros = torch.zeros(x.shape).cuda()
-        return torch.where(x != 0, ones, zeros)
-
-    @staticmethod
-    def backward(ctx, g):
-        return g
-
-
 # Truely random
 # Based on: https://www.cmu.edu/biolphys/deserno/pdf/sphere_equi.pdf
 def sphere_sampling():
