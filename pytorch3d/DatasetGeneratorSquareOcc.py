@@ -22,7 +22,6 @@ import imgaug.augmenters as iaa
 
 from scipy.stats import special_ortho_group
 from scipy.spatial.transform import Rotation as scipyR
-from plot_loss_landscape import eqv_dist_points
 
 # io utils
 from pytorch3d.io import load_obj
