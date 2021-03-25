@@ -156,9 +156,10 @@ def main():
     model.to(device)
 
     # Create an optimizer. Here we are using Adam and we pass in the parameters of the model
-    learning_rate=args.getfloat('Training', 'LEARNING_RATE')
-    optimizer = torch.optim.Adam(model.parameters(), lr=0.0005)
-    lr_reducer = OneCycleLR(optimizer, num_steps=args.getfloat('Training', 'NUM_ITER'), lr_range=(0.0005, 0.005))
+    low_lr = args.getfloat('Training', 'LEARNING_RATE_LOW')
+    high_lr = args.getfloat('Training', 'LEARNING_RATE_HIGH')
+    optimizer = torch.optim.Adam(model.parameters(), lr=low_lr)
+    lr_reducer = OneCycleLR(optimizer, num_steps=args.getfloat('Training', 'NUM_ITER'), lr_range=(low_lr, high_lr))
 
     # Prepare output directories
     output_path = args.get('Training', 'OUTPUT_PATH')
