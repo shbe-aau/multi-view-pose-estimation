@@ -39,7 +39,7 @@ class BatchRender:
         # Initialize the renderer
         self.renderer = self.initRender(image_size=image_size, method=self.method)
 
-    def renderBatch(self, Rs, ts, ids=[0]):
+    def renderBatch(self, Rs, ts, ids=[]):
         if(type(Rs) is list):
             batch_R = torch.tensor(np.stack(Rs), device=self.device, dtype=torch.float32)
         else:
@@ -48,6 +48,10 @@ class BatchRender:
             batch_T = torch.tensor(np.stack(ts), device=self.device, dtype=torch.float32) # Bx3
         else:
             batch_T = ts
+
+        if(len(ids) == 0):
+            # No ids specified, assuming one object only
+            ids = [0 for r in Rs]
 
         # Load meshes based on object ids
         batch_verts_rgb = list_to_padded([self.textures[i] for i in ids])

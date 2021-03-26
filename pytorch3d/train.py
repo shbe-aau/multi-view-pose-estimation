@@ -305,6 +305,7 @@ def runEpoch(br, dataset, model,
         # Calculate the loss
         loss, batch_loss, gt_images, predicted_images = Loss(predicted_poses, Rs, br,
                                                              ts,
+                                                             ids=ids,
                                                              views=views,
                                                              config=config)
 

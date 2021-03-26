@@ -16,6 +16,7 @@ def Loss(predicted_poses,
          gt_poses,
          renderer,
          ts,
+         ids=[],
          views=None,
          config=None,
          fixed_gt_images=None):
@@ -56,7 +57,7 @@ def Loss(predicted_poses,
         # Prepare gt images
         gt_images = []
         predicted_images = []
-        gt_imgs = renderer.renderBatch(Rs_gt, ts)
+        gt_imgs = renderer.renderBatch(Rs_gt, ts, ids)
 
         losses = []
         confs = predicted_poses[:,:num_views]
@@ -74,7 +75,7 @@ def Loss(predicted_poses,
             pose_end = pose_start + 6
 
             # Render predicted images
-            imgs = renderer.renderBatch(Rs_predicted, ts)
+            imgs = renderer.renderBatch(Rs_predicted, ts, ids)
             predicted_images.append(imgs)
             gt_images.append(gt_imgs)
 
