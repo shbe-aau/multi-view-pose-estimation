@@ -28,18 +28,19 @@ def Loss(predicted_poses,
     loss_method = config.get('Training', 'LOSS', fallback='vsd-union')
     pose_rep = config.get('Training', 'POSE_REPRESENTATION', fallback='6d-pose')
 
+    pose_rep_func = None
     if fixed_gt_images is None:
         if(pose_rep == '6d-pose'):
-            Rs_predicted = compute_rotation_matrix_from_ortho6d(predicted_poses)
-        elif(pose_rep == 'rot-mat'):
-            batch_size = predicted_poses.shape[0]
-            Rs_predicted = predicted_poses.view(batch_size, 3, 3)
+            pose_rep_func = compute_rotation_matrix_from_ortho6d
+        #elif(pose_rep == 'rot-mat'): # Deprecated
+            #batch_size = predicted_poses.shape[0]
+            #Rs_predicted = predicted_poses.view(batch_size, 3, 3)
         elif(pose_rep == 'quat'):
-            Rs_predicted = compute_rotation_matrix_from_quaternion(predicted_poses)
-        elif(pose_rep == 'euler'):
-            Rs_predicted = look_at_rotation(predicted_poses).to(renderer.device)
+            pose_rep_func = compute_rotation_matrix_from_quaternion
+        #elif(pose_rep == 'euler'): # Deprecated
+            #Rs_predicted = look_at_rotation(predicted_poses).to(renderer.device)
         elif(pose_rep == 'axis-angle'):
-            Rs_predicted = compute_rotation_matrix_from_axisAngle(predicted_poses)
+            pose_rep_func = compute_rotation_matrix_from_axisAngle
         else:
             print("Unknown pose representation specified: ", pose_rep)
             return -1.0
@@ -67,7 +68,7 @@ def Loss(predicted_poses,
             # Extract current pose and move to next one
             if fixed_gt_images is None:
                 curr_pose = predicted_poses[:,pose_start:pose_end]
-                Rs_predicted = compute_rotation_matrix_from_ortho6d(curr_pose)
+                Rs_predicted = pose_rep_func(curr_pose)
             else:
                 pose_matrix = predicted_poses[:,1:].reshape(1,3,3)
                 Rs_predicted = pose_matrix
