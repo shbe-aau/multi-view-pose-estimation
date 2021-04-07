@@ -23,7 +23,7 @@ from CustomRenderers import *
 
 class BatchRender:
     def __init__(self, obj_paths, device, batch_size=12, faces_per_pixel=16,
-                 render_method="silhouette", image_size=256):
+                 render_method="silhouette", image_size=256, norm_verts=False):
         self.batch_size = batch_size
         self.faces_per_pixel = faces_per_pixel
         self.batch_indeces = np.arange(self.batch_size)
@@ -32,6 +32,7 @@ class BatchRender:
         self.method = render_method
         self.image_size = image_size
         self.points = None
+        self.norm_verts = norm_verts
 
         # Setup batch of meshes
         self.vertices, self.faces, self.textures = self.initMeshes()
@@ -92,10 +93,13 @@ class BatchRender:
             facs = faces_idx.verts_idx
 
             # Normalize vertices
-            #center = verts.mean(0)
-            #verts_normed = verts - center
-            #scale = max(verts_normed.abs().max(0)[0])
-            #verts_normed = (verts_normed / scale)
+            # such that all objects measures 100 mm
+            # along the biggest dimension (x,y,z)
+            if(self.norm_verts):
+                center = verts.mean(0)
+                verts_normed = verts - center
+                scale = max(verts_normed.abs().max(0)[0])
+                verts = (verts / scale)*100.0
 
             # Initialize each vertex to be white in color.
             verts_rgb = torch.ones_like(verts)  # (V, 3)

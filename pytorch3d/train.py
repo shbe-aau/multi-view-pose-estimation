@@ -135,7 +135,8 @@ def main():
                      batch_size=args.getint('Training', 'BATCH_SIZE'),
                      faces_per_pixel=args.getint('Rendering', 'FACES_PER_PIXEL'),
                      render_method=args.get('Rendering', 'SHADER'),
-                     image_size=args.getint('Rendering', 'IMAGE_SIZE'))
+                     image_size=args.getint('Rendering', 'IMAGE_SIZE'),
+                     norm_verts=args.getboolean('Rendering', 'NORMALIZE_VERTICES'))
 
     # Set size of model output depending on pose representation - deprecated?
     pose_rep = args.get('Training', 'POSE_REPRESENTATION')
