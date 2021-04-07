@@ -220,6 +220,21 @@ def runEpoch(br, dataset, model,
 
         losses = losses + batch_loss.data.detach().cpu().numpy().tolist()
 
+        batch_img_dir = os.path.join(output_path, "images/epoch{0}".format(epoch))
+        prepareDir(batch_img_dir)
+        gt_img = (gt_images[0]).detach().cpu().numpy()
+        predicted_img = (predicted_images[0]).detach().cpu().numpy()
+
+        vmin = np.linalg.norm(T)*0.9
+        vmax = max(np.max(gt_img), np.max(predicted_img))
+
+        fig = plt.figure(figsize=(12,3+len(views)*2))
+        plotView(0, len(views), vmin, vmax, input_images, gt_images, predicted_images,
+                 predicted_poses, batch_loss, batch_size, threshold=config['Loss_parameters'].getfloat('DEPTH_MAX'))
+        fig.tight_layout()
+        fig.savefig(os.path.join(batch_img_dir, "epoch{0}-batch{1}.png".format(epoch,i)), dpi=fig.dpi)
+        plt.close()
+
         lr_reducer.step()
         break
 
