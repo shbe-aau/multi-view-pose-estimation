@@ -154,7 +154,7 @@ def _compute_calib_proj(K, x0, y0, w, h, nc, fc, window_coords='y_down'):
 class _Canvas(app.Canvas):
     def __init__(self, vertices, faces, size, K, clip_near, clip_far,
                  bg_color=(0.0, 0.0, 0.0, 0.0), ambient_weight=0.1,
-                 render_rgb=True, render_depth=True, random_light=True) :
+                 render_rgb=True, render_depth=True) :
         """
         mode is from ['rgb', 'depth', 'rgb+depth']
         """
@@ -172,7 +172,7 @@ class _Canvas(app.Canvas):
         self.size = size
         self.clip_near = clip_near
         self.clip_far = clip_far
-        self.random_light = random_light
+        self.random_light_pos = None
         self.dist = -1.0
 
         self.rgb = np.array([])
@@ -183,7 +183,9 @@ class _Canvas(app.Canvas):
         self.index_buffer = gloo.IndexBuffer(faces.flatten().astype(np.uint32))
 
 
-    def render(self, R, t):
+    def render(self, R, t, random_light_pos=None):
+        self.random_light_pos = random_light_pos
+
         # Update distance between camera and object
         self.dist = np.linalg.norm(t)
 
@@ -220,9 +222,8 @@ class _Canvas(app.Canvas):
         program.bind(self.vertex_buffer)
 
         program['u_light_eye_pos'] = [0, 0, 0]
-        if(self.random_light):
-            random_light_pos = (np.random.uniform(-1.0, 1.0, size=3)*self.dist).astype(np.float32)
-            program['u_light_eye_pos'] = random_light_pos.tolist()
+        if(self.random_light_pos is not None):
+            program['u_light_eye_pos'] = self.random_light_pos.tolist()
 
         program['u_light_ambient_w'] = self.ambient_weight
         program['u_mv'] = _compute_model_view(self.mat_model, self.mat_view)
@@ -296,7 +297,7 @@ class _Canvas(app.Canvas):
 class Renderer:
     def __init__(self, model, im_size, K, clip_near=100, clip_far=2000,
            surf_color=None, bg_color=(0.0, 0.0, 0.0, 0.0),
-                 ambient_weight=0.1, mode='rgb+depth', random_light=True):
+                 ambient_weight=0.1, mode='rgb+depth'):
 
         self.model = model
         self.im_size = im_size
@@ -338,14 +339,14 @@ class Renderer:
         self.c = _Canvas(self.vertices, self.model['faces'], self.im_size,
                          self.K, self.clip_near, self.clip_far,
                          self.bg_color, self.ambient_weight,
-                         render_rgb, render_depth, random_light)
+                         render_rgb, render_depth)
 
 
-    def render(self, R, t, ):
+    def render(self, R, t, random_light_pos=None):
         # Rendering
         #---------------------------------------------------------------------------
 
-        self.c.render(R,t)
+        self.c.render(R,t,random_light_pos)
 
         #app.run()
         app.process_events()

@@ -49,7 +49,8 @@ class DatasetGenerator():
 
     def __init__(self, background_path, obj_paths, obj_distance, batch_size,
                  _, device, sampling_method="sphere", random_light=True,
-                 num_bgs=5000):
+                 num_bgs=5000, seed=None):
+
         self.random_light = random_light
         self.realistic_occlusions = False
         self.random_renders = []
@@ -67,7 +68,14 @@ class DatasetGenerator():
         self.K = np.array([1075.65, 0, self.render_size/2,
                            0, 1073.90, self.render_size/2,
                            0, 0, 1]).reshape(3,3)
+
+        # Setup random seeds
+        if(seed is not None):
+            np.random.seed(seed=seed)
+            ia.seed(seed)
+
         self.aug = self.setup_augmentation()
+
         self.backgrounds = self.load_bg_images("backgrounds", background_path, num_bgs,
                                                self.img_size, self.img_size)
 
@@ -84,8 +92,7 @@ class DatasetGenerator():
                 return None
             curr_model = inout.load_ply(o)
             curr_rend= Renderer(curr_model, (self.render_size,self.render_size),
-                                self.K, surf_color=(1, 1, 1), mode='rgb',
-                                random_light=random_light)
+                                self.K, surf_color=(1, 1, 1), mode='rgb')
             self.renderers.append(curr_rend)
 
         self.pose_reuse = False
@@ -592,8 +599,7 @@ class DatasetGenerator():
             model['pts'] = verts_normed*100.0
 
             renderer = Renderer(model, (self.render_size,self.render_size),
-                                     self.K, surf_color=(1, 1, 1), mode='rgb',
-                                     random_light=self.random_light)
+                                     self.K, surf_color=(1, 1, 1), mode='rgb')
 
 
             ren_rgb = renderer.render(R_opengl, t)
@@ -666,8 +672,14 @@ class DatasetGenerator():
             R_opengl = np.dot(R,xy_flip)
             R_opengl = np.transpose(R_opengl)
 
+            # Randomize light position for rendering if enabled
+            if(self.random_light is True):
+                random_light_pos = (np.random.uniform(-1.0, 1.0, size=3)*self.dist).astype(np.float32)
+            else:
+                random_light_pos = None
+
             # Render images
-            ren_rgb = self.renderers[obj_id].render(R_opengl, t)
+            ren_rgb = self.renderers[obj_id].render(R_opengl, t, random_light_pos)
 
             curr_Rs.append(R)
             curr_ts.append(t)

@@ -153,7 +153,7 @@ def main():
         pose_dim = -1
 
     # Initialize a model using the renderer, mesh and reference image
-    model = Model(num_views=len(views))
+    model = Model(num_views=len(views), seed=args.getint('Training', 'RANDOM_SEED'))
     model.to(device)
 
     # Create an optimizer. Here we are using Adam and we pass in the parameters of the model
@@ -220,7 +220,8 @@ def main():
                                      args.getint('Training', 'BATCH_SIZE'),
                                      "not_used",
                                      device,
-                                     args.get('Training', 'VIEW_SAMPLING'))
+                                     args.get('Training', 'VIEW_SAMPLING'),
+                                     seed=args.getint('Training', 'RANDOM_SEED'))
     training_data.max_samples = args.getint('Training', 'NUM_SAMPLES')
 
     # Load the validationset
@@ -229,7 +230,6 @@ def main():
     print("Loaded validation set!")
 
     # Start training
-    np.random.seed(seed=args.getint('Training', 'RANDOM_SEED'))
     while(epoch < args.getint('Training', 'NUM_ITER')):
         # Train on synthetic data
         model = model.train() # Set model to train mode
