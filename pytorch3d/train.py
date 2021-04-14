@@ -166,7 +166,7 @@ def main():
 
     # Initialize a model using the renderer, mesh and reference image
     model = Model(num_views=len(views),
-                  weight_init_name=args.get('Training', 'WEIGHT_INIT_NAME'))
+                  weight_init_name=args.get('Training', 'WEIGHT_INIT_NAME', fallback=""))
     model.to(device)
 
     # Create an optimizer. Here we are using Adam and we pass in the parameters of the model
