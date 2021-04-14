@@ -1,4 +1,5 @@
 import os
+import math
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
@@ -7,9 +8,10 @@ import torch.nn.functional as F
 # Network structure inspired by:
 # https://arxiv.org/pdf/1708.05628.pdf (see fig. 2)
 class Model(nn.Module):
-    def __init__(self, num_views=4):
+    def __init__(self, num_views=4, weight_init_name=""):
         super(Model, self).__init__()
 
+        self.weight_init_name = weight_init_name
         self.num_views = num_views
         self.output_size = self.num_views*(6+1)
 
@@ -32,6 +34,9 @@ class Model(nn.Module):
         self.bn1 = nn.BatchNorm1d(128)
         self.bn2 = nn.BatchNorm1d(64)
 
+        # Init weights
+        self.apply(self.init_weights)
+
     # Input: x = lantent code
     # Output: y = pose as quaternion
     def forward(self,x0):
@@ -45,3 +50,24 @@ class Model(nn.Module):
         y = self.l3(x)
         confs = F.softmax(y[:,:self.num_views], dim=1)
         return torch.cat([confs, y[:,self.num_views:]], dim=1)
+
+    def init_weights(self, m):
+        if(type(m) == nn.Linear):
+            if(self.weight_init_name == "kaiming_uniform_leakyrelu_fanout"): #default in pytorch
+                torch.nn.init.kaiming_uniform_(m.weight,
+                                               a=math.sqrt(5),
+                                               mode='fan_out',
+                                               nonlinearity='leaky_relu')
+            elif(self.weight_init_name == "kaiming_uniform_leakyrelu_fanin"):
+                torch.nn.init.kaiming_uniform_(m.weight,
+                                               a=math.sqrt(5),
+                                               mode='fan_in',
+                                               nonlinearity='leaky_relu')
+            elif(self.weight_init_name == "kaiming_uniform_relu_fanout"):
+                torch.nn.init.kaiming_uniform_(m.weight,
+                                               a=math.sqrt(5),
+                                               mode='fan_out',
+                                               nonlinearity='relu')
+            else:
+                #print("No weight init function specified. Using pytorch's default one!")
+                return
