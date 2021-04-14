@@ -3,16 +3,12 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
+
 # Network structure inspired by:
 # https://arxiv.org/pdf/1708.05628.pdf (see fig. 2)
 class Model(nn.Module):
-    def __init__(self, num_views=4, seed=None):
+    def __init__(self, num_views=4):
         super(Model, self).__init__()
-
-        if(seed is not None):
-            torch.manual_seed(seed)
-            #torch.use_deterministic_algorithms(True) # Requires pytorch>=1.8.0
-            #torch.backends.cudnn.deterministic = True
 
         self.num_views = num_views
         self.output_size = self.num_views*(6+1)
@@ -35,7 +31,6 @@ class Model(nn.Module):
 
         self.bn1 = nn.BatchNorm1d(128)
         self.bn2 = nn.BatchNorm1d(64)
-
 
     # Input: x = lantent code
     # Output: y = pose as quaternion

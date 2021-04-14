@@ -24,6 +24,9 @@ from losses import Loss
 from DatasetGeneratorOpenGL import DatasetGenerator
 #from DatasetGeneratorSM import DatasetGenerator
 
+import imgaug as ia
+import random
+
 optimizer = None
 lr_reducer = None
 pipeline = None
@@ -115,6 +118,15 @@ def main():
     args = configparser.ConfigParser()
     args.read(cfg_file_path)
 
+    seed=args.getint('Training', 'RANDOM_SEED')
+    if(seed is not None):
+        torch.manual_seed(seed)
+        #torch.use_deterministic_algorithms(True) # Requires pytorch>=1.8.0
+        #torch.backends.cudnn.deterministic = True
+        np.random.seed(seed=seed)
+        ia.seed(seed)
+        random.seed(seed)
+
     # Prepare rotation matrices for multi view loss function
     eulerViews = json.loads(args.get('Rendering', 'VIEWS'))
     views = prepareViews(eulerViews)
@@ -153,7 +165,7 @@ def main():
         pose_dim = -1
 
     # Initialize a model using the renderer, mesh and reference image
-    model = Model(num_views=len(views), seed=args.getint('Training', 'RANDOM_SEED'))
+    model = Model(num_views=len(views))
     model.to(device)
 
     # Create an optimizer. Here we are using Adam and we pass in the parameters of the model

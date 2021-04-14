@@ -69,11 +69,6 @@ class DatasetGenerator():
                            0, 1073.90, self.render_size/2,
                            0, 0, 1]).reshape(3,3)
 
-        # Setup random seeds
-        if(seed is not None):
-            np.random.seed(seed=seed)
-            ia.seed(seed)
-
         self.aug = self.setup_augmentation()
 
         self.backgrounds = self.load_bg_images("backgrounds", background_path, num_bgs,
