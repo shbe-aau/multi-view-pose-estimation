@@ -68,6 +68,11 @@ class Model(nn.Module):
                                                a=math.sqrt(5),
                                                mode='fan_out',
                                                nonlinearity='relu')
+            elif(self.weight_init_name == "orthogonal"):
+                # See: https://arxiv.org/pdf/1312.6120.pdf
+                # and: https://hjweide.github.io/orthogonal-initialization-in-convolutional-layers
+                torch.nn.init.orthogonal_(m.weight,
+                                          torch.nn.init.calculate_gain("relu"))
             else:
                 #print("No weight init function specified. Using pytorch's default one!")
                 return
