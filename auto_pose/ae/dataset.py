@@ -17,14 +17,14 @@ from .utils import lazy_property
 class Dataset(object):
 
     def __init__(self, dataset_path, **kw):
-        
+
         self.shape = (int(kw['h']), int(kw['w']), int(kw['c']))
         self.noof_training_imgs = int(kw['noof_training_imgs'])
         self.dataset_path = dataset_path
 
         self.bg_img_paths = glob.glob(kw['background_images_glob'])
         self.noof_bg_imgs = min(int(kw['noof_bg_imgs']), len(self.bg_img_paths))
-        
+
         self._kw = kw
         # self._aug = eval(self._kw['code'])
 
@@ -45,14 +45,14 @@ class Dataset(object):
         azimuth_range = eval(kw['azimuth_range']) if 'azimuth_range' in kw else (0, 2 * np.pi)
         elev_range = eval(kw['elev_range']) if 'elev_range' in kw else (-0.5 * np.pi, 0.5 * np.pi)
         views, _ = view_sampler.sample_views(
-            int(kw['min_n_views']), 
-            float(kw['radius']), 
-            azimuth_range, 
+            int(kw['min_n_views']),
+            float(kw['radius']),
+            azimuth_range,
             elev_range
         )
         Rs = np.empty( (len(views)*num_cyclo, 3, 3) )
         i = 0
-        
+
         for view in views:
             for cyclo in np.linspace(0, 2.*np.pi, num_cyclo, endpoint=False):
                 rot_z = np.array([[np.cos(-cyclo), -np.sin(-cyclo), 0], [np.sin(-cyclo), np.cos(-cyclo), 0], [0, 0, 1]])
@@ -66,16 +66,16 @@ class Dataset(object):
 
         if self._kw['model'] == 'cad':
             renderer = meshrenderer.Renderer(
-               eval(str(self._kw['model_path'])), 
-               int(self._kw['antialiasing']), 
-               self.dataset_path, 
+               eval(str(self._kw['model_path'])),
+               int(self._kw['antialiasing']),
+               self.dataset_path,
                float(self._kw['vertex_scale'])
             )
         elif self._kw['model'] == 'reconst':
             # print(meshrenderer)
             renderer = meshrenderer_phong.Renderer(
-               eval(str(self._kw['model_path'])), 
-               int(self._kw['antialiasing']), 
+               eval(str(self._kw['model_path'])),
+               int(self._kw['antialiasing']),
                vertex_tmp_store_folder = self.dataset_path,
                vertex_scale = float(self._kw['vertex_scale'])
             )
@@ -103,7 +103,7 @@ class Dataset(object):
         print(('loaded %s training images' % len(self.train_x)))
 
     def get_sprite_training_images(self, train_args):
-        
+
         dataset_path= train_args.get('Paths','MODEL_PATH')
         dataset_zip = np.load(dataset_path)
 
@@ -160,14 +160,14 @@ class Dataset(object):
         md5_string = md5_string.encode('utf-8')
         current_config_hash = hashlib.md5(md5_string).hexdigest()
         current_file_name = os.path.join(dataset_path, current_config_hash +'.npy')
-    
+
 
         if os.path.exists(current_file_name):
             self.bg_imgs = np.load(current_file_name)
         else:
-            
+
             file_list = self.bg_img_paths[:self.noof_bg_imgs]
-            
+
             from random import shuffle
             shuffle(file_list)
 
@@ -178,7 +178,7 @@ class Dataset(object):
                 H,W = bgr.shape[:2]
                 y_anchor = int(np.random.rand() * (H-self.shape[0]))
                 x_anchor = int(np.random.rand() * (W-self.shape[1]))
-                # bgr = cv2.resize(bgr, self.shape[:2])                    
+                # bgr = cv2.resize(bgr, self.shape[:2])
                 bgr = bgr[y_anchor:y_anchor+self.shape[0],x_anchor:x_anchor+self.shape[1],:]
                 if bgr.shape[0]!=self.shape[0] or bgr.shape[1]!=self.shape[1]:
                     continue
@@ -233,12 +233,12 @@ class Dataset(object):
         if t is None:
             t = np.array([0, 0, float(kw['radius'])])
 
-        bgr_y, depth_y = self.renderer.render( 
+        bgr_y, depth_y = self.renderer.render(
             obj_id=obj_id,
-            W=render_dims[0]//downSample, 
+            W=render_dims[0]//downSample,
             H=render_dims[1]//downSample,
-            K=K.copy(), 
-            R=R, 
+            K=K.copy(),
+            R=R,
             t=t,
             near=clip_near,
             far=clip_far,
@@ -248,12 +248,12 @@ class Dataset(object):
         ys, xs = np.nonzero(depth_y > 0)
         obj_bb = view_sampler.calc_2d_bbox(xs, ys, render_dims)
         bgr_y_cropped = self.extract_square_patch(bgr_y, obj_bb, pad_factor)
-        
+
         if downSample > 1:
             obj_bb[0] = obj_bb[0]*downSample+obj_bb[2]/downSample
             obj_bb[1] = obj_bb[1]*downSample+obj_bb[3]/downSample
 
-        
+
         if return_bb:
             if return_orig:
                 return bgr_y_cropped, obj_bb,bgr_y
@@ -292,47 +292,47 @@ class Dataset(object):
             R = transform.random_rotation_matrix()[:3,:3]
 
             if lighting is None:
-                bgr_x, depth_x = self.renderer.render( 
+                bgr_x, depth_x = self.renderer.render(
                     obj_id=obj_id,
-                    W=render_dims[0], 
+                    W=render_dims[0],
                     H=render_dims[1],
-                    K=K.copy(), 
-                    R=R, 
+                    K=K.copy(),
+                    R=R,
                     t=t,
                     near=clip_near,
                     far=clip_far,
                     random_light=True,
                 )
-                bgr_y, depth_y = self.renderer.render( 
+                bgr_y, depth_y = self.renderer.render(
                     obj_id=obj_id,
-                    W=render_dims[0], 
+                    W=render_dims[0],
                     H=render_dims[1],
-                    K=K.copy(), 
-                    R=R, 
+                    K=K.copy(),
+                    R=R,
                     t=t,
                     near=clip_near,
                     far=clip_far,
                     random_light=False
                 )
             else:
-                bgr_x, depth_x = self.renderer.render( 
+                bgr_x, depth_x = self.renderer.render(
                     obj_id=obj_id,
-                    W=render_dims[0], 
+                    W=render_dims[0],
                     H=render_dims[1],
-                    K=K.copy(), 
-                    R=R, 
+                    K=K.copy(),
+                    R=R,
                     t=t,
                     near=clip_near,
                     far=clip_far,
                     random_light=True,
                     phong = lighting
                 )
-                bgr_y, depth_y = self.renderer.render( 
+                bgr_y, depth_y = self.renderer.render(
                     obj_id=obj_id,
-                    W=render_dims[0], 
+                    W=render_dims[0],
                     H=render_dims[1],
-                    K=K.copy(), 
-                    R=R, 
+                    K=K.copy(),
+                    R=R,
                     t=t,
                     near=clip_near,
                     far=clip_far,
@@ -366,7 +366,7 @@ class Dataset(object):
             ys, xs = np.nonzero(depth_y > 0)
             obj_bb = view_sampler.calc_2d_bbox(xs, ys, render_dims)
 
-            bgr_y = self.extract_square_patch(bgr_y, obj_bb, pad_factor,resize=(W,H),interpolation = cv2.INTER_NEAREST)
+            bgr_y = self.extract_square_patch(bgr_y, obj_bb_off, pad_factor,resize=(W,H),interpolation = cv2.INTER_NEAREST)
 
             if self.shape[2] == 1:
                 bgr_x = cv2.cvtColor(np.uint8(bgr_x), cv2.COLOR_BGR2GRAY)[:,:,np.newaxis]
@@ -376,7 +376,7 @@ class Dataset(object):
                 depth_y = self.extract_square_patch(depth_y, obj_bb, pad_factor, resize=(W, H), interpolation=cv2.INTER_NEAREST)
                 mask_y = depth_y == 0.
                 bgr_y[mask_y] = eval(kw['target_bg_color'])
-                
+
             train_x = bgr_x.astype(np.uint8)
             mask_x = mask_x
             train_y = bgr_y.astype(np.uint8)
@@ -407,12 +407,12 @@ class Dataset(object):
         obj_bbs = np.empty( (end-start,)+ (4,))
 
         for i, R in enumerate(self.viewsphere_for_embedding[start:end]):
-            bgr_y, depth_y = self.renderer.render( 
+            bgr_y, depth_y = self.renderer.render(
                 obj_id=0,
-                W=render_dims[0], 
+                W=render_dims[0],
                 H=render_dims[1],
-                K=K.copy(), 
-                R=R, 
+                K=K.copy(),
+                R=R,
                 t=t,
                 near=clip_near,
                 far=clip_far,
@@ -439,7 +439,7 @@ class Dataset(object):
 
         x, y, w, h = np.array(bb_xywh).astype(np.int32)
         size = int(np.maximum(h, w) * pad_factor)
-        
+
         left = np.maximum(x+w//2-size//2, 0)
         right = x+w//2+size//2
         top = np.maximum(y+h//2-size//2, 0)
@@ -480,7 +480,7 @@ class Dataset(object):
             ElasticTransformation
         return Sequential([Sometimes(0.7, CoarseDropout( p=0.4, size_percent=0.01) )])
 
-    
+
     @lazy_property
     def random_syn_masks(self):
         import bitarray
@@ -493,7 +493,7 @@ class Dataset(object):
         occlusion_masks = occlusion_masks.reshape(-1,224,224,1).astype(np.float32)
         print((occlusion_masks.shape))
 
-        occlusion_masks = np.array([cv2.resize(mask,(self.shape[0],self.shape[1]), interpolation = cv2.INTER_NEAREST) for mask in occlusion_masks])           
+        occlusion_masks = np.array([cv2.resize(mask,(self.shape[0],self.shape[1]), interpolation = cv2.INTER_NEAREST) for mask in occlusion_masks])
         return occlusion_masks
 
 
@@ -516,7 +516,7 @@ class Dataset(object):
                 if overlap < max_occl and overlap > min_occl:
                     new_masks[idx,...] = np.logical_xor(mask.astype(np.bool), overlap_matrix)
                     if verbose:
-                        print(('overlap is ', overlap))    
+                        print(('overlap is ', overlap))
                     break
 
         return new_masks
@@ -547,19 +547,19 @@ class Dataset(object):
 
         # batch_x = np.empty( (batch_size,) + self.shape, dtype=np.uint8 )
         # batch_y = np.empty( (batch_size,) + self.shape, dtype=np.uint8 )
-        
+
         rand_idcs = np.random.choice(self.noof_training_imgs, batch_size, replace=False)
-        
+
         assert self.noof_bg_imgs > 0
 
         rand_idcs_bg = np.random.choice(self.noof_bg_imgs, batch_size, replace=False)
-        
+
         batch_x, masks, batch_y = self.train_x[rand_idcs], self.mask_x[rand_idcs], self.train_y[rand_idcs]
         rand_vocs = self.bg_imgs[rand_idcs_bg]
 
         if 'realistic_occlusion' in self._kw and eval(self._kw['realistic_occlusion']):
             masks = self.augment_occlusion_mask(masks.copy(),max_occl=np.float(self._kw['realistic_occlusion']))
-        
+
         if 'square_occlusion' in self._kw and eval(self._kw['square_occlusion']):
             masks = self.augment_squares(masks.copy(),rand_idcs,max_occl=np.float(self._kw['square_occlusion']))
 
@@ -581,6 +581,6 @@ class Dataset(object):
         #slow...
         batch_x = batch_x / 255.
         batch_y = batch_y / 255.
-        
+
 
         return (batch_x, batch_y)
