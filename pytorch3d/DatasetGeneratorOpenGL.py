@@ -667,9 +667,9 @@ class DatasetGenerator():
             R_opengl = np.dot(R,xy_flip)
             R_opengl = np.transpose(R_opengl)
 
-            # Randomize light position for rendering if enabled
+            # Randomize light position for rendering if enabled            
             if(self.random_light is True):
-                random_light_pos = (np.random.uniform(-1.0, 1.0, size=3)*self.dist).astype(np.float32)
+                random_light_pos = (np.random.uniform(-1.0, 1.0, size=3)*self.dist[obj_id][-1]).astype(np.float32)
             else:
                 random_light_pos = None
 
