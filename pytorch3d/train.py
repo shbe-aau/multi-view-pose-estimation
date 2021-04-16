@@ -382,7 +382,8 @@ def runEpoch(br, dataset, model,
                     gt_img = (gt_images[h]).detach().cpu().numpy()
                     predicted_img = (predicted_images[h]).detach().cpu().numpy()
 
-                    vmin = np.linalg.norm(T)*0.9
+                    #vmin = np.linalg.norm(ts)*0.9
+                    vmin = min(np.min(gt_img), np.min(predicted_img))
                     vmax = max(np.max(gt_img), np.max(predicted_img))
 
                     fig = plt.figure(figsize=(12,3+len(views)*2))
@@ -401,7 +402,8 @@ def runEpoch(br, dataset, model,
             gt_img = (gt_images[0]).detach().cpu().numpy()
             predicted_img = (predicted_images[0]).detach().cpu().numpy()
 
-            vmin = np.linalg.norm(T)*0.9
+            #vmin = np.linalg.norm(ts)*0.9
+            vmin = min(np.min(gt_img), np.min(predicted_img))
             vmax = max(np.max(gt_img), np.max(predicted_img))
 
             fig = plt.figure(figsize=(12,3+len(views)*2))
