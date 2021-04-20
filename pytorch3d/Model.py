@@ -58,6 +58,11 @@ class Model(nn.Module):
                                                a=math.sqrt(5),
                                                mode='fan_out',
                                                nonlinearity='leaky_relu')
+            elif(self.weight_init_name == "kaiming_normal_leakyrelu_fanout"):
+                torch.nn.init.kaiming_normal_(m.weight,
+                                               a=math.sqrt(5),
+                                               mode='fan_out',
+                                               nonlinearity='leaky_relu')
             elif(self.weight_init_name == "kaiming_uniform_leakyrelu_fanin"):
                 torch.nn.init.kaiming_uniform_(m.weight,
                                                a=math.sqrt(5),
