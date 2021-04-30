@@ -53,14 +53,14 @@ def latestCheckpoint(model_dir):
         return checkpoints_sorted[-1]
     return None
 
-def loadCheckpoint(model_path):
+def loadCheckpoint(model_path, num_objects):
     # Load checkpoint and parameters
     checkpoint = torch.load(model_path)
     epoch = checkpoint['epoch'] + 1
 
     # Load model
     num_views = int(checkpoint['model']['l3.bias'].shape[0]/(6+1))
-    model = Model(num_views=num_views).cuda()
+    model = Model(num_views=num_views, num_objects=num_objects).cuda()
 
     model.load_state_dict(checkpoint['model'])
 
@@ -166,7 +166,8 @@ def main():
 
     # Initialize a model using the renderer, mesh and reference image
     model = Model(num_views=len(views),
-                  weight_init_name=args.get('Training', 'WEIGHT_INIT_NAME', fallback=""))
+                  weight_init_name=args.get('Training', 'WEIGHT_INIT_NAME', fallback=""),
+                  num_objects=args.getint('Training', 'NUM_OBJECTS_OUTPUT', fallback=1))
     model.to(device)
 
     # Create an optimizer. Here we are using Adam and we pass in the parameters of the model
@@ -193,7 +194,8 @@ def main():
     # Load checkpoint for last epoch if it exists
     model_path = latestCheckpoint(os.path.join(output_path, "models/"))
     if(model_path is not None):
-        model, optimizer, epoch, lr_reducer = loadCheckpoint(model_path)
+        model, optimizer, epoch, lr_reducer = loadCheckpoint(model_path,
+                                                             num_objects=args.getint('Training', 'NUM_OBJECTS_OUTPUT', fallback=1))
 
     if early_stopping:
         validation_csv=os.path.join(output_path, "validation-loss.csv")
@@ -309,6 +311,7 @@ def runEpoch(br, dataset, model,
 
         # Predict poses
         predicted_poses = pipeline.process(input_images)
+
 
         # Prepare ground truth poses for the loss function
         T = np.array(t, dtype=np.float32)
