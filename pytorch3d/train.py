@@ -127,6 +127,10 @@ def main():
         ia.seed(seed)
         random.seed(seed)
 
+    model_seed=args.getint('Training', 'MODEL_RANDOM_SEED', fallback=None)
+    if(model_seed is not None):
+        torch.manual_seed(model_seed)
+
     # Prepare rotation matrices for multi view loss function
     eulerViews = json.loads(args.get('Rendering', 'VIEWS'))
     views = prepareViews(eulerViews)
