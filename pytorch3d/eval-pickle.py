@@ -39,14 +39,14 @@ def arr2str(arr):
         str_arr += "{0:.8f} ".format(flat_arr[i])
     return str_arr[:-1]
 
-def loadCheckpoint(model_path, device):
+def loadCheckpoint(model_path, device, num_views, num_objects):
     # Load checkpoint and parameters
     checkpoint = torch.load(model_path, map_location=device)
     epoch = checkpoint['epoch'] + 1
 
     # Load model
-    num_views = int(checkpoint['model']['l3.bias'].shape[0]/(6+1))
-    model = Model(num_views=num_views).cuda()
+    #num_views = int(checkpoint['model']['l3.bias'].shape[0]/(6+1))
+    model = Model(num_views=num_views, num_objects=num_objects).cuda()
     model.load_state_dict(checkpoint['model'])
 
     # Load optimizer
@@ -81,6 +81,9 @@ def main():
     parser.add_argument("-o", help="output path", default="./output.csv")
     args = parser.parse_args()
 
+    num_objects = 18
+    num_views = 10
+
     # Load dataset
     data = pickle.load(open(args.pi,"rb"), encoding="latin1")
 
@@ -95,7 +98,9 @@ def main():
         model = Model().to(device)
 
         # Load model checkpoint
-        model, optimizer, epoch, learning_rate = loadCheckpoint(args.mp, device)
+        model, optimizer, epoch, learning_rate = loadCheckpoint(args.mp, device,
+                                                                num_views=num_views,
+                                                                num_objects=num_objects)
         model.to(device)
         model.eval()
 
@@ -115,7 +120,7 @@ def main():
                       0.0, 1073.90347929, 128.0/2.0,
                       0.0, 0.0, 1.0]).reshape(3,3)
         renderer = Renderer(obj_model, (img_size,img_size), K,
-                            surf_color=(1, 1, 1), mode='rgb', random_light=False)
+                            surf_color=(1, 1, 1), mode='rgb')
     else:
         renderer = None
 
@@ -140,22 +145,40 @@ def main():
             predicted_poses = pipeline.process([img])
 
             # Find best pose
-            num_views = int(predicted_poses.shape[1]/(6+1))
-            pose_start = num_views
+            pose_start = 0
             pose_end = pose_start + 6
             best_pose = 0.0
             R_predicted = None
 
+            confs = predicted_poses[:,:(num_views*num_objects)]
+            poses = predicted_poses[:,(num_views*num_objects):]
+
+            # Mask stuff according to ID if outputting multiple objects
+            print(poses.shape)
+            if(num_objects > 1):
+                ids = [data["obj_ids"][i]-1]
+                idx_mask = torch.tensor(ids)
+                confs = confs.reshape(-1,num_objects,num_views)
+                confs = confs[torch.arange(confs.size(0)), idx_mask].squeeze(1)
+
+                poses = poses.reshape(-1,num_objects,num_views*6)
+                poses = poses[torch.arange(poses.size(0)), idx_mask].squeeze(1)
+                print(poses.shape)
+                print("--------------")
+
+            print("###############################")
+            print("confs! ", confs)
+            print("###############################")
             for k in range(num_views):
                 # Extract current pose and move to next one
-                curr_pose = predicted_poses[:,pose_start:pose_end]
+                curr_pose = poses[:,pose_start:pose_end]
                 print(curr_pose)
                 Rs_predicted = compute_rotation_matrix_from_ortho6d(curr_pose)
                 Rs_predicted = Rs_predicted.detach().cpu().numpy()[0]
                 pose_start = pose_end
                 pose_end = pose_start + 6
 
-                conf = predicted_poses[:,k].detach().cpu().numpy()[0]
+                conf = confs[:,k].detach().cpu().numpy()[0]
                 if(conf > best_pose):
                     R_predicted = Rs_predicted
                     best_pose = conf
@@ -186,7 +209,7 @@ def main():
 
             # Render predicted pose
             R_predicted = correct_trans_offset(R_predicted,t_gt)
-            ren_predicted = renderer.render(R_predicted, t)
+            ren_predicted = renderer.render(R_predicted, t, None)
 
             # Render groundtruth pose
             R_gt = data["Rs"][i]
