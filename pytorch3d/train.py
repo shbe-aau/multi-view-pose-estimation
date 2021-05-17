@@ -237,7 +237,9 @@ def main():
                                      args.getint('Training', 'BATCH_SIZE'),
                                      "not_used",
                                      device,
-                                     args.get('Training', 'VIEW_SAMPLING'),
+                                     sampling_method = args.get('Training', 'VIEW_SAMPLING'),
+                                     max_rel_offset = args.getfloat('Training', 'MAX_REL_OFFSET', fallback=0.2),
+                                     augment_imgs = args.getboolean('Training', 'AUGMENT_IMGS', fallback=True),
                                      seed=args.getint('Training', 'RANDOM_SEED'))
     training_data.max_samples = args.getint('Training', 'NUM_SAMPLES')
 
