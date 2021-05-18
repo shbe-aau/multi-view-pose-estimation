@@ -26,7 +26,8 @@ RUN apt-get update && apt-get -q install -y \
     python3-pip \
     python3 \
     git \
-    libfontconfig1-dev
+    libfontconfig1-dev \
+    curl
 
 # Upgrade pip3
 RUN pip3 --no-cache-dir install --upgrade \
@@ -34,8 +35,8 @@ RUN pip3 --no-cache-dir install --upgrade \
 
 # Install OpenCV dependencies
 RUN apt-get install -y \
-    	libglfw3-dev \
-	libglfw3
+      libglfw3-dev \
+  libglfw3
 
 # Install cython and numpy
 RUN pip3 --no-cache-dir install \
@@ -65,17 +66,24 @@ RUN pip3 --no-cache-dir install \
 
 # Install pytorch (pytorch3d depends on it...)
 RUN pip3 --no-cache-dir install \
-    torch==1.4.0 \
-    torchvision==0.5.0
+    torch==1.7.1 \
+    torchvision==0.8.2 \
+    torchaudio==0.7.2
 
 # Install OpenCV
 RUN pip3 --no-cache-dir install \
     opencv-python==3.4.0.14 \
     opencv-contrib-python
 
+# Install CUB
+RUN curl -LO https://github.com/NVIDIA/cub/archive/1.10.0.tar.gz
+RUN tar xzf 1.10.0.tar.gz
+ENV CUB_HOME=$PWD/cub-1.10.0
+
 # Install pytorch3d (forked)
 ENV FORCE_CUDA=1
-RUN pip3 --no-cache-dir install 'git+https://github.com/shbe-aau/pytorch3d.git'
+# RUN pip3 --no-cache-dir install 'git+https://github.com/shbe-aau/pytorch3d.git'
+RUN pip3 --no-cache-dir install 'git+https://github.com/facebookresearch/pytorch3d.git@v0.4.0'
 
 # Install correct version (i.e. 3.3) of libassimp and pyassimp
 RUN apt-get install -y \
