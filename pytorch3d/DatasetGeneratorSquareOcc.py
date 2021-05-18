@@ -27,7 +27,8 @@ from scipy.spatial.transform import Rotation as scipyR
 from pytorch3d.io import load_obj
 
 # datastructures
-from pytorch3d.structures import Meshes, Textures, list_to_padded
+from pytorch3d.structures import Meshes, list_to_padded
+from pytorch3d.renderer.mesh.textures import TexturesVertex
 
 # 3D transformations functions
 from pytorch3d.transforms import Rotate, Translate

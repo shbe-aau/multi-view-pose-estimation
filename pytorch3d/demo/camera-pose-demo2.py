@@ -14,7 +14,8 @@ from skimage import img_as_ubyte
 from pytorch3d.io import load_obj
 
 # datastructures
-from pytorch3d.structures import Meshes, Textures
+from pytorch3d.structures import Meshes
+from pytorch3d.renderer.mesh.textures import TexturesVertex
 
 # 3D transformations functions
 from pytorch3d.transforms import Rotate, Translate
@@ -73,7 +74,7 @@ faces = faces_idx.verts_idx
 
 # Initialize each vertex to be white in color.
 verts_rgb = torch.ones_like(verts)[None]  # (1, V, 3)
-textures = Textures(verts_rgb=verts_rgb.to(device))
+textures = TexturesVertex(verts_features=verts_rgb.to(device))
 
 # Create a Meshes object for the teapot. Here we have only one mesh in the batch.
 teapot_mesh = Meshes(
