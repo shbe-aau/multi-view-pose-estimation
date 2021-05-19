@@ -6,7 +6,8 @@ import torch.nn as nn
 from pytorch3d.io import load_obj
 
 # datastructures
-from pytorch3d.structures import Meshes, Textures, list_to_padded
+from pytorch3d.structures import Meshes, list_to_padded
+from pytorch3d.renderer.mesh.textures import TexturesVertex
 
 # 3D transformations functions
 from pytorch3d.transforms import Rotate, Translate
@@ -56,7 +57,7 @@ class BatchRender:
 
         # Load meshes based on object ids
         batch_verts_rgb = list_to_padded([self.textures[i] for i in ids])
-        batch_textures = Textures(verts_rgb=batch_verts_rgb.to(self.device))
+        batch_textures = TexturesVertex(verts_features=batch_verts_rgb.to(self.device))
         batch_verts=[self.vertices[i].to(self.device) for i in ids]
         batch_faces=[self.faces[i].to(self.device) for i in ids]
 

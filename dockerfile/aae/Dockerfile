@@ -65,13 +65,12 @@ RUN ${PIP} --no-cache-dir install --upgrade \
 # Some TF tools expect a "python" binary
 RUN ln -s $(which ${PYTHON}) /usr/local/bin/python
 
-
 # Options:
 #   tensorflow
 #   tensorflow-gpu
 #   tf-nightly
 #   tf-nightly-gpu
-RUN ${PIP} install tensorflow-gpu==1.14.0
+RUN ${PIP} install tensorflow-gpu==1.13.1
 
 #COPY bashrc /etc/bash.bashrc
 #RUN chmod a+rwx /etc/bash.bashrc
@@ -109,7 +108,8 @@ RUN cd ~/ &&\
 RUN apt-get install -y \
     	libglfw3-dev \
 	libglfw3 \
-	libassimp-dev
+	libassimp-dev\
+	python-tk
 
 # Pip install stuff
 RUN pip --no-cache-dir install --pre --upgrade PyOpenGL PyOpenGL_accelerate
@@ -124,11 +124,15 @@ RUN pip --no-cache-dir install \
     progressbar \
     configparser \
     opencv-python==3.4.0.14 \
-    opencv-contrib-python
+    opencv-contrib-python \
+    gast==0.2.2
 
 # Install Keras and RetinaNet
 RUN git clone https://github.com/fizyr/keras-retinanet
 RUN cd keras-retinanet && pip install .
+
+# Setup AAE workspace
+ENV AE_WORKSPACE_PATH=/shared-folder/autoencoder_ws
 
 # Install AAE (AutoPose) - forked version
 RUN git clone https://github.com/shbe-aau/AugmentedAutoencoder
