@@ -60,11 +60,11 @@ RUN apt-get update && apt-get install -y \
     ${PYTHON}-pip
 
 RUN ${PIP} --no-cache-dir install --upgrade \
-    pip \
-    'setuptools<45.0.0'
+    "pip < 21.0"
 
 # Some TF tools expect a "python" binary
-RUN ln -s $(which ${PYTHON}) /usr/local/bin/python 
+RUN ln -s $(which ${PYTHON}) /usr/local/bin/python
+
 
 # Options:
 #   tensorflow
