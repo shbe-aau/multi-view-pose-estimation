@@ -48,8 +48,8 @@ from utils.sundermeyer.pysixd import view_sampler
 class DatasetGenerator():
 
     def __init__(self, background_path, obj_paths, obj_distance, batch_size,
-                 _, device, sampling_method="sphere", random_light=True,
-                 num_bgs=5000, seed=None):
+                 _, device, sampling_method="sphere", max_rel_offset=0.2, augment_imgs=True,
+                 random_light=True, num_bgs=5000, seed=None):
 
         self.random_light = random_light
         self.realistic_occlusions = False
@@ -63,12 +63,13 @@ class DatasetGenerator():
         self.dist = obj_distance
         self.img_size = 128
         self.render_size = 3*self.img_size
-        self.max_rel_offset = 0.2
+        self.max_rel_offset = max_rel_offset
         self.max_rel_scale = None
         self.K = np.array([1075.65, 0, self.render_size/2,
                            0, 1073.90, self.render_size/2,
                            0, 0, 1]).reshape(3,3)
 
+        self.augment = augment_imgs
         self.aug = self.setup_augmentation()
 
         self.backgrounds = self.load_bg_images("backgrounds", background_path, num_bgs,
@@ -667,7 +668,7 @@ class DatasetGenerator():
             R_opengl = np.dot(R,xy_flip)
             R_opengl = np.transpose(R_opengl)
 
-            # Randomize light position for rendering if enabled            
+            # Randomize light position for rendering if enabled
             if(self.random_light is True):
                 random_light_pos = (np.random.uniform(-1.0, 1.0, size=3)*self.dist[obj_id][-1]).astype(np.float32)
             else:
@@ -696,12 +697,13 @@ class DatasetGenerator():
             # Add relative offset when cropping - like Sundermeyer
             x, y, w, h = obj_bb
 
-            if augment:
+            if self.max_rel_offset != 0:
                 rand_trans_x = np.random.uniform(-self.max_rel_offset, self.max_rel_offset) * w
                 rand_trans_y = np.random.uniform(-self.max_rel_offset, self.max_rel_offset) * h
             else:
                 rand_trans_x = 0
                 rand_trans_y = 0
+
             obj_bb_off = obj_bb + np.array([rand_trans_x,rand_trans_y,0,0])
             pad_factor =  1.2
             if(augment and self.max_rel_scale is not None):
@@ -760,7 +762,7 @@ class DatasetGenerator():
                 "images":[],
                 "Rs":[]}
         while(len(data["images"]) < num_samples):
-            curr_data = self.generate_image_batch()
+            curr_data = self.generate_image_batch(augment=self.augment)
             data["images"] = data["images"] + curr_data["images"]
             data["Rs"] = data["Rs"] + curr_data["Rs"]
             data["ids"] = data["ids"] + curr_data["ids"]
