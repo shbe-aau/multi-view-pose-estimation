@@ -96,3 +96,6 @@ RUN wget https://launchpadlibrarian.net/230132835/libassimp-dev_3.2~dfsg-3_amd64
 RUN apt-get install -y ./libassimp-dev_3.2~dfsg-3_amd64.deb
 
 RUN pip3 --no-cache-dir install pyassimp==3.3
+
+# Point Python to Python3 (needed for BOP toolkit)
+RUN ln -s /usr/bin/python3 /usr/bin/python
