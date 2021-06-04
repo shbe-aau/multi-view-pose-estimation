@@ -67,30 +67,30 @@ class DatasetGenerator():
         self.max_rel_offset = max_rel_offset
         self.max_rel_scale = None
 
-        render_size_width = 400
-        render_size_height = 400
+        render_width = 400
+        render_height = 400
 
-        org_size_width = 720.0
-        org_size_height = 540.0
+        orig_width = 720.0
+        orig_height = 540.0
 
-        render_size_width = int(render_size_width*(org_size_width/org_size_height))
+        render_width = int(render_width*(orig_width/orig_height))
 
-        fx = 1075.65091572 * (render_size_width/org_size_width)
-        fy = 1073.90347929 * (render_size_height/org_size_height)
+        fx = 1075.65091572 * (render_width/orig_width)
+        fy = 1073.90347929 * (render_height/orig_height)
 
-        # These values should be half of render_size_width/height during training
-        px = render_size_width/2
-        py = render_size_height/2
+        # These values should be half of render_width/height during training
+        px = render_width/2
+        py = render_height/2
 
         if False:  # local testing override for using a non-centered principal point
-            px = 367.06888344 * (render_size_width/org_size_width)
-            py = 247.72159802 * (render_size_height/org_size_height)
+            px = 367.06888344 * (render_width/orig_width)
+            py = 247.72159802 * (render_height/orig_height)
 
         self.K = np.array([fx, 0, px,
                            0, fy, py,
                            0, 0, 1]).reshape(3,3)
-        self.render_size_width = render_size_width
-        self.render_size_height = render_size_height
+        self.render_width = render_width
+        self.render_height = render_height
 
         self.augment = augment_imgs
         self.aug = self.setup_augmentation()
@@ -110,7 +110,7 @@ class DatasetGenerator():
                 print("Error! {0} is not a .ply file!".format(o))
                 exit()
             curr_model = inout.load_ply(o)
-            curr_rend= Renderer(curr_model, (render_size_width,render_size_height),
+            curr_rend= Renderer(curr_model, (render_width,render_height),
                                 self.K, surf_color=(1, 1, 1), mode='rgb') #, clip_far=4000)
             self.renderers.append(curr_rend)
 
@@ -581,68 +581,6 @@ class DatasetGenerator():
             R = R.squeeze()
         return R
 
-    def generate_random_renders(self,num):
-        image_renders = []
-        images = []
-
-        for k in np.arange(num):
-            print("Rendering random objects: ", k)
-            R, t = self.pose_sampling()
-
-            R = R.detach().cpu().numpy()
-            t = t.detach().cpu().numpy()
-
-            # Convert R matrix from pytorch to opengl format
-            # for rendering only!
-            xy_flip = np.eye(3, dtype=np.float)
-            xy_flip[0,0] = -1.0
-            xy_flip[1,1] = -1.0
-            R_opengl = np.dot(R,xy_flip)
-            R_opengl = np.transpose(R_opengl)
-
-            # Render images
-            random_id = np.random.randint(1,31)
-            obj_path = "./data/tless-obj{0:02d}/cad/obj_{1:02d}.obj".format(random_id, random_id)
-            model = inout.load_ply(obj_path.replace(".obj",".ply"))
-
-            # Normalize pts
-            verts = model['pts']
-            center = np.mean(verts, axis=0)
-            verts_normed = verts - center
-            scale = np.max(np.max(np.abs(verts_normed), axis=0))
-            verts_normed = (verts_normed / scale)
-            model['pts'] = verts_normed*100.0
-
-            renderer = Renderer(model, (self.render_size,self.render_size),
-                                     self.K, surf_color=(1, 1, 1), mode='rgb')
-
-
-            ren_rgb = renderer.render(R_opengl, t)
-            image_renders.append(ren_rgb)
-
-            for i in range(10):
-                # Calc bounding box and crop image
-                org_img = image_renders[k]
-                ys, xs = np.nonzero(org_img[:,:,0] > 0)
-                obj_bb = calc_2d_bbox(xs,ys,[self.render_size,self.render_size])
-
-                # Add relative offset when cropping - like Sundermeyer
-                x, y, w, h = obj_bb
-
-                rand_trans_x = np.random.uniform(-2.0, 2.0) * w
-                rand_trans_y = np.random.uniform(-2.0, 2.0) * h
-
-                scale = np.random.uniform(0.2, 0.8)
-                obj_bb_off = obj_bb + np.array([rand_trans_x,rand_trans_y,
-                                            w*scale,h*scale])
-
-                try:
-                    cropped = extract_square_patch(org_img, obj_bb_off)
-                    images.append(cropped)
-                except:
-                    continue
-        return images
-
     # TODO: Decide rotation matrix type expected (opengl vs pytorch)
     #       For now i have let outside stuff rot and for the method we use return both
     #       Other sampling methods are currently broken
@@ -748,9 +686,9 @@ class DatasetGenerator():
             else:
                 centercrop = True
                 if centercrop:
-                    min_size = min(self.render_size_width, self.render_size_height)
-                    x0 = 0 + (self.render_size_width-min_size)/2
-                    y0 = 0 + (self.render_size_height-min_size)/2
+                    min_size = min(self.render_width, self.render_height)
+                    x0 = 0 + (self.render_width-min_size)/2
+                    y0 = 0 + (self.render_height-min_size)/2
                     cropped = extract_square_patch(org_img, [x0, y0, min_size, min_size], pad_factor=1)
                 else:
                     cropped = extract_square_patch(org_img, [0, 0, self.render_size, self.render_size], pad_factor=1)
